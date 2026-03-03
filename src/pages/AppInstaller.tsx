@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Download,
@@ -57,26 +57,7 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
   const [checkingInstalled, setCheckingInstalled] = useState(false);
   const [activeCat, setActiveCat] = useState('All');
   const hasChecked = useRef(false);
-  const gridRef = useRef<HTMLDivElement>(null);
-  const [cols, setCols] = useState(0);
   const { addToast } = useToast();
-
-  /* Track how many columns the grid actually renders.
-     useLayoutEffect ensures measurement happens before first paint,
-     so cards never appear with a stale column count. */
-  useLayoutEffect(() => {
-    const el = gridRef.current;
-    if (!el) return;
-    const measure = () => {
-      const style = getComputedStyle(el);
-      const c = style.gridTemplateColumns.split(' ').filter(Boolean).length;
-      setCols(c || 1);
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   useEffect(() => {
     if (!window.electron?.ipcRenderer) return;
@@ -88,16 +69,28 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
 
   const checkInstalled = useCallback(async () => {
     if (!window.electron?.ipcRenderer) return;
+    const allApps = APP_CATALOG.map(a => ({ id: a.id, name: a.name }));
+
+    // Phase 1: instant registry scan (~100ms cached, ~200ms cold)
+    try {
+      const fast = await window.electron.ipcRenderer.invoke('appinstall:check-installed-fast', allApps);
+      if (fast.success) {
+        const set = new Set<string>();
+        for (const [id, ok] of Object.entries(fast.installed)) { if (ok) set.add(id); }
+        setInstalled(set);
+      }
+    } catch { /* ignore — full scan will cover it */ }
+
+    // Phase 2: full winget refinement (background, no spinner — Phase 1 already populated)
     setCheckingInstalled(true);
     try {
-      const allApps = APP_CATALOG.map(a => ({ id: a.id, name: a.name }));
       const result = await window.electron.ipcRenderer.invoke('appinstall:check-installed', allApps);
       if (result.success) {
         const set = new Set<string>();
         for (const [id, ok] of Object.entries(result.installed)) { if (ok) set.add(id); }
         setInstalled(set);
       }
-    } catch (err) { console.error('Failed to check installed:', err); }
+    } catch { /* ignore */ }
     finally { setCheckingInstalled(false); }
   }, []);
 
@@ -181,8 +174,6 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
     return apps;
   }, [activeCat, searchQuery]);
 
-  const rows = cols > 0 ? Math.ceil(visibleApps.length / cols) : visibleApps.length;
-
   /* Badge counts for tabs */
   const catCounts = useMemo(() => {
     const c: Record<string, number> = { All: APP_CATALOG.length };
@@ -243,27 +234,18 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
       </div>
 
       {/* ── App grid ── */}
-      <motion.div
-        className="ai-grid"
-        ref={gridRef}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.15 }}
-      >
-          {cols > 0 && visibleApps.map((app, i) => {
+      <div className="ai-grid">
+          {visibleApps.map((app) => {
             const done = installed.has(app.id);
             const sel = selected.has(app.id);
             const busy = installingId === app.id;
             const prog = progress?.packageId === app.id ? progress : null;
-            /* Column-first order: map linear index to column-major position */
-            const order = cols > 1 ? (i % cols) * rows + Math.floor(i / cols) : i;
 
             return (
               <div
                 key={app.id}
                 className={`ai-card${sel ? ' ai-card--sel' : ''}${done ? ' ai-card--done' : ''}${busy ? ' ai-card--busy' : ''}`}
                 onClick={() => !done && !busy && toggleSelect(app.id)}
-                style={{ order }}
               >
                 {/* Status icon */}
                 <div className="ai-card-icon">
@@ -310,13 +292,13 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
             );
           })}
 
-        {cols > 0 && visibleApps.length === 0 && (
+        {visibleApps.length === 0 && (
           <div className="ai-empty">
             <Search size={28} strokeWidth={1} />
             <p>No apps found</p>
           </div>
         )}
-      </motion.div>
+      </div>
 
       {/* ── Floating install dock ── */}
       <AnimatePresence>

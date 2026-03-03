@@ -4248,8 +4248,8 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
       }
     };
 
-    const extraFlags = useUninstallPrevious ? ' --uninstall-previous' : '';
-    sendProgress({ phase: 'preparing', status: useUninstallPrevious ? 'Retrying with reinstall…' : 'Preparing update…', percent: 0 });
+    const extraFlags = useUninstallPrevious ? ' --force --uninstall-previous' : '';
+    sendProgress({ phase: 'preparing', status: useUninstallPrevious ? 'Retrying update…' : 'Preparing update…', percent: 0 });
 
     const proc = spawn('cmd.exe', [
       '/c', `chcp 65001 >nul && winget upgrade --id ${cleanId} --accept-source-agreements --accept-package-agreements${extraFlags}`
@@ -4361,8 +4361,56 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
   // First attempt — normal upgrade
   const result = await runUpgrade(false);
   if (result.retryWithUninstallPrevious) {
-    // Packaging format mismatch — retry with --uninstall-previous
-    return runUpgrade(true);
+    // Packaging format mismatch — retry with --force --uninstall-previous
+    const retry = await runUpgrade(true);
+    if (retry.success) return retry;
+    // Final fallback: fresh install with --force (handles system apps like Edge)
+    return new Promise((resolve) => {
+      const win = BrowserWindow.getAllWindows()[0];
+      const sendProgress = (data) => {
+        if (win && !win.isDestroyed()) {
+          win.webContents.send('software:update-progress', { packageId: cleanId, ...data });
+        }
+      };
+      sendProgress({ phase: 'preparing', status: 'Forcing install…', percent: 0 });
+      let fullOutput = '';
+      let phase = 'preparing';
+      const proc = spawn('cmd.exe', [
+        '/c', `chcp 65001 >nul && winget install --id ${cleanId} --accept-source-agreements --accept-package-agreements --force`
+      ], { windowsHide: true });
+      const timeout = setTimeout(() => { proc.kill(); resolve({ success: false, message: 'Install timed out' }); }, 180000);
+      const processChunk = (chunk) => {
+        const text = chunk.toString();
+        fullOutput += text;
+        const segments = text.split('\r').map(s => s.trim()).filter(Boolean);
+        for (const seg of segments) {
+          if (/^[-\\|/]$/.test(seg)) continue;
+          if (/Downloading/i.test(seg)) { phase = 'downloading'; sendProgress({ phase, status: 'Downloading…', percent: -1 }); }
+          else if (/verified installer hash/i.test(seg)) { phase = 'verifying'; sendProgress({ phase, status: 'Verified', percent: 100 }); }
+          else if (/Starting package install/i.test(seg)) { phase = 'installing'; sendProgress({ phase, status: 'Installing…', percent: -1 }); }
+          else if (/Successfully installed/i.test(seg)) { phase = 'done'; sendProgress({ phase, status: 'Installed!', percent: 100 }); }
+        }
+      };
+      proc.stdout.on('data', processChunk);
+      proc.stderr.on('data', processChunk);
+      proc.on('close', (code) => {
+        clearTimeout(timeout);
+        const out = fullOutput.toLowerCase();
+        if (out.includes('successfully installed') || out.includes('no applicable')) {
+          sendProgress({ phase: 'done', status: 'Update complete!', percent: 100 });
+          resolve({ success: true, message: `${packageId} updated successfully` });
+        } else {
+          const msg = fullOutput.split('\r').map(s=>s.trim()).filter(Boolean).pop() || `Update failed (exit code: ${code})`;
+          sendProgress({ phase: 'error', status: msg.substring(0, 120), percent: 0 });
+          resolve({ success: false, message: msg });
+        }
+      });
+      proc.on('error', (err) => {
+        clearTimeout(timeout);
+        sendProgress({ phase: 'error', status: err.message, percent: 0 });
+        resolve({ success: false, message: err.message });
+      });
+    });
   }
   return result;
 });
@@ -4388,6 +4436,73 @@ ipcMain.handle('software:update-all', async () => {
 // ══════════════════════════════════════════════════════════════════════════
 
 // Check which package IDs are already installed
+// ── Registry scan helper (uses native reg.exe — no PowerShell startup overhead) ──
+let _regNamesCache = null;   // Set<string> | null
+let _regCacheTime = 0;       // timestamp
+const REG_CACHE_TTL = 60000; // 60 s
+
+async function getRegistryDisplayNames() {
+  const now = Date.now();
+  if (_regNamesCache && (now - _regCacheTime) < REG_CACHE_TTL) return _regNamesCache;
+
+  // Run all three hives in a single cmd call — native reg.exe starts instantly
+  const { stdout } = await execAsync(
+    'chcp 65001 >nul && ' +
+    'reg query "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall" /s /v DisplayName 2>nul & ' +
+    'reg query "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall" /s /v DisplayName 2>nul & ' +
+    'reg query "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall" /s /v DisplayName 2>nul',
+    { timeout: 8000, windowsHide: true, encoding: 'utf8', shell: 'cmd.exe', maxBuffer: 1024 * 1024 * 5 }
+  );
+
+  // Each matching line looks like:  DisplayName    REG_SZ    Google Chrome
+  const names = new Set();
+  for (const line of stdout.split('\n')) {
+    const m = line.match(/DisplayName\s+REG_SZ\s+(.+)/i);
+    if (m) {
+      const n = m[1].trim().toLowerCase();
+      if (n.length > 1) names.add(n);
+    }
+  }
+  _regNamesCache = names;
+  _regCacheTime = now;
+  return names;
+}
+
+function matchCatalogToRegistry(apps, regNames) {
+  const installed = {};
+  for (const app of apps) {
+    const catalogName = (app.name || '').toLowerCase();
+    if (!catalogName) { installed[app.id] = false; continue; }
+    if (regNames.has(catalogName)) { installed[app.id] = true; continue; }
+    let found = false;
+    for (const rn of regNames) {
+      if (rn.startsWith(catalogName) || (catalogName.length >= 4 && rn.includes(catalogName))) {
+        found = true; break;
+      }
+    }
+    installed[app.id] = found;
+  }
+  return installed;
+}
+
+// Pre-warm registry cache on startup (non-blocking)
+getRegistryDisplayNames().catch(() => {});
+
+// ── Fast registry-only check (Phase 1) — returns in ~100ms (cached) / ~200ms (cold) ──
+ipcMain.handle('appinstall:check-installed-fast', async (_event, catalogApps) => {
+  try {
+    const apps = Array.isArray(catalogApps)
+      ? catalogApps.map(a => typeof a === 'string' ? { id: a, name: '' } : a)
+      : [];
+    const regNames = await getRegistryDisplayNames();
+    const installed = matchCatalogToRegistry(apps, regNames);
+    return { success: true, installed };
+  } catch (e) {
+    return { success: false, installed: {} };
+  }
+});
+
+// ── Full winget + registry check (Phase 2) — thorough but slower ──
 ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
   try {
     const { stdout } = await execAsync(
@@ -4497,64 +4612,26 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
       installed[app.id] = found;
     }
 
-    // ── Supplementary: Direct registry scan for apps winget missed ──
-    // Catches apps installed on non-C: drives or via non-standard installers
+    // ── Supplementary: Use cached registry scan for apps winget missed ──
     const undetected = apps.filter(a => !installed[a.id]);
     if (undetected.length > 0) {
       try {
-        const regResult = await execAsync(
-          'powershell -NoProfile -ExecutionPolicy Bypass -Command "' +
-          '$paths = @(\'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*\',\'HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*\',\'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*\'); ' +
-          'Get-ItemProperty -Path $paths -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName } | ForEach-Object { $_.DisplayName }"',
-          { timeout: 15000, windowsHide: true, encoding: 'utf8', shell: 'cmd.exe', maxBuffer: 1024 * 1024 * 5 }
-        );
-        const regNames = new Set(
-          regResult.stdout.split('\n').map(n => n.trim().toLowerCase()).filter(n => n.length > 1)
-        );
-        for (const app of undetected) {
-          const catalogName = (app.name || '').toLowerCase();
-          if (!catalogName) continue;
-          // Exact match or registry entry contains catalog name (e.g. "Discord" in "Discord Inc.")
-          if (regNames.has(catalogName)) { installed[app.id] = true; continue; }
-          for (const rn of regNames) {
-            if (rn.startsWith(catalogName) || (catalogName.length >= 4 && rn.includes(catalogName))) {
-              installed[app.id] = true; break;
-            }
-          }
-        }
+        const regNames = await getRegistryDisplayNames();
+        const regMatches = matchCatalogToRegistry(undetected, regNames);
+        for (const [id, ok] of Object.entries(regMatches)) { if (ok) installed[id] = true; }
       } catch (e) {
       }
     }
 
     return { success: true, installed };
   } catch (error) {
-    // Fallback: try registry-only detection if winget is unavailable
+    // Fallback: registry-only detection if winget is unavailable (uses cached reg.exe results)
     try {
-      const catalogAppsArr = Array.isArray(catalogApps)
+      const apps = Array.isArray(catalogApps)
         ? catalogApps.map(a => typeof a === 'string' ? { id: a, name: '' } : a)
         : [];
-      const regResult = await execAsync(
-        'powershell -NoProfile -ExecutionPolicy Bypass -Command "' +
-        '$paths = @(\'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*\',\'HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*\',\'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*\'); ' +
-        'Get-ItemProperty -Path $paths -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName } | ForEach-Object { $_.DisplayName }"',
-        { timeout: 15000, windowsHide: true, encoding: 'utf8', shell: 'cmd.exe', maxBuffer: 1024 * 1024 * 5 }
-      );
-      const regNames = new Set(
-        regResult.stdout.split('\n').map(n => n.trim().toLowerCase()).filter(n => n.length > 1)
-      );
-      const installed = {};
-      for (const app of catalogAppsArr) {
-        const catalogName = (app.name || '').toLowerCase();
-        if (!catalogName) { installed[app.id] = false; continue; }
-        if (regNames.has(catalogName)) { installed[app.id] = true; continue; }
-        let found = false;
-        for (const rn of regNames) {
-          if (rn.startsWith(catalogName) || (catalogName.length >= 4 && rn.includes(catalogName))) {
-            found = true; break;
-          }
-        }
-        installed[app.id] = found;
-      }
+      const regNames = await getRegistryDisplayNames();
+      const installed = matchCatalogToRegistry(apps, regNames);
       return { success: true, installed };
     } catch (regErr) {
       return { success: false, installed: {} };

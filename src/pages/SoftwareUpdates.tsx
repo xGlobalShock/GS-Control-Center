@@ -104,11 +104,15 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
       if (result.success) {
         addToast(`${pkg.name} updated successfully`, 'success');
         setUpdatedIds(prev => new Set(prev).add(pkg.id));
+        // Remove from list after brief delay so user sees "done" state
+        setTimeout(() => {
+          setPackages(prev => prev.filter(p => p.id !== pkg.id));
+        }, 2000);
         // Re-scan for updates after successful update
         setTimeout(() => {
           hasScanned.current = false;
           checkUpdates();
-        }, 2000);
+        }, 4000);
       } else {
         addToast(result.message || `Failed to update ${pkg.name}`, 'error');
       }
@@ -134,6 +138,8 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
         if (result.success) {
           successCount++;
           setUpdatedIds(prev => new Set(prev).add(pkg.id));
+          // Remove completed package from list immediately
+          setPackages(prev => prev.filter(p => p.id !== pkg.id));
         } else {
           failCount++;
         }
