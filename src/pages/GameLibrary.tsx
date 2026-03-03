@@ -689,4 +689,4 @@ const GameLibrary: React.FC = () => {
   );
 };
 
-export default GameLibrary;
+export default React.memo(GameLibrary);

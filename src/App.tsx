@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Loader from './components/Loader';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -140,10 +140,27 @@ function App() {
     return () => { unsub?.(); };
   }, []);
 
+  // Pre-computed display styles to avoid creating new objects on every render
+  const show = { display: 'block' } as const;
+  const hide = { display: 'none' } as const;
+  const pageStyle = useCallback((id: string) => currentPage === id ? show : hide, [currentPage]);
+
+  // Memoize static pages so they don't create new JSX on every state change
+  const staticPages = useMemo(() => (
+    <>
+      <div style={pageStyle('performance')}><Performance /></div>
+      <div style={pageStyle('cleaner')}><Cleaner /></div>
+      <div style={pageStyle('network')}><Network /></div>
+      <div style={pageStyle('gameLibrary')}><GameLibrary /></div>
+      <div style={pageStyle('obsPresets')}><OBSPresets /></div>
+      <div style={pageStyle('settings')}><Settings /></div>
+    </>
+  ), [pageStyle]);
+
   const renderPage = () => {
     return (
       <>
-        <div style={{ display: currentPage === 'dashboard' ? 'block' : 'none' }}>
+        <div style={pageStyle('dashboard')}>
           <Dashboard
             systemStats={systemStats}
             hardwareInfo={hardwareInfo}
@@ -151,29 +168,12 @@ function App() {
             statsLoaded={connected}
           />
         </div>
-        <div style={{ display: currentPage === 'performance' ? 'block' : 'none' }}>
-          <Performance />
-        </div>
-        <div style={{ display: currentPage === 'cleaner' ? 'block' : 'none' }}>
-          <Cleaner />
-        </div>
-        <div style={{ display: currentPage === 'network' ? 'block' : 'none' }}>
-          <Network />
-        </div>
-        <div style={{ display: currentPage === 'gameLibrary' ? 'block' : 'none' }}>
-          <GameLibrary />
-        </div>
-        <div style={{ display: currentPage === 'obsPresets' ? 'block' : 'none' }}>
-          <OBSPresets />
-        </div>
-        <div style={{ display: currentPage === 'softwareUpdates' ? 'block' : 'none' }}>
+        {staticPages}
+        <div style={pageStyle('softwareUpdates')}>
           <SoftwareUpdates isActive={currentPage === 'softwareUpdates'} />
         </div>
-        <div style={{ display: currentPage === 'appInstaller' ? 'block' : 'none' }}>
+        <div style={pageStyle('appInstaller')}>
           <AppInstaller isActive={currentPage === 'appInstaller'} />
-        </div>
-        <div style={{ display: currentPage === 'settings' ? 'block' : 'none' }}>
-          <Settings />
         </div>
       </>
     );

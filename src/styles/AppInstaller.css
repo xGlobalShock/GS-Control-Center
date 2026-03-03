@@ -27,7 +27,7 @@
   background: rgba(255,255,255,0.03);
   color: rgba(200,210,225,0.45);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
 .ai-icon-btn:hover { background: rgba(255,255,255,0.07); color: rgba(230,240,255,0.8); }
 .ai-icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
@@ -67,7 +67,7 @@
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
   flex-shrink: 0;
 }
 .ai-tab:hover {
@@ -199,7 +199,7 @@
   background: rgba(255,255,255,0.018);
   border: 1px solid rgba(255,255,255,0.04);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
   user-select: none;
 }
 

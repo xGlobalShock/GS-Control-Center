@@ -322,7 +322,7 @@
   text-transform: uppercase;
   cursor: pointer;
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.2s, box-shadow 0.2s;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 

@@ -99,7 +99,7 @@ const Network: React.FC = () => {
   const gaugeDeg = (gaugePercent / 100) * 180;
 
   return (
-    <motion.div className="nv" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
+    <motion.div className="nv" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
       {/* Background effects */}
       <div className="nv-bg-grid" />
 
@@ -256,4 +256,4 @@ const Network: React.FC = () => {
   );
 };
 
-export default Network;
+export default React.memo(Network);

@@ -71,6 +71,7 @@ body {
   padding: 30px;
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 242, 255, 0.15) transparent;
+  contain: layout style;
 }
 
 .page-content::-webkit-scrollbar {

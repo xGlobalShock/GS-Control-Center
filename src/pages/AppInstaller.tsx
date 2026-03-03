@@ -182,7 +182,7 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
   }, []);
 
   return (
-    <motion.div className="ai" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+    <motion.div className="ai" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>
       <PageHeader
         icon={<Package size={16} />}
         title="App Installer"

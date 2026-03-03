@@ -22,7 +22,7 @@ declare global {
   }
 }
 
-const Header: React.FC = () => {
+const Header: React.FC = React.memo(() => {
   const [isMaximized, setIsMaximized] = useState(false);
 
   useEffect(() => {
@@ -58,6 +58,8 @@ const Header: React.FC = () => {
       </div>
     </header>
   );
-};
+});
+
+Header.displayName = 'Header';
 
 export default Header;

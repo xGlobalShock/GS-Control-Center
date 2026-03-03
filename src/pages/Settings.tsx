@@ -41,7 +41,7 @@ const Settings: React.FC = () => {
       className="settings-container"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.15 }}
     >
       <PageHeader icon={<SettingsIcon size={16} />} title="Settings" />
 
@@ -143,4 +143,4 @@ const Settings: React.FC = () => {
   );
 };
 
-export default Settings;
+export default React.memo(Settings);

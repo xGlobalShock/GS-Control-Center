@@ -138,7 +138,7 @@ const Cleaner: React.FC = () => {
       className="cleaner-page"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.15 }}
     >
       <PageHeader icon={<Trash2 size={16} />} title="Cleanup Toolkit" />
 
@@ -186,4 +186,4 @@ const Cleaner: React.FC = () => {
   );
 };
 
-export default Cleaner;
+export default React.memo(Cleaner);

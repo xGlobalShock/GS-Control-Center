@@ -18,13 +18,15 @@ interface DashboardProps {
 import { Home } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 
-const Dashboard: React.FC<DashboardProps> = ({ systemStats, hardwareInfo, extendedStats }) => {
+const Dashboard: React.FC<DashboardProps> = React.memo(({ systemStats, hardwareInfo, extendedStats }) => {
   return (
     <div className="dashboard-page">
       <PageHeader icon={<Home size={16} />} title="System Details" />
       <SystemDetails systemStats={systemStats} hardwareInfo={hardwareInfo} extendedStats={extendedStats} hideHeader />
     </div>
   );
-};
+});
+
+Dashboard.displayName = 'Dashboard';
 
 export default Dashboard;

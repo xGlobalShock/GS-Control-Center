@@ -47,7 +47,7 @@ const OBSPresets: React.FC = () => {
   const isLoading = (id: string) => applyingPreset === id || loadingPreset === id;
 
   return (
-    <motion.div className="sp" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
+    <motion.div className="sp" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>
       {/* ═══ Grid background ═══ */}
       <div className="sp-grid-bg" />
 
@@ -176,5 +176,5 @@ const OBSPresets: React.FC = () => {
   );
 };
 
-export default OBSPresets;
+export default React.memo(OBSPresets);
 

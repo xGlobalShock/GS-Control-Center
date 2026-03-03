@@ -250,7 +250,7 @@ const Performance: React.FC = () => {
       className="perf-page"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.6 }}
+      transition={{ duration: 0.2 }}
     >
       <PageHeader
         icon={<Activity size={16} />}
@@ -325,4 +325,4 @@ const Performance: React.FC = () => {
   );
 };
 
-export default Performance;
+export default React.memo(Performance);

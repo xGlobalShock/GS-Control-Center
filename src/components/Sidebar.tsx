@@ -194,7 +194,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, online: 
             aria-hidden
           />
 
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             {menuItems.map((item) => {
               const Icon = item.icon;
               return (
