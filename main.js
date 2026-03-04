@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { exec, execFile, spawn } = require('child_process');
+const { exec, execFile, spawn, execSync, spawnSync } = require('child_process');
 const { promisify } = require('util');
 const os = require('os');
 const si = require('systeminformation');
@@ -4234,10 +4234,17 @@ ipcMain.handle('software:get-package-size', async (_event, packageId) => {
 let activeUpdateProc = null;
 let cancelledUpdatePids = new Set();
 let updateAllCancelled = false;
+// Track de-elevated (scheduled task) updates so cancel can stop them
+let activeDeElevated = null; // { taskName, pollInterval, tmpBat, tmpVbs, tmpLog, resolve }
 
 ipcMain.handle('software:cancel-update', async () => {
   // Flag to stop "update all" loop
   updateAllCancelled = true;
+
+  let cancelled = false;
+  const win = BrowserWindow.getAllWindows()[0];
+
+  // Cancel normal (child process) update
   if (activeUpdateProc && !activeUpdateProc.killed) {
     const pid = activeUpdateProc.pid;
     cancelledUpdatePids.add(pid);
@@ -4245,7 +4252,28 @@ ipcMain.handle('software:cancel-update', async () => {
     try {
       spawn('taskkill', ['/F', '/T', '/PID', String(pid)], { windowsHide: true });
     } catch (e) {}
-    const win = BrowserWindow.getAllWindows()[0];
+    cancelled = true;
+  }
+
+  // Cancel de-elevated (scheduled task) update
+  if (activeDeElevated) {
+    const de = activeDeElevated;
+    activeDeElevated = null;
+    try { clearInterval(de.pollInterval); } catch {}
+    // Stop the scheduled task and kill any winget it spawned
+    try { execSync(`schtasks /end /tn "${de.taskName}"`, { stdio: 'ignore', windowsHide: true }); } catch {}
+    try { execSync(`schtasks /delete /tn "${de.taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch {}
+    try { execSync('taskkill /F /IM winget.exe /T', { stdio: 'ignore', windowsHide: true }); } catch {}
+    // Cleanup temp files
+    try { fs.unlinkSync(de.tmpBat); } catch {}
+    try { fs.unlinkSync(de.tmpVbs); } catch {}
+    try { fs.unlinkSync(de.tmpLog); } catch {}
+    // Resolve the pending promise
+    if (de.resolve) de.resolve({ success: false, cancelled: true, message: 'Update cancelled' });
+    cancelled = true;
+  }
+
+  if (cancelled) {
     if (win && !win.isDestroyed()) {
       win.webContents.send('software:update-progress', { packageId: '__cancelled__', phase: 'error', status: 'Update cancelled', percent: 0 });
     }
@@ -4256,60 +4284,30 @@ ipcMain.handle('software:cancel-update', async () => {
 
 ipcMain.handle('software:update-app', async (_event, packageId) => {
   const cleanId = String(packageId).replace(/[^\x20-\x7E]/g, '').trim();
+  const win = BrowserWindow.getAllWindows()[0];
 
-  /* Run a winget upgrade attempt. If useUninstallPrevious is true, 
-     appends --uninstall-previous to handle "install technology is different" errors. */
-  const runUpgrade = (useUninstallPrevious = false) => new Promise((resolve) => {
-    const win = BrowserWindow.getAllWindows()[0];
-    let fullOutput = '';
+  const sendProgress = (data) => {
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('software:update-progress', { packageId: cleanId, ...data });
+    }
+  };
+
+  /* ── Shared chunk parser for winget output ── */
+  const createChunkParser = () => {
     let phase = 'preparing';
-
-    const sendProgress = (data) => {
-      if (win && !win.isDestroyed()) {
-        win.webContents.send('software:update-progress', { packageId: cleanId, ...data });
-      }
-    };
-
-    const extraFlags = useUninstallPrevious ? ' --force --uninstall-previous' : '';
-    sendProgress({ phase: 'preparing', status: useUninstallPrevious ? 'Retrying update…' : 'Preparing update…', percent: 0 });
-
-    const proc = spawn('cmd.exe', [
-      '/c', `chcp 65001 >nul && winget upgrade --id ${cleanId} --accept-source-agreements --accept-package-agreements${extraFlags}`
-    ], { windowsHide: true });
-
-    activeUpdateProc = proc;
-
-    const timeout = setTimeout(() => {
-      proc.kill();
-      sendProgress({ phase: 'error', status: 'Update timed out', percent: 0 });
-      resolve({ success: false, message: `Update timed out for ${packageId}` });
-    }, 180000);
-
-    const processChunk = (chunk) => {
+    return (chunk) => {
       const text = chunk.toString();
-      fullOutput += text;
-      const segments = text.split('\r').map(s => s.trim()).filter(s => s.length > 0);
-
+      const segments = text.split('\r').map(s => s.trim()).filter(Boolean);
       for (const seg of segments) {
-        // Skip spinner characters
         if (/^[-\\|/]$/.test(seg)) {
-          if (phase === 'downloading') {
-            sendProgress({ phase, status: 'Downloading…', percent: -1 });
-          } else if (phase === 'installing') {
-            sendProgress({ phase, status: 'Installing…', percent: -1 });
-          }
+          if (phase === 'downloading') sendProgress({ phase, status: 'Downloading…', percent: -1 });
+          else if (phase === 'installing') sendProgress({ phase, status: 'Installing…', percent: -1 });
           continue;
         }
-
-        const urlMatch = seg.match(/^Downloading\s+(https?:\/\/.+)/i);
-        if (urlMatch) {
+        if (/^Downloading\s+https?:\/\//i.test(seg)) {
           phase = 'downloading';
           sendProgress({ phase: 'downloading', status: 'Downloading…', percent: -1 });
-          continue;
-        }
-
-        // Status messages
-        if (/^Found\s/i.test(seg)) {
+        } else if (/^Found\s/i.test(seg)) {
           sendProgress({ phase: 'preparing', status: seg.substring(0, 80), percent: 5 });
         } else if (/verified installer hash/i.test(seg)) {
           phase = 'verifying';
@@ -4320,138 +4318,285 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
         } else if (/Successfully installed/i.test(seg)) {
           phase = 'done';
           sendProgress({ phase: 'done', status: 'Successfully installed!', percent: 100 });
-        } else if (/no applicable/i.test(seg) || /no available upgrade/i.test(seg)) {
+        } else if (/no applicable|no available upgrade/i.test(seg)) {
           sendProgress({ phase: 'done', status: 'Already up to date', percent: 100 });
-        } else if (/no installed package found/i.test(seg)) {
-          sendProgress({ phase: 'error', status: 'Package not found — update manually or via its own updater', percent: 0 });
-        } else if (/cannot be upgraded using winget/i.test(seg) || /use the method provided by the publisher/i.test(seg)) {
-          sendProgress({ phase: 'error', status: 'This app must be updated through its own updater', percent: 0 });
-        } else if (/currently running.*exit the application/i.test(seg)) {
-          sendProgress({ phase: 'error', status: 'Close the app first, then try updating again', percent: 0 });
-        } else if (/access is denied|administrator/i.test(seg)) {
-          sendProgress({ phase: 'error', status: 'Requires administrator privileges', percent: 0 });
-        } else if (/Installer failed/i.test(seg)) {
-          sendProgress({ phase: 'error', status: 'Installer failed — the app may need to be closed first', percent: 0 });
-        } else if (/failed|error|denied|cannot|exit code/i.test(seg)) {
-          sendProgress({ phase: 'error', status: seg.substring(0, 100), percent: 0 });
         }
       }
+      return text;
     };
+  };
 
-    proc.stdout.on('data', processChunk);
-    proc.stderr.on('data', processChunk);
+  /* ── Run a winget command with real-time streaming progress ── */
+  const runWinget = (cmd, statusLabel = 'Preparing update') => new Promise((resolve) => {
+    let fullOutput = '';
+    sendProgress({ phase: 'preparing', status: `${statusLabel}…`, percent: 0 });
+    const parseChunk = createChunkParser();
+
+    const proc = spawn('cmd.exe', ['/c', `chcp 65001 >nul && ${cmd}`], { windowsHide: true });
+    activeUpdateProc = proc;
+
+    const timeout = setTimeout(() => {
+      proc.kill();
+      sendProgress({ phase: 'error', status: 'Update timed out', percent: 0 });
+      resolve({ success: false, message: 'Update timed out' });
+    }, 180000);
+
+    proc.stdout.on('data', (chunk) => { fullOutput += parseChunk(chunk); });
+    proc.stderr.on('data', (chunk) => { fullOutput += parseChunk(chunk); });
 
     proc.on('close', (code) => {
       clearTimeout(timeout);
       if (activeUpdateProc === proc) activeUpdateProc = null;
-      const wasCancelled = proc.killed || cancelledUpdatePids.delete(proc.pid);
-      if (wasCancelled) {
+      if (proc.killed || cancelledUpdatePids.delete(proc.pid)) {
         sendProgress({ phase: 'error', status: 'Update cancelled', percent: 0 });
-        resolve({ success: false, cancelled: true, message: 'Update cancelled by user' });
+        resolve({ success: false, cancelled: true, message: 'Update cancelled' });
         return;
       }
-      const output = fullOutput.toLowerCase();
-      const success = output.includes('successfully installed') ||
-                      output.includes('no available upgrade') ||
-                      output.includes('no applicable');
-
-      // Detect "install technology is different" — can be retried with --uninstall-previous
-      const needsReinstall = !useUninstallPrevious &&
-        output.includes('install technology is different');
-
-      const friendlyError = (output) => {
-        if (output.includes('no installed package found')) return 'Package not found — update manually or via its own updater';
-        if (output.includes('cannot be upgraded using winget') || output.includes('use the method provided by the publisher')) return 'This app must be updated through its own updater';
-        if (output.includes('currently running') && output.includes('exit the application')) return 'Close the app first, then try updating again';
-        if (output.includes('administrator') || output.includes('access is denied')) return 'Run the app as administrator to update this package.';
-        if (output.includes('installer failed')) return 'Installer failed — the app may need to be closed first';
-        return null;
-      };
-
+      const lower = fullOutput.toLowerCase();
+      const success = lower.includes('successfully installed') ||
+                      lower.includes('no available upgrade') ||
+                      lower.includes('no applicable');
       if (success) {
         _wingetListCache = null; _wingetCacheTime = 0; _regNamesCache = null; _regCacheTime = 0;
         sendProgress({ phase: 'done', status: 'Update complete!', percent: 100 });
         resolve({ success: true, message: `${packageId} updated successfully` });
-      } else if (needsReinstall) {
-        // Automatically retry with --uninstall-previous
-        resolve({ success: false, retryWithUninstallPrevious: true });
       } else {
-        const friendly = friendlyError(output);
-        const msg = friendly || fullOutput.split('\r').map(s=>s.trim()).filter(s=>s.length>0).pop() || `Update failed (exit code: ${code})`;
-        sendProgress({ phase: 'error', status: msg.substring(0, 120), percent: 0 });
-        resolve({ success: false, message: msg });
+        console.log(`[Software Update] winget output for ${cleanId}:\n${fullOutput}`);
+        const lastLine = getMeaningfulLine(fullOutput, `Update failed (exit code: ${code})`);
+        resolve({ success: false, message: lastLine, output: lower });
       }
     });
 
     proc.on('error', (err) => {
       clearTimeout(timeout);
-      sendProgress({ phase: 'error', status: err.message, percent: 0 });
-      resolve({ success: false, message: `Failed to start update: ${err.message}` });
+      resolve({ success: false, message: err.message });
     });
   });
 
-  // First attempt — normal upgrade
-  const result = await runUpgrade(false);
-  if (result.retryWithUninstallPrevious) {
-    // Packaging format mismatch — skip --uninstall-previous (which removes the app first
-    // and can leave it uninstalled if reinstall fails). Go straight to fresh install.
-    return new Promise((resolve) => {
-      const win = BrowserWindow.getAllWindows()[0];
-      const sendProgress = (data) => {
-        if (win && !win.isDestroyed()) {
-          win.webContents.send('software:update-progress', { packageId: cleanId, ...data });
-        }
-      };
-      sendProgress({ phase: 'preparing', status: 'Forcing install…', percent: 0 });
-      let fullOutput = '';
-      let phase = 'preparing';
-      const proc = spawn('cmd.exe', [
-        '/c', `chcp 65001 >nul && winget install --id ${cleanId} --accept-source-agreements --accept-package-agreements --force`
-      ], { windowsHide: true });
-      activeUpdateProc = proc;
-      const timeout = setTimeout(() => { proc.kill(); resolve({ success: false, message: 'Install timed out' }); }, 180000);
-      const processChunk = (chunk) => {
-        const text = chunk.toString();
-        fullOutput += text;
-        const segments = text.split('\r').map(s => s.trim()).filter(Boolean);
-        for (const seg of segments) {
-          if (/^[-\\|/]$/.test(seg)) continue;
-          if (/Downloading/i.test(seg)) { phase = 'downloading'; sendProgress({ phase, status: 'Downloading…', percent: -1 }); }
-          else if (/verified installer hash/i.test(seg)) { phase = 'verifying'; sendProgress({ phase, status: 'Verified', percent: 100 }); }
-          else if (/Starting package install/i.test(seg)) { phase = 'installing'; sendProgress({ phase, status: 'Installing…', percent: -1 }); }
-          else if (/Successfully installed/i.test(seg)) { phase = 'done'; sendProgress({ phase, status: 'Installed!', percent: 100 }); }
-        }
-      };
-      proc.stdout.on('data', processChunk);
-      proc.stderr.on('data', processChunk);
-      proc.on('close', (code) => {
-        clearTimeout(timeout);
-        if (activeUpdateProc === proc) activeUpdateProc = null;
-        const wasCancelled = proc.killed || cancelledUpdatePids.delete(proc.pid);
-        if (wasCancelled) {
-          sendProgress({ phase: 'error', status: 'Update cancelled', percent: 0 });
-          resolve({ success: false, cancelled: true, message: 'Update cancelled by user' });
-          return;
-        }
-        const out = fullOutput.toLowerCase();
-        if (out.includes('successfully installed') || out.includes('no applicable')) {
+  /* ── Friendly error messages ── */
+  const getFriendlyError = (output) => {
+    if (!output) return null;
+    if (output.includes('no installed package found')) return 'Package not found — update manually or via its own updater';
+    if (output.includes('cannot be upgraded using winget') || output.includes('use the method provided by the publisher'))
+      return 'This app must be updated through its own updater';
+    if (output.includes('currently running') && output.includes('exit the application'))
+      return 'Close the app first, then try updating again';
+    if (output.includes('access is denied'))
+      return isElevated ? null : 'Run the app as administrator to update this package';
+    if (output.includes('installer failed'))
+      return 'Installer failed — the app may need to be closed first';
+    if (output.includes('installer log is available'))
+      return 'Installer failed — try closing the app and updating again';
+    return null;
+  };
+
+  /* ── Extract meaningful error line from winget output ── */
+  const getMeaningfulLine = (text, fallback = 'Update failed') => {
+    const lines = text.split(/[\r\n]/).map(s => s.trim()).filter(Boolean);
+    // Walk backwards, skip noise lines
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const l = lines[i];
+      // Skip log path lines, single-char spinner chars, blank-ish
+      if (/^installer log is available at/i.test(l)) continue;
+      if (/^[-\\|/]$/.test(l)) continue;
+      if (/^\\\\|^[A-Z]:\\/.test(l) && l.includes('.log')) continue;
+      if (l.length < 4) continue;
+      return l.substring(0, 120);
+    }
+    return fallback;
+  };
+
+  /* ── De-elevate for installers that refuse admin context ──
+     Tries multiple methods to run winget under a non-elevated token:
+     1. PowerShell Register-ScheduledTask (RunLevel Limited)
+     2. runas /trustlevel:0x20000 (restricted token)
+     3. schtasks CLI /rl limited (legacy fallback) */
+  const runDeElevated = (cmd) => new Promise((resolve) => {
+    sendProgress({ phase: 'preparing', status: 'Updating…', percent: 0 });
+
+    const tmpLog = path.join(os.tmpdir(), `gs_winget_${cleanId.replace(/[^a-zA-Z0-9]/g, '_')}.log`);
+    const tmpBat = path.join(os.tmpdir(), `gs_winget_de_${process.pid}.bat`);
+    const taskName = `GSOptUpdate_${process.pid}`;
+
+    // Clean up any previous log so polling starts fresh
+    try { fs.unlinkSync(tmpLog); } catch {}
+
+    // Bat: run winget, redirect all output to log
+    fs.writeFileSync(tmpBat,
+      `@echo off\r\nchcp 65001 >nul\r\n${cmd} > "${tmpLog}" 2>&1\r\n`, 'utf8');
+
+    // VBS wrapper: launches the bat file with a hidden window (window style 0)
+    const tmpVbs = path.join(os.tmpdir(), `gs_winget_de_${process.pid}.vbs`);
+    fs.writeFileSync(tmpVbs,
+      `CreateObject("WScript.Shell").Run "cmd.exe /c """"${tmpBat.replace(/\\/g, '\\\\')}""""", 0, False\r\n`, 'utf8');
+
+    let launchOk = false;
+
+    // ── Method 1: PowerShell Register-ScheduledTask ──
+    if (!launchOk) {
+      try {
+        const userName = (process.env.USERDOMAIN && process.env.USERNAME)
+          ? `${process.env.USERDOMAIN}\\${process.env.USERNAME}`
+          : process.env.USERNAME || 'CURRENT_USER';
+        const ps1 = path.join(os.tmpdir(), `gs_de_task_${process.pid}.ps1`);
+        const ps1Body = [
+          `$taskName = '${taskName}'`,
+          `$vbsPath  = '${tmpVbs.replace(/'/g, "''")}'`,
+          `try { Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -EA SilentlyContinue } catch {}`,
+          `$action    = New-ScheduledTaskAction -Execute 'wscript.exe' -Argument ('"""' + $vbsPath + '"""')`,
+          `$principal = New-ScheduledTaskPrincipal -UserId '${userName.replace(/'/g, "''")}' -RunLevel Limited -LogonType Interactive`,
+          `$settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries`,
+          `Register-ScheduledTask -TaskName $taskName -Action $action -Principal $principal -Settings $settings -Force | Out-Null`,
+          `Start-ScheduledTask -TaskName $taskName`,
+          `Write-Host 'LAUNCHED'`
+        ].join('\n');
+        fs.writeFileSync(ps1, ps1Body, 'utf8');
+        const psOut = execSync(
+          `powershell -NoProfile -ExecutionPolicy Bypass -File "${ps1}"`,
+          { encoding: 'utf8', windowsHide: true, timeout: 20000 }
+        );
+        try { fs.unlinkSync(ps1); } catch {}
+        if (psOut.includes('LAUNCHED')) launchOk = true;
+        else console.error('[Software Update] PS ScheduledTask: no LAUNCHED marker, output:', psOut.substring(0, 200));
+      } catch (err) {
+        console.error('[Software Update] PS ScheduledTask failed:', (err.stderr || err.message || '').substring(0, 300));
+      }
+    }
+
+    // ── Method 2: runas /trustlevel:0x20000 (restricted token) ──
+    if (!launchOk) {
+      try {
+        const r = spawnSync('runas.exe', ['/trustlevel:0x20000', 'wscript.exe', tmpVbs],
+          { windowsHide: true, timeout: 10000 });
+        if (r.error) throw r.error;
+        launchOk = true;
+      } catch (err) {
+        console.error('[Software Update] runas /trustlevel failed:', err.message || err);
+      }
+    }
+
+    // ── Method 3: schtasks CLI /rl limited (legacy) ──
+    if (!launchOk) {
+      try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch {}
+      try {
+        execSync(
+          `schtasks /create /tn "${taskName}" /tr "wscript.exe \\"${tmpVbs}\\"" /sc once /st 00:00 /f /rl limited`,
+          { encoding: 'utf8', windowsHide: true }
+        );
+        execSync(`schtasks /run /tn "${taskName}"`, { encoding: 'utf8', windowsHide: true });
+        launchOk = true;
+      } catch (err) {
+        console.error('[Software Update] schtasks de-elevation failed:', (err.stderr || err.message || '').substring(0, 300));
+      }
+    }
+
+    if (!launchOk) {
+      try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch {}
+      try { fs.unlinkSync(tmpBat); } catch {}
+      try { fs.unlinkSync(tmpVbs); } catch {}
+      sendProgress({ phase: 'error', status: 'Update failed', percent: 0 });
+      resolve({ success: false, message: 'Update failed' });
+      return;
+    }
+
+    sendProgress({ phase: 'installing', status: 'Updating…', percent: -1 });
+
+    // ── Poll the log file for winget output ──
+    let elapsed = 0;
+    const pollMs = 2000;
+    const maxWait = 180000;
+
+    // Register so cancel handler can stop us
+    activeDeElevated = { taskName, pollInterval: null, tmpBat, tmpVbs, tmpLog, resolve };
+
+    const poll = setInterval(() => {
+      // Check if we were cancelled
+      if (!activeDeElevated || activeDeElevated.taskName !== taskName) {
+        clearInterval(poll);
+        return;
+      }
+      elapsed += pollMs;
+      let log = '';
+      try { log = fs.readFileSync(tmpLog, 'utf8'); } catch {}
+      const lower = log.toLowerCase();
+
+      if (lower.includes('downloading')) sendProgress({ phase: 'downloading', status: 'Downloading…', percent: -1 });
+      if (lower.includes('verified installer hash')) sendProgress({ phase: 'verifying', status: 'Verified', percent: 100 });
+      if (lower.includes('starting package install')) sendProgress({ phase: 'installing', status: 'Installing…', percent: -1 });
+
+      const finished = lower.includes('successfully installed') ||
+                       lower.includes('no available upgrade') ||
+                       lower.includes('no applicable') ||
+                       lower.includes('installer failed') ||
+                       lower.includes('failed to install') ||
+                       lower.includes('cannot be upgraded') ||
+                       lower.includes('cannot be run from an administrator') ||
+                       lower.includes('installer log is available') ||
+                       (lower.includes('exit code') && lower.includes('failed'));
+
+      if (finished || elapsed >= maxWait) {
+        clearInterval(poll);
+        activeDeElevated = null;
+        try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch {}
+        try { fs.unlinkSync(tmpBat); } catch {}
+        try { fs.unlinkSync(tmpVbs); } catch {}
+
+        const success = lower.includes('successfully installed');
+        if (success) {
           _wingetListCache = null; _wingetCacheTime = 0; _regNamesCache = null; _regCacheTime = 0;
           sendProgress({ phase: 'done', status: 'Update complete!', percent: 100 });
           resolve({ success: true, message: `${packageId} updated successfully` });
+        } else if (lower.includes('cannot be run from an administrator')) {
+          // De-elevation didn't actually work — task still ran elevated
+          sendProgress({ phase: 'error', status: 'This app must be updated outside GS Optimizer', percent: 0 });
+          resolve({ success: false, message: 'This app\'s installer refuses elevated context. Update it directly from its own updater.' });
+        } else if (elapsed >= maxWait) {
+          sendProgress({ phase: 'error', status: 'Update timed out', percent: 0 });
+          resolve({ success: false, message: 'Update timed out' });
         } else {
-          const msg = fullOutput.split('\r').map(s=>s.trim()).filter(Boolean).pop() || `Update failed (exit code: ${code})`;
-          sendProgress({ phase: 'error', status: msg.substring(0, 120), percent: 0 });
-          resolve({ success: false, message: msg });
+          const lastLine = getMeaningfulLine(log, 'Update failed');
+          sendProgress({ phase: 'error', status: lastLine, percent: 0 });
+          resolve({ success: false, message: lastLine });
         }
-      });
-      proc.on('error', (err) => {
-        clearTimeout(timeout);
-        sendProgress({ phase: 'error', status: err.message, percent: 0 });
-        resolve({ success: false, message: err.message });
-      });
-    });
+        try { fs.unlinkSync(tmpLog); } catch {}
+      }
+    }, pollMs);
+
+    // Store poll ref so cancel handler can clearInterval
+    activeDeElevated.pollInterval = poll;
+  });
+
+  // ── Retry chain ──────────────────────────────────────────────────
+
+  // Step 1: Normal upgrade
+  let result = await runWinget(
+    `winget upgrade --id ${cleanId} --accept-source-agreements --accept-package-agreements`,
+    'Preparing update'
+  );
+  if (result.success || result.cancelled) return result;
+
+  // Step 2: Install technology mismatch → force install
+  if (result.output && result.output.includes('install technology is different')) {
+    result = await runWinget(
+      `winget install --id ${cleanId} --accept-source-agreements --accept-package-agreements --force`,
+      'Reinstalling'
+    );
+    if (result.success || result.cancelled) return result;
   }
-  return result;
+
+  // Step 3: Installer refuses admin context → de-elevate via schtasks
+  if (isElevated && result.output &&
+      result.output.includes('cannot be run from an administrator')) {
+    return await runDeElevated(
+      `winget upgrade --id ${cleanId} --accept-source-agreements --accept-package-agreements --force`
+    );
+  }
+
+  // Final: show user-friendly error
+  const friendly = getFriendlyError(result.output || (result.message ? result.message.toLowerCase() : ''));
+  const finalMsg = (friendly || result.message || 'Update failed').substring(0, 120);
+  sendProgress({ phase: 'error', status: finalMsg, percent: 0 });
+  return { success: false, message: finalMsg };
 });
 
 // Update all apps
@@ -4777,8 +4922,8 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
         } else if (/already installed/i.test(seg)) {
           phase = 'done';
           sendProgress({ phase: 'done', status: 'Already installed', percent: 100 });
-        } else if (/access is denied|administrator/i.test(seg)) {
-          sendProgress({ phase: 'error', status: 'Requires administrator privileges', percent: 0 });
+        } else if (/access is denied/i.test(seg)) {
+          sendProgress({ phase: 'error', status: isElevated ? seg.substring(0, 100) : 'Run the app as administrator', percent: 0 });
         } else if (/Installer failed/i.test(seg)) {
           sendProgress({ phase: 'error', status: 'Installer failed', percent: 0 });
         } else if (/no package found/i.test(seg)) {

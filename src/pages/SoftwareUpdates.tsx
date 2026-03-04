@@ -68,16 +68,17 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
           addToast('All software is up to date!', 'success');
         } else {
           addToast(`Found ${result.count} update${result.count > 1 ? 's' : ''} available`, 'info');
-          // Fetch installer sizes in background
-          for (const pkg of result.packages) {
-            window.electron.ipcRenderer.invoke('software:get-package-size', pkg.id)
-              .then((res: { id: string; size: string }) => {
+          // Fetch installer sizes sequentially (winget can't handle parallel queries)
+          (async () => {
+            for (const pkg of result.packages) {
+              try {
+                const res: { id: string; size: string } = await window.electron.ipcRenderer.invoke('software:get-package-size', pkg.id);
                 if (res.size) {
                   setPackageSizes(prev => ({ ...prev, [res.id]: res.size }));
                 }
-              })
-              .catch(() => {});
-          }
+              } catch {}
+            }
+          })();
         }
       } else {
         addToast(result.message || 'Failed to check updates', 'error');
