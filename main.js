@@ -4298,32 +4298,33 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
 
   /* ── Shared chunk parser for winget output ── */
   const createChunkParser = () => {
+    const emit = sendProgress;
     let phase = 'preparing';
     return (chunk) => {
       const text = chunk.toString();
       const segments = text.split('\r').map(s => s.trim()).filter(Boolean);
       for (const seg of segments) {
         if (/^[-\\|/]$/.test(seg)) {
-          if (phase === 'downloading') sendProgress({ phase, status: 'Downloading…', percent: -1 });
-          else if (phase === 'installing') sendProgress({ phase, status: 'Installing…', percent: -1 });
+          if (phase === 'downloading') emit({ phase, status: 'Downloading…', percent: -1 });
+          else if (phase === 'installing') emit({ phase, status: 'Installing…', percent: -1 });
           continue;
         }
         if (/^Downloading\s+https?:\/\//i.test(seg)) {
           phase = 'downloading';
-          sendProgress({ phase: 'downloading', status: 'Downloading…', percent: -1 });
+          emit({ phase: 'downloading', status: 'Downloading…', percent: -1 });
         } else if (/^Found\s/i.test(seg)) {
-          sendProgress({ phase: 'preparing', status: seg.substring(0, 80), percent: 5 });
+          emit({ phase: 'preparing', status: seg.substring(0, 80), percent: 5 });
         } else if (/verified installer hash/i.test(seg)) {
           phase = 'verifying';
-          sendProgress({ phase: 'verifying', status: 'Installer verified', percent: 100 });
+          emit({ phase: 'verifying', status: 'Installer verified', percent: 100 });
         } else if (/Starting package install/i.test(seg)) {
           phase = 'installing';
-          sendProgress({ phase: 'installing', status: 'Installing…', percent: -1 });
+          emit({ phase: 'installing', status: 'Installing…', percent: -1 });
         } else if (/Successfully installed/i.test(seg)) {
           phase = 'done';
-          sendProgress({ phase: 'done', status: 'Successfully installed!', percent: 100 });
+          emit({ phase: 'done', status: 'Successfully installed!', percent: 100 });
         } else if (/no applicable|no available upgrade/i.test(seg)) {
-          sendProgress({ phase: 'done', status: 'Already up to date', percent: 100 });
+          emit({ phase: 'done', status: 'Already up to date', percent: 100 });
         }
       }
       return text;
@@ -4625,6 +4626,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
   // Step 3a: Hash override blocked when running as admin → de-elevate with hash skip + silent
   if (isElevated && result.output &&
       result.output.includes('cannot be overridden when running as admin')) {
+    sendProgress({ phase: 'preparing', status: 'Preparing update…', percent: 0 });
     return await runDeElevated(
       `winget upgrade --id ${cleanId} --accept-source-agreements --accept-package-agreements --force --ignore-security-hash --silent`
     );
@@ -4633,6 +4635,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
   // Step 3b: Installer refuses admin context (e.g. Spotify) → de-elevate without silent
   if (isElevated && result.output &&
       result.output.includes('cannot be run from an administrator')) {
+    sendProgress({ phase: 'preparing', status: 'Preparing update…', percent: 0 });
     return await runDeElevated(
       `winget upgrade --id ${cleanId} --accept-source-agreements --accept-package-agreements --force`
     );
