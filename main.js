@@ -4723,6 +4723,152 @@ function matchCatalogToRegistry(apps, regNames) {
   return installed;
 }
 
+// ── Get all available drive letters ──
+function getAvailableDrives() {
+  const drives = [];
+  for (let code = 65; code <= 90; code++) { // A-Z
+    const letter = String.fromCharCode(code);
+    try { if (fs.existsSync(`${letter}:\\`)) drives.push(`${letter}:`); } catch {}
+  }
+  return drives;
+}
+
+// ── Known directory/exe patterns for catalog apps that differ from their display name ──
+// Maps winget ID → array of relative directory names to check inside Program Files / user dirs
+const KNOWN_APP_DIRS = {
+  'Brave.Brave':                            ['BraveSoftware\\Brave-Browser'],
+  'Google.Chrome':                          ['Google\\Chrome'],
+  'Microsoft.Edge':                         ['Microsoft\\Edge'],
+  'Mozilla.Firefox':                        ['Mozilla Firefox'],
+  'Opera.OperaGX':                          ['Opera GX'],
+  'TorProject.TorBrowser':                  ['Tor Browser'],
+  'Discord.Discord':                        ['Discord'],
+  'Microsoft.Teams':                        ['Microsoft\\Teams'],
+  'Telegram.TelegramDesktop':               ['Telegram Desktop'],
+  'Zoom.Zoom':                              ['Zoom\\bin'],
+  'Valve.Steam':                            ['Steam'],
+  'EpicGames.EpicGamesLauncher':            ['Epic Games\\Launcher'],
+  'ElectronicArts.EADesktop':               ['Electronic Arts\\EA Desktop'],
+  'GOG.Galaxy':                             ['GOG Galaxy'],
+  'Ubisoft.Connect':                        ['Ubisoft\\Ubisoft Game Launcher'],
+  'Blizzard.BattleNet':                     ['Battle.net'],
+  'Nvidia.GeForceNow':                      ['NVIDIA Corporation\\GeForceNOW'],
+  'Guru3D.Afterburner':                     ['MSI Afterburner'],
+  'REALiX.HWiNFO':                         ['HWiNFO64', 'HWiNFO32'],
+  'TechPowerUp.GPU-Z':                      ['GPU-Z'],
+  'CPUID.CPU-Z':                            ['CPUID\\CPU-Z'],
+  'OBSProject.OBSStudio':                   ['obs-studio'],
+  'Streamlabs.Streamlabs':                  ['Streamlabs OBS', 'Streamlabs'],
+  'File-New-Project.EarTrumpet':            [],  // Store-only
+  'SteelSeries.GG':                         ['SteelSeries\\GG'],
+  'VideoLAN.VLC':                           ['VideoLAN\\VLC'],
+  'Microsoft.VisualStudioCode':             ['Microsoft VS Code'],
+  'Git.Git':                                ['Git'],
+  'GitHub.GitHubDesktop':                   ['GitHub Desktop', 'GitHubDesktop'],
+  'OpenJS.NodeJS.LTS':                      ['nodejs'],
+  'Python.Python.3.12':                     ['Python312', 'Python311', 'Python310', 'Python3'],
+  'Microsoft.VisualStudio.2022.Community':  ['Microsoft Visual Studio\\2022\\Community'],
+  'Microsoft.WindowsTerminal':              [],  // Store-only
+  'Notepad++.Notepad++':                    ['Notepad++'],
+  '7zip.7zip':                              ['7-Zip'],
+  'RARLab.WinRAR':                          ['WinRAR'],
+  'RevoUninstaller.RevoUninstaller':        ['VS Revo Group\\Revo Uninstaller'],
+  'Bitwarden.Bitwarden':                    ['Bitwarden'],
+  'Spotify.Spotify':                        ['Spotify'],
+};
+
+// ── Filesystem-based detection for apps not found by registry/winget ──
+function scanFilesystemForApps(undetectedApps) {
+  const drives = getAvailableDrives();
+  const localAppData = process.env.LOCALAPPDATA || '';
+  const appData = process.env.APPDATA || '';
+  const userPrograms = localAppData ? path.join(localAppData, 'Programs') : '';
+  const found = {};
+
+  for (const app of undetectedApps) {
+    // Build candidate directory names:
+    // 1. From the known map
+    // 2. From the app name itself
+    // 3. From the last segment of the winget ID
+    const candidates = new Set();
+    if (KNOWN_APP_DIRS[app.id]) {
+      for (const d of KNOWN_APP_DIRS[app.id]) candidates.add(d);
+    }
+    candidates.add(app.name || '');
+    const idParts = (app.id || '').split('.');
+    if (idParts.length > 1) candidates.add(idParts[idParts.length - 1]);
+    candidates.delete('');
+
+    let detected = false;
+    for (const dirName of candidates) {
+      if (detected) break;
+
+      // Check per-user install locations (Discord, Spotify, etc.)
+      for (const base of [localAppData, userPrograms, appData]) {
+        if (base && fs.existsSync(path.join(base, dirName))) { detected = true; break; }
+      }
+      if (detected) break;
+
+      // Check Program Files / Program Files (x86) on EVERY drive
+      for (const drive of drives) {
+        for (const pfDir of ['Program Files', 'Program Files (x86)']) {
+          if (fs.existsSync(path.join(`${drive}\\`, pfDir, dirName))) { detected = true; break; }
+        }
+        if (detected) break;
+      }
+    }
+    found[app.id] = detected;
+  }
+  return found;
+}
+
+// ── AppX / MSIX package detection (Microsoft Store apps) ──
+let _appxCache = null;    // Set<string> | null
+let _appxCacheTime = 0;
+const APPX_CACHE_TTL = 120000; // 2 min
+
+async function getAppxPackageNames() {
+  const now = Date.now();
+  if (_appxCache && (now - _appxCacheTime) < APPX_CACHE_TTL) return _appxCache;
+  try {
+    const { stdout } = await execAsync(
+      'powershell -NoProfile -Command "Get-AppxPackage | Select-Object -ExpandProperty Name"',
+      { timeout: 15000, windowsHide: true, encoding: 'utf8' }
+    );
+    const names = new Set(stdout.split('\n').map(n => n.trim().toLowerCase()).filter(Boolean));
+    _appxCache = names;
+    _appxCacheTime = now;
+    return names;
+  } catch {
+    return new Set();
+  }
+}
+
+// Maps catalog winget IDs to known AppX package name fragments
+const APPX_ID_MAP = {
+  'Spotify.Spotify':                  'spotify',
+  'Discord.Discord':                  'discord',
+  'Microsoft.Teams':                  'msteams',
+  'Microsoft.WindowsTerminal':        'windowsterminal',
+  'File-New-Project.EarTrumpet':      'eartrumpet',
+  'Microsoft.Edge':                   'microsoftedge',
+  'Bitwarden.Bitwarden':              'bitwarden',
+};
+
+function matchAppxPackages(undetectedApps, appxNames) {
+  const found = {};
+  for (const app of undetectedApps) {
+    const fragment = APPX_ID_MAP[app.id];
+    if (!fragment) { found[app.id] = false; continue; }
+    let detected = false;
+    for (const pkgName of appxNames) {
+      if (pkgName.includes(fragment)) { detected = true; break; }
+    }
+    found[app.id] = detected;
+  }
+  return found;
+}
+
 // Pre-warm registry cache on startup (non-blocking)
 getRegistryDisplayNames().catch(() => {});
 
@@ -4870,6 +5016,29 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
       }
     }
 
+    // ── Supplementary 2: Filesystem scan on ALL drives for still-undetected apps ──
+    const stillUndetected = apps.filter(a => !installed[a.id]);
+    if (stillUndetected.length > 0) {
+      try {
+        const fsMatches = scanFilesystemForApps(stillUndetected);
+        for (const [id, ok] of Object.entries(fsMatches)) { if (ok) installed[id] = true; }
+      } catch (e) {
+      }
+    }
+
+    // ── Supplementary 3: AppX / MSIX Store package detection ──
+    const yetUndetected = apps.filter(a => !installed[a.id]);
+    if (yetUndetected.length > 0) {
+      try {
+        const appxNames = await getAppxPackageNames();
+        if (appxNames.size > 0) {
+          const appxMatches = matchAppxPackages(yetUndetected, appxNames);
+          for (const [id, ok] of Object.entries(appxMatches)) { if (ok) installed[id] = true; }
+        }
+      } catch (e) {
+      }
+    }
+
     return { success: true, installed };
   } catch (error) {
     // Fallback: registry-only detection if winget is unavailable (uses cached reg.exe results)
@@ -4879,6 +5048,24 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
         : [];
       const regNames = await getRegistryDisplayNames();
       const installed = matchCatalogToRegistry(apps, regNames);
+      // Also run filesystem scan + AppX detection in fallback
+      const undetected = apps.filter(a => !installed[a.id]);
+      if (undetected.length > 0) {
+        try {
+          const fsMatches = scanFilesystemForApps(undetected);
+          for (const [id, ok] of Object.entries(fsMatches)) { if (ok) installed[id] = true; }
+        } catch {}
+        const stillUn = apps.filter(a => !installed[a.id]);
+        if (stillUn.length > 0) {
+          try {
+            const appxNames = await getAppxPackageNames();
+            if (appxNames.size > 0) {
+              const appxMatches = matchAppxPackages(stillUn, appxNames);
+              for (const [id, ok] of Object.entries(appxMatches)) { if (ok) installed[id] = true; }
+            }
+          } catch {}
+        }
+      }
       return { success: true, installed };
     } catch (regErr) {
       return { success: false, installed: {} };
