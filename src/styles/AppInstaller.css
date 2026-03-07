@@ -434,6 +434,26 @@
   color: rgba(230,240,255,0.75);
 }
 
+.ai-dock-cancel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,80,80,0.3);
+  background: linear-gradient(135deg, rgba(255,60,60,0.15), rgba(255,100,60,0.08));
+  color: #ff6b6b;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ai-dock-cancel:hover {
+  background: linear-gradient(135deg, rgba(255,60,60,0.25), rgba(255,100,60,0.15));
+  border-color: rgba(255,80,80,0.5);
+  color: #ff8888;
+}
+
 .ai-dock-go {
   display: inline-flex;
   align-items: center;

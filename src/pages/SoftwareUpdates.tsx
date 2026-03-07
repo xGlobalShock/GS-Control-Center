@@ -90,13 +90,22 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
     }
   }, [addToast]);
 
-  // Auto-check only when user first navigates to this page
+  // Silently load pre-warmed cached data when page becomes active (no loading spinner)
   useEffect(() => {
     if (isActive && !hasScanned.current) {
       hasScanned.current = true;
-      checkUpdates();
+      (async () => {
+        if (!window.electron?.ipcRenderer) return;
+        try {
+          const result = await window.electron.ipcRenderer.invoke('software:check-updates');
+          if (result.success) {
+            setPackages(result.packages);
+            setLastChecked(new Date().toLocaleTimeString());
+          }
+        } catch {}
+      })();
     }
-  }, [isActive, checkUpdates]);
+  }, [isActive]);
 
   const handleCancelUpdate = async () => {
     if (!window.electron?.ipcRenderer) return;

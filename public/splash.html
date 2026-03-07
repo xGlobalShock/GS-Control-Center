@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
+<title>GS Control Center</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #050508;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: #c8d6e5;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    -webkit-app-region: drag;
+    user-select: none;
+  }
+
+  /* ── Animated background grid ── */
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: gridPulse 4s ease-in-out infinite;
+  }
+  @keyframes gridPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+  }
+
+  /* ── Radial glow behind logo ── */
+  .glow-orb {
+    position: fixed; z-index: 1;
+    width: 400px; height: 400px;
+    top: 50%; left: 50%; transform: translate(-50%, -55%);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,255,136,0.08) 0%, rgba(0,200,255,0.04) 40%, transparent 70%);
+    animation: orbPulse 3s ease-in-out infinite;
+    filter: blur(40px);
+  }
+  @keyframes orbPulse {
+    0%, 100% { transform: translate(-50%, -55%) scale(1); opacity: 0.7; }
+    50% { transform: translate(-50%, -55%) scale(1.15); opacity: 1; }
+  }
+
+  /* ── Scanning line ── */
+  .scan-line {
+    position: fixed; z-index: 2; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(0,255,136,0.3) 30%, rgba(0,255,136,0.6) 50%, rgba(0,255,136,0.3) 70%, transparent 100%);
+    animation: scanDown 3s linear infinite;
+    box-shadow: 0 0 15px rgba(0,255,136,0.2), 0 0 40px rgba(0,255,136,0.1);
+  }
+  @keyframes scanDown {
+    0% { top: -2px; }
+    100% { top: 100%; }
+  }
+
+  /* ── Main content ── */
+  .splash-content {
+    position: relative; z-index: 10;
+    display: flex; flex-direction: column; align-items: center; gap: 28px;
+  }
+
+  /* ── Logo container ── */
+  .logo-wrap {
+    position: relative;
+    width: 88px; height: 88px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Outer ring */
+  .logo-ring {
+    position: absolute; inset: -10px;
+    border-radius: 50%;
+    border: 1.5px solid transparent;
+    border-top-color: rgba(0,255,136,0.6);
+    border-right-color: rgba(0,200,255,0.3);
+    animation: ringRotate 2.5s linear infinite;
+  }
+  .logo-ring-2 {
+    position: absolute; inset: -4px;
+    border-radius: 50%;
+    border: 1px solid transparent;
+    border-bottom-color: rgba(0,255,136,0.3);
+    border-left-color: rgba(0,200,255,0.15);
+    animation: ringRotate 3.5s linear infinite reverse;
+  }
+  @keyframes ringRotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* Inner icon */
+  .logo-icon {
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    animation: logoBreath 2.5s ease-in-out infinite;
+  }
+  .logo-icon svg {
+    width: 38px; height: 38px;
+    filter: drop-shadow(0 0 12px rgba(0,255,136,0.3));
+  }
+  @keyframes logoBreath {
+    0%, 100% { transform: scale(1); opacity: 0.9; }
+    50% { transform: scale(1.06); opacity: 1; }
+  }
+
+  /* ── Title ── */
+  .splash-title {
+    font-size: 16px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+    background: linear-gradient(135deg, #00ff88 0%, #00c8ff 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    text-shadow: none;
+  }
+
+  /* ── Status ── */
+  .splash-status {
+    font-size: 10.5px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: rgba(180,200,220,0.5);
+    min-height: 16px;
+    transition: opacity 0.3s;
+  }
+
+  /* ── Progress bar ── */
+  .progress-track {
+    width: 220px; height: 2px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+  }
+  .progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #00ff88, #00c8ff);
+    border-radius: 2px;
+    transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: 0 0 10px rgba(0,255,136,0.4);
+  }
+  .progress-glow {
+    position: absolute; top: -3px; height: 8px; width: 30px; right: 0;
+    background: radial-gradient(ellipse, rgba(0,255,136,0.4), transparent);
+    border-radius: 50%;
+    animation: progressGlow 1.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes progressGlow {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  /* ── Corner accents ── */
+  .corner { position: fixed; z-index: 5; width: 24px; height: 24px; }
+  .corner--tl { top: 12px; left: 12px; border-top: 1.5px solid rgba(0,255,136,0.2); border-left: 1.5px solid rgba(0,255,136,0.2); }
+  .corner--tr { top: 12px; right: 12px; border-top: 1.5px solid rgba(0,255,136,0.2); border-right: 1.5px solid rgba(0,255,136,0.2); }
+  .corner--bl { bottom: 12px; left: 12px; border-bottom: 1.5px solid rgba(0,255,136,0.2); border-left: 1.5px solid rgba(0,255,136,0.2); }
+  .corner--br { bottom: 12px; right: 12px; border-bottom: 1.5px solid rgba(0,255,136,0.2); border-right: 1.5px solid rgba(0,255,136,0.2); }
+
+  /* ── Particle dots ── */
+  .particles {
+    position: fixed; inset: 0; z-index: 3; overflow: hidden; pointer-events: none;
+  }
+  .particle {
+    position: absolute;
+    width: 2px; height: 2px;
+    background: rgba(0,255,136,0.4);
+    border-radius: 50%;
+    animation: float 6s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0) scale(1); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(-120px) scale(0.5); opacity: 0; }
+  }
+
+  /* ── Version tag ── */
+  .version {
+    position: fixed; bottom: 14px; right: 18px; z-index: 10;
+    font-size: 9px; letter-spacing: 1px; color: rgba(120,140,160,0.35);
+    text-transform: uppercase;
+  }
+
+  /* ── Fade-out on finish ── */
+  .fade-out {
+    animation: fadeOut 0.5s ease-out forwards;
+  }
+  @keyframes fadeOut {
+    to { opacity: 0; transform: scale(1.02); }
+  }
+</style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="glow-orb"></div>
+  <div class="scan-line"></div>
+
+  <div class="particles" id="particles"></div>
+
+  <div class="corner corner--tl"></div>
+  <div class="corner corner--tr"></div>
+  <div class="corner corner--bl"></div>
+  <div class="corner corner--br"></div>
+
+  <div class="splash-content" id="content">
+    <div class="logo-wrap">
+      <div class="logo-ring"></div>
+      <div class="logo-ring-2"></div>
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:#00ff88">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="splash-title">GS Control Center</div>
+
+    <div class="splash-status" id="status">Initializing...</div>
+
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+      <div class="progress-glow"></div>
+    </div>
+  </div>
+
+  <div class="version">v1.0.0</div>
+
+  <script>
+    // Generate floating particles
+    const particlesEl = document.getElementById('particles');
+    for (let i = 0; i < 18; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = Math.random() * 100 + '%';
+      p.style.top = (40 + Math.random() * 50) + '%';
+      p.style.animationDelay = (Math.random() * 6) + 's';
+      p.style.animationDuration = (4 + Math.random() * 4) + 's';
+      p.style.width = p.style.height = (1.5 + Math.random() * 2) + 'px';
+      particlesEl.appendChild(p);
+    }
+
+    // IPC listener for progress updates from main process
+    const { ipcRenderer } = require('electron');
+
+    ipcRenderer.on('splash:status', (_e, msg) => {
+      document.getElementById('status').textContent = msg;
+    });
+
+    ipcRenderer.on('splash:progress', (_e, pct) => {
+      document.getElementById('progressFill').style.width = Math.min(pct, 100) + '%';
+    });
+
+    ipcRenderer.on('splash:done', () => {
+      document.getElementById('progressFill').style.width = '100%';
+      document.getElementById('status').textContent = 'Ready';
+      setTimeout(() => {
+        document.getElementById('content').classList.add('fade-out');
+      }, 300);
+    });
+  </script>
+</body>
+</html>

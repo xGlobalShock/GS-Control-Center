@@ -67,12 +67,26 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
     return () => { if (unsub) unsub(); };
   }, []);
 
-  const checkInstalled = useCallback(async () => {
+  // Listen for preloaded installed-app data pushed from backend during splash
+  useEffect(() => {
+    if (!window.electron?.ipcRenderer) return;
+    const unsub = window.electron.ipcRenderer.on('appinstall:preloaded', (data: any) => {
+      if (data?.success && data.installed) {
+        const set = new Set<string>();
+        for (const [id, ok] of Object.entries(data.installed)) { if (ok) set.add(id); }
+        setInstalled(set);
+        hasChecked.current = true;
+      }
+    });
+    return () => { if (unsub) unsub(); };
+  }, []);
+
+  const checkInstalled = useCallback(async (forceRefresh = false) => {
     if (!window.electron?.ipcRenderer) return;
     setCheckingInstalled(true);
     try {
       const allApps = APP_CATALOG.map(a => ({ id: a.id, name: a.name }));
-      const result = await window.electron.ipcRenderer.invoke('appinstall:check-installed', allApps);
+      const result = await window.electron.ipcRenderer.invoke('appinstall:check-installed', allApps, forceRefresh);
       if (result.success) {
         const set = new Set<string>();
         for (const [id, ok] of Object.entries(result.installed)) { if (ok) set.add(id); }
@@ -82,12 +96,27 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
     finally { setCheckingInstalled(false); }
   }, []);
 
+  // Fallback: if preloaded data hasn't arrived when page becomes active, scan silently
   useEffect(() => {
-    if (isActive && !hasChecked.current) { hasChecked.current = true; checkInstalled(); }
-  }, [isActive, checkInstalled]);
+    if (isActive && !hasChecked.current) {
+      hasChecked.current = true;
+      (async () => {
+        if (!window.electron?.ipcRenderer) return;
+        try {
+          const allApps = APP_CATALOG.map(a => ({ id: a.id, name: a.name }));
+          const result = await window.electron.ipcRenderer.invoke('appinstall:check-installed', allApps, false);
+          if (result.success) {
+            const set = new Set<string>();
+            for (const [id, ok] of Object.entries(result.installed)) { if (ok) set.add(id); }
+            setInstalled(set);
+          }
+        } catch {}
+      })();
+    }
+  }, [isActive]);
 
   const refreshInstalled = useCallback(() => {
-    hasChecked.current = false; setInstalled(new Set()); checkInstalled();
+    hasChecked.current = false; setInstalled(new Set()); checkInstalled(true);
   }, [checkInstalled]);
 
   const toggleSelect = (id: string) => {
@@ -248,6 +277,7 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
                   {activeCat === 'All' && <span className="ai-card-cat">{app.category}</span>}
                   {busy && prog && (
                     <span className={`ai-card-phase ai-card-phase--${prog.phase}`}>
+                      {prog.phase === 'preparing' && 'Preparing…'}
                       {prog.phase === 'downloading' && 'Downloading…'}
                       {prog.phase === 'installing' && 'Installing…'}
                       {prog.phase === 'verifying' && 'Verifying…'}
@@ -303,11 +333,18 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
               <span><strong>{selected.size}</strong> app{selected.size > 1 ? 's' : ''} selected</span>
             </div>
             <div className="ai-dock-right">
-              <button className="ai-dock-clear" onClick={clearSelection}><X size={13} /> Clear</button>
-              <button className="ai-dock-go" onClick={handleInstallSelected} disabled={installingId !== null}>
-                <Download size={14} />
-                {installingId ? 'Installing…' : 'Install All'}
-              </button>
+              {installingId ? (
+                <button className="ai-dock-cancel" onClick={handleCancelInstall}>
+                  <X size={13} /> Cancel
+                </button>
+              ) : (
+                <>
+                  <button className="ai-dock-clear" onClick={clearSelection}><X size={13} /> Clear</button>
+                  <button className="ai-dock-go" onClick={handleInstallSelected}>
+                    <Download size={14} /> Install All
+                  </button>
+                </>
+              )}
             </div>
           </motion.div>
         )}

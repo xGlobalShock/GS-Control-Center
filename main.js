@@ -129,6 +129,42 @@ if (process.platform === 'win32') {
 }
 
 let mainWindow;
+let splashWindow;
+
+function createSplashWindow() {
+  const isDev = !app.isPackaged;
+  splashWindow = new BrowserWindow({
+    width: 380,
+    height: 440,
+    resizable: false,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: false,
+    center: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+      devTools: false,
+    },
+  });
+  const splashPath = isDev
+    ? path.join(__dirname, 'public/splash.html')
+    : path.join(process.resourcesPath, 'app', 'build', 'splash.html');
+  splashWindow.loadFile(splashPath);
+  splashWindow.on('closed', () => { splashWindow = null; });
+}
+
+function sendSplashStatus(msg) {
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.webContents.send('splash:status', msg);
+  }
+}
+function sendSplashProgress(pct) {
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.webContents.send('splash:progress', pct);
+  }
+}
 
 function createWindow() {
   const isDev = !app.isPackaged;
@@ -138,6 +174,7 @@ function createWindow() {
     height: 860,
     resizable: false,
     frame: false,
+    show: false,
     autoHideMenuBar: true,
     webPreferences: {
       preload: isDev
@@ -171,7 +208,6 @@ function createWindow() {
 
   // Block all keyboard shortcuts that could open developer tools
   mainWindow.webContents.on('before-input-event', (event, input) => {
-    // Block F12, Ctrl+Shift+I, Ctrl+Shift+C, Ctrl+Shift+J
     if (
       input.control &&
       input.shift &&
@@ -179,7 +215,6 @@ function createWindow() {
     ) {
       event.preventDefault();
     }
-    // Block F12
     if (input.key === 'F12') {
       event.preventDefault();
     }
@@ -196,23 +231,88 @@ function createWindow() {
   });
 }
 
-app.on('ready', () => {
-  // Enable winget InstallerHashOverride (requires admin; allows --ignore-security-hash for de-elevated updates)
+app.on('ready', async () => {
+  // Show splash screen immediately
+  createSplashWindow();
+
+  sendSplashStatus('Starting services...');
+  sendSplashProgress(5);
+
+  // Enable winget InstallerHashOverride (requires admin)
   if (isElevated) {
     try { execSync('winget settings --enable InstallerHashOverride', { stdio: 'ignore', windowsHide: true, timeout: 10000 }); } catch { }
   }
-  // Start LHM first (longest startup time) â€” runs in parallel with window creation
+
+  sendSplashStatus('Initializing hardware monitors...');
+  sendSplashProgress(15);
+
+  // Start LHM first (longest startup time)
   startLHMService();
-  // Start standalone perf counter service (CPU usage + clock speed, no LHM dependency)
+
+  sendSplashStatus('Starting performance counters...');
+  sendSplashProgress(25);
+
   _startPerfCounterService();
   _startDiskRefresh();
   _startRamCacheRefresh();
-  // Pre-fetch hardware info (starts fetch early so IPC handler can return immediately)
+
+  sendSplashStatus('Scanning hardware...');
+  sendSplashProgress(40);
+
+  // Pre-fetch hardware info and wait for it
   _initHardwareInfo();
+  try {
+    if (_hwInfoPromise) await _hwInfoPromise;
+  } catch {}
+
+  sendSplashStatus('Loading interface...');
+  sendSplashProgress(55);
+
+  // Create the main window (hidden) and start scanning apps/updates in parallel
   createWindow();
-  // Start real-time hardware push after window is created (1000ms interval)
-  // Small delay to let the renderer attach its IPC listener
-  setTimeout(() => _startRealtimePush(), 1500);
+  _startLatencyPoll();          // kick off ping early so data is ready when window shows
+  const prewarmPromise = _prewarmScanCaches();
+
+  // Wait for main window to finish loading
+  await new Promise((resolve) => {
+    mainWindow.webContents.on('did-finish-load', resolve);
+    // Safety timeout
+    setTimeout(resolve, 8000);
+  });
+
+  sendSplashStatus('Scanning installed apps...');
+  sendSplashProgress(70);
+
+  // Wait for app/update scans to finish
+  await prewarmPromise;
+
+  sendSplashStatus('Preparing dashboard...');
+  sendSplashProgress(85);
+
+  // Start real-time hardware push
+  _startRealtimePush();
+
+  // Small delay for renderer to initialize
+  await new Promise(r => setTimeout(r, 600));
+
+  sendSplashProgress(100);
+  sendSplashStatus('Ready');
+
+  // Signal splash to fade out, then show main window
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.webContents.send('splash:done');
+  }
+
+  await new Promise(r => setTimeout(r, 700));
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.show();
+    mainWindow.focus();
+  }
+
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.close();
+  }
 });
 
 app.on('window-all-closed', () => {
@@ -863,6 +963,7 @@ function _formatUptimeSeconds(seconds) {
 // Latency + Packet Loss ping â€” separate timer (every 10s)
 // Uses Windows ping -n 5 to get both latency and loss in one call
 function _startLatencyPoll() {
+  if (_realtimeLatencyTimer) return;   // already running
   const doPing = async () => {
     try {
       const { stdout } = await execAsync('ping -n 5 -w 2000 8.8.8.8', { shell: true, timeout: 20000 });
@@ -3858,97 +3959,166 @@ ipcMain.handle('obs:launch', async () => {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 // Check for outdated apps via winget
-ipcMain.handle('software:check-updates', async () => {
+async function _checkSoftwareUpdatesImpl() {
+  let stdout = '';
   try {
-    let stdout = '';
-    try {
-      const result = await execAsync(
-        'chcp 65001 >nul && winget upgrade --include-unknown --accept-source-agreements 2>nul',
-        {
-          timeout: 45000,
-          windowsHide: true,
-          encoding: 'utf8',
-          shell: 'cmd.exe',
-          maxBuffer: 1024 * 1024 * 5,
-          env: process.env,
-          cwd: process.env.SYSTEMROOT || 'C:\\Windows',
-        }
-      );
-      stdout = result.stdout || '';
-    } catch (execErr) {
-      // winget may exit with non-zero code even when output is valid
-      if (execErr.stdout) {
-        stdout = execErr.stdout;
-      } else {
-        throw execErr;
+    const result = await execAsync(
+      'chcp 65001 >nul && winget upgrade --include-unknown --accept-source-agreements 2>nul',
+      {
+        timeout: 45000,
+        windowsHide: true,
+        encoding: 'utf8',
+        shell: 'cmd.exe',
+        maxBuffer: 1024 * 1024 * 5,
+        env: process.env,
+        cwd: process.env.SYSTEMROOT || 'C:\\Windows',
       }
+    );
+    stdout = result.stdout || '';
+  } catch (execErr) {
+    if (execErr.stdout) {
+      stdout = execErr.stdout;
+    } else {
+      throw execErr;
     }
+  }
 
+  const lines = stdout.split('\n').map(l => {
+    const parts = l.split('\r').map(p => p.trimEnd()).filter(p => p.length > 0);
+    return parts.length > 0 ? parts[parts.length - 1] : '';
+  }).filter(l => l.length > 0);
 
-    // winget uses \r for progress spinner - clean by taking last non-empty \r segment per line
-    const lines = stdout.split('\n').map(l => {
-      const parts = l.split('\r').map(p => p.trimEnd()).filter(p => p.length > 0);
-      return parts.length > 0 ? parts[parts.length - 1] : '';
-    }).filter(l => l.length > 0);
+  const headerIdx = lines.findIndex(l => /Name\s+Id\s+Version/i.test(l));
+  if (headerIdx === -1) return { success: true, packages: [], count: 0 };
 
-    // Find the header line (contains "Name" and "Id" and "Version")
-    const headerIdx = lines.findIndex(l => /Name\s+Id\s+Version/i.test(l));
-    if (headerIdx === -1) {
-      return { success: true, packages: [], count: 0 };
-    }
+  const sepIdx = lines.findIndex((l, i) => i > headerIdx && /^-{10,}/.test(l.trim()));
+  if (sepIdx === -1) return { success: true, packages: [], count: 0 };
 
-    // Find the separator line (dashes)
-    const sepIdx = lines.findIndex((l, i) => i > headerIdx && /^-{10,}/.test(l.trim()));
-    if (sepIdx === -1) {
-      return { success: true, packages: [], count: 0 };
-    }
+  const header = lines[headerIdx];
+  const nameStart = 0;
+  const idStart = header.search(/\bId\b/);
+  const versionStart = header.search(/\bVersion\b/);
+  const availableStart = header.search(/\bAvailable\b/);
+  const sourceStart = header.search(/\bSource\b/);
 
-    // Parse column positions from header
-    const header = lines[headerIdx];
-    const nameStart = 0;
-    const idStart = header.search(/\bId\b/);
-    const versionStart = header.search(/\bVersion\b/);
-    const availableStart = header.search(/\bAvailable\b/);
-    const sourceStart = header.search(/\bSource\b/);
+  const packages = [];
+  for (let i = sepIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim()) continue;
+    if (/^\d+ upgrades? available/i.test(line.trim())) break;
+    if (/^The following/i.test(line.trim())) break;
+    if (line.length < idStart + 3) continue;
 
-
-    const packages = [];
-    for (let i = sepIdx + 1; i < lines.length; i++) {
-      const line = lines[i];
-      if (!line.trim()) continue;
-      // Stop at summary line like "X upgrades available." or end markers
-      if (/^\d+ upgrades? available/i.test(line.trim())) break;
-      if (/^The following/i.test(line.trim())) break;
-
-      // Skip lines that are too short to contain valid data
-      if (line.length < idStart + 3) continue;
-
-      const name = line.substring(nameStart, idStart).trim();
-      const id = line.substring(idStart, versionStart).trim();
-      const rawVersion = versionStart >= 0 && availableStart >= 0
-        ? line.substring(versionStart, availableStart).trim()
+    const name = line.substring(nameStart, idStart).trim();
+    const id = line.substring(idStart, versionStart).trim();
+    const rawVersion = versionStart >= 0 && availableStart >= 0
+      ? line.substring(versionStart, availableStart).trim()
+      : '';
+    const version = rawVersion.replace(/^<\s*/, '');
+    const available = availableStart >= 0 && sourceStart >= 0
+      ? line.substring(availableStart, sourceStart).trim()
+      : availableStart >= 0
+        ? line.substring(availableStart).trim()
         : '';
-      const version = rawVersion.replace(/^<\s*/, '');
-      const available = availableStart >= 0 && sourceStart >= 0
-        ? line.substring(availableStart, sourceStart).trim()
-        : availableStart >= 0
-          ? line.substring(availableStart).trim()
-          : '';
-      const source = sourceStart >= 0 ? line.substring(sourceStart).trim() : 'winget';
+    const source = sourceStart >= 0 ? line.substring(sourceStart).trim() : 'winget';
 
-      // Skip packages with "<" version prefix â€” winget can't reliably upgrade these
-      const isUnknownVersion = rawVersion.startsWith('<');
+    // Skip packages with unknown version prefix
+    const isUnknownVersion = rawVersion.startsWith('<');
 
-      if (name && id && id.includes('.') && !isUnknownVersion) {
-        packages.push({ name, id, version, available, source });
-      }
+    if (name && id && id.includes('.') && !isUnknownVersion) {
+      packages.push({ name, id, version, available, source });
     }
+  }
 
-    return { success: true, packages, count: packages.length };
+  return { success: true, packages, count: packages.length };
+}
+
+ipcMain.handle('software:check-updates', async () => {
+  if (_softwareUpdatesCache && (Date.now() - _softwareUpdatesCacheTime) < SOFTWARE_UPDATES_CACHE_TTL) {
+    return _softwareUpdatesCache;
+  }
+  try {
+    const result = await _checkSoftwareUpdatesImpl();
+    _softwareUpdatesCache = result;
+    _softwareUpdatesCacheTime = Date.now();
+    return result;
   } catch (error) {
     return { success: false, message: `Failed to check updates: ${error.message}`, packages: [], count: 0 };
   }
 });
+// Pre-warm caches during splash screen
+async function _prewarmScanCaches() {
+  const tasks = [];
+
+  // 1. Pre-warm software updates (winget upgrade scan)
+  tasks.push(
+    (async () => {
+      try {
+        const result = await _checkSoftwareUpdatesImpl();
+        _softwareUpdatesCache = result;
+        _softwareUpdatesCacheTime = Date.now();
+      } catch {}
+    })()
+  );
+
+  // 2. Pre-warm registry display names
+  tasks.push(getRegistryDisplayNames().catch(() => new Set()));
+
+  // 3. Pre-warm winget list cache
+  tasks.push(
+    (async () => {
+      try {
+        const { stdout } = await execAsync(
+          'chcp 65001 >nul && winget list --accept-source-agreements 2>nul',
+          { timeout: 30000, windowsHide: true, encoding: 'utf8', shell: 'cmd.exe', maxBuffer: 1024 * 1024 * 5, env: process.env, cwd: process.env.SYSTEMROOT || 'C:\\Windows' }
+        );
+        const rawLines = stdout.split('\n').map(l => {
+          const parts = l.split('\r').map(p => p.trimEnd()).filter(p => p.length > 0);
+          return parts.length > 0 ? parts[parts.length - 1] : '';
+        }).filter(l => l.length > 0);
+        const lines = [];
+        for (const l of rawLines) {
+          if (/^\s+\S/.test(l) && lines.length > 0 && lines[lines.length - 1] !== '') {
+            lines[lines.length - 1] += l;
+          } else { lines.push(l); }
+        }
+        const headerIdx = lines.findIndex(l => /Name\s+Id\s+Version/i.test(l));
+        const installedEntries = [];
+        if (headerIdx !== -1) {
+          const headerLine = lines[headerIdx];
+          const idStart = headerLine.search(/\bId\b/i);
+          const versionStart = headerLine.search(/\bVersion\b/i);
+          const dataStart = headerIdx + 2;
+          for (let i = dataStart; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.length < idStart + 2) continue;
+            const rawName = line.substring(0, idStart).trim();
+            const rawId = line.substring(idStart, versionStart > idStart ? versionStart : line.length).trim();
+            if (rawId && rawId !== '---' && rawName) {
+              installedEntries.push({ name: rawName.toLowerCase(), id: rawId.toLowerCase() });
+            }
+          }
+        }
+        _wingetListCache = {
+          installedEntries,
+          installedIdSet: new Set(installedEntries.map(e => e.id)),
+          installedNameSet: new Set(installedEntries.map(e => e.name)),
+        };
+        _wingetCacheTime = Date.now();
+      } catch {}
+    })()
+  );
+
+  await Promise.allSettled(tasks);
+
+  // 4. Run full check-installed matching and push results to renderer
+  try {
+    const result = await _checkInstalledImpl(_APP_CATALOG_APPS);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('appinstall:preloaded', result);
+    }
+  } catch {}
+}
 
 // â”€â”€ Helper: follow redirects and get Content-Length via HEAD request â”€â”€
 function headContentLength(url, redirects = 0) {
@@ -4421,10 +4591,58 @@ let _regNamesCache = null;   // Set<string> | null
 let _regCacheTime = 0;       // timestamp
 const REG_CACHE_TTL = 60000; // 60 s
 
+// Software updates cache (pre-warmed during splash)
+let _softwareUpdatesCache = null;  // { success, packages, count } | null
+let _softwareUpdatesCacheTime = 0;
+const SOFTWARE_UPDATES_CACHE_TTL = 120000; // 2 min
+
 // â”€â”€ Winget list cache (avoids re-running expensive `winget list` on every Phase 2 call) â”€â”€
 let _wingetListCache = null;  // { installedEntries: [{name,id}], installedIdSet: Set, installedNameSet: Set } | null
 let _wingetCacheTime = 0;
 const WINGET_CACHE_TTL = 60000; // 60 s
+
+
+// Catalog mirror for splash pre-warm (must match src/data/appCatalog.ts)
+const _APP_CATALOG_APPS = [
+  { id: 'Brave.Brave', name: 'Brave' },
+  { id: 'Google.Chrome', name: 'Chrome' },
+  { id: 'Microsoft.Edge', name: 'Edge' },
+  { id: 'Mozilla.Firefox', name: 'Firefox' },
+  { id: 'Opera.OperaGX', name: 'Opera GX' },
+  { id: 'TorProject.TorBrowser', name: 'Tor Browser' },
+  { id: 'Discord.Discord', name: 'Discord' },
+  { id: 'Microsoft.Teams', name: 'Teams' },
+  { id: 'Telegram.TelegramDesktop', name: 'Telegram' },
+  { id: 'Zoom.Zoom', name: 'Zoom' },
+  { id: 'Valve.Steam', name: 'Steam' },
+  { id: 'EpicGames.EpicGamesLauncher', name: 'Epic Games Launcher' },
+  { id: 'ElectronicArts.EADesktop', name: 'EA App' },
+  { id: 'Ubisoft.Connect', name: 'Ubisoft Connect' },
+  { id: 'Blizzard.BattleNet', name: 'Battle.net' },
+  { id: 'Nvidia.GeForceNow', name: 'GeForce NOW' },
+  { id: 'Guru3D.Afterburner', name: 'MSI Afterburner' },
+  { id: 'REALiX.HWiNFO', name: 'HWiNFO' },
+  { id: 'TechPowerUp.GPU-Z', name: 'GPU-Z' },
+  { id: 'CPUID.CPU-Z', name: 'CPU-Z' },
+  { id: 'AMD.RyzenMaster', name: 'AMD Software' },
+  { id: 'OBSProject.OBSStudio', name: 'OBS Studio' },
+  { id: 'Streamlabs.Streamlabs', name: 'Streamlabs' },
+  { id: 'File-New-Project.EarTrumpet', name: 'EarTrumpet' },
+  { id: 'SteelSeries.GG', name: 'SteelSeries Sonar' },
+  { id: 'VideoLAN.VLC', name: 'VLC' },
+  { id: 'Microsoft.VisualStudioCode', name: 'VS Code' },
+  { id: 'Git.Git', name: 'Git' },
+  { id: 'GitHub.GitHubDesktop', name: 'GitHub Desktop' },
+  { id: 'OpenJS.NodeJS.LTS', name: 'NodeJS LTS' },
+  { id: 'Python.Python.3.12', name: 'Python 3' },
+  { id: 'Microsoft.VisualStudio.2022.Community', name: 'Visual Studio 2022' },
+  { id: 'Microsoft.WindowsTerminal', name: 'Windows Terminal' },
+  { id: 'Notepad++.Notepad++', name: 'Notepad++' },
+  { id: '7zip.7zip', name: '7-Zip' },
+  { id: 'RARLab.WinRAR', name: 'WinRAR' },
+  { id: 'RevoUninstaller.RevoUninstaller', name: 'Revo Uninstaller' },
+  { id: 'Bitwarden.Bitwarden', name: 'Bitwarden' },
+];
 
 async function getRegistryDisplayNames() {
   const now = Date.now();
@@ -4617,8 +4835,8 @@ function matchAppxPackages(undetectedApps, appxNames) {
 // Pre-warm registry cache on startup (non-blocking)
 getRegistryDisplayNames().catch(() => { });
 
-// â”€â”€ Single-pass installed-app detection: registry + winget + filesystem + AppX in parallel â”€â”€
-ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
+// Full installed-app detection: registry + winget + filesystem + AppX
+async function _checkInstalledImpl(catalogApps) {
   const apps = Array.isArray(catalogApps)
     ? catalogApps.map(a => typeof a === 'string' ? { id: a, name: '' } : a)
     : [];
@@ -4626,7 +4844,7 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
   try {
     const now = Date.now();
 
-    // â”€â”€ Launch registry + winget scans in parallel â”€â”€
+    // Launch registry + winget scans in parallel
     const [regNames, wingetResult] = await Promise.all([
       getRegistryDisplayNames().catch(() => new Set()),
       (async () => {
@@ -4688,12 +4906,11 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
 
     const { installedEntries, installedIdSet, installedNameSet } = wingetResult;
 
-    // â”€â”€ Merge registry + winget matches â”€â”€
+    // Merge registry + winget matches
     const regMatches = matchCatalogToRegistry(apps, regNames);
     const installed = {};
 
     for (const app of apps) {
-      // Registry hit from parallel scan
       if (regMatches[app.id]) { installed[app.id] = true; continue; }
 
       const catalogIdLower = app.id.toLowerCase();
@@ -4702,7 +4919,7 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
       // Winget: Exact ID match
       if (installedIdSet.has(catalogIdLower)) { installed[app.id] = true; continue; }
 
-      // Winget: ID prefix match (e.g. Google.Chrome â†’ Google.Chrome.EXE)
+      // Winget: ID prefix match
       let found = false;
       for (const entry of installedEntries) {
         if (entry.id.startsWith(catalogIdLower) && entry.id.length <= catalogIdLower.length + 10) {
@@ -4711,21 +4928,17 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
       }
       if (found) { installed[app.id] = true; continue; }
 
-      // Strategy 3: Exact name match from winget list Name column
-      // Catches Discord (ARP\User\X64\Discord has Name="Discord")
+      // Exact name match from winget list Name column
       if (catalogNameLower && installedNameSet.has(catalogNameLower)) {
         installed[app.id] = true;
         continue;
       }
 
-      // Strategy 4: For ARP entries, check if the last segment of the ARP path
-      // matches the first part of the catalog ID (before the dot)
-      // e.g. ARP\Machine\X64\Git_is1 â†’ "git" vs catalog "Git.Git" â†’ "git"
+      // ARP entry matching
       const catalogIdPrefix = catalogIdLower.split('.')[0];
       if (catalogIdPrefix.length >= 3) {
         for (const entry of installedEntries) {
           if (entry.id.includes('\\') || entry.id.includes('arp')) {
-            // Extract the last path segment of the ARP ID
             const segments = entry.id.replace(/\\\\/g, '\\').split('\\');
             const lastSeg = segments[segments.length - 1].replace(/_is\d*$/i, '').toLowerCase();
             if (lastSeg === catalogIdPrefix || lastSeg === catalogIdLower.replace(/\./g, '')) {
@@ -4738,7 +4951,7 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
       installed[app.id] = found;
     }
 
-    // â”€â”€ Supplementary: Filesystem + AppX for still-undetected apps (in parallel) â”€â”€
+    // Supplementary: Filesystem + AppX for still-undetected apps
     const undetected = apps.filter(a => !installed[a.id]);
     if (undetected.length > 0) {
       const [fsMatches, appxNames] = await Promise.all([
@@ -4757,7 +4970,7 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
 
     return { success: true, installed };
   } catch (error) {
-    // Fallback: registry-only + filesystem + AppX if everything else failed
+    // Fallback: registry-only + filesystem + AppX
     try {
       const regNames = await getRegistryDisplayNames();
       const installed = matchCatalogToRegistry(apps, regNames);
@@ -4774,28 +4987,63 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
       return { success: false, installed: {} };
     }
   }
+}
+
+ipcMain.handle('appinstall:check-installed', async (_event, catalogApps, forceRefresh) => {
+  if (forceRefresh) {
+    _wingetListCache = null; _wingetCacheTime = 0;
+    _regNamesCache = null; _regCacheTime = 0;
+  }
+
+  const apps = Array.isArray(catalogApps)
+    ? catalogApps.map(a => typeof a === 'string' ? { id: a, name: '' } : a)
+    : [];
+  try {
+    return await _checkInstalledImpl(apps);
+  } catch {
+    return { success: false, installed: {} };
+  }
 });
 
 // Install a single app via winget (with progress IPC)
 let activeInstallProc = null;
 let cancelledPids = new Set();
+let installCancelled = false;
+
+const killWingetProcesses = () => {
+  try {
+    spawn('taskkill', ['/F', '/IM', 'winget.exe'], { windowsHide: true });
+  } catch {}
+  try {
+    // Also kill any msiexec or setup spawned by winget
+    const out = execSync('wmic process where "CommandLine like \'%winget%\'" get ProcessId /format:list',
+      { encoding: 'utf8', windowsHide: true, timeout: 5000 });
+    const pids = out.match(/ProcessId=(\d+)/g);
+    if (pids) pids.forEach(p => {
+      const id = p.split('=')[1];
+      try { spawn('taskkill', ['/F', '/T', '/PID', id], { windowsHide: true }); } catch {}
+    });
+  } catch {}
+};
 
 ipcMain.handle('appinstall:cancel-install', async () => {
+  installCancelled = true;
+  // Kill direct child process if any
   if (activeInstallProc && !activeInstallProc.killed) {
     const pid = activeInstallProc.pid;
     cancelledPids.add(pid);
     activeInstallProc = null;
     try {
-      // Kill the entire process tree on Windows (cmd.exe + winget + installer)
       spawn('taskkill', ['/F', '/T', '/PID', String(pid)], { windowsHide: true });
-    } catch (e) {
-    }
-    return { success: true };
+    } catch {}
   }
-  return { success: false, message: 'No active installation' };
+  // Kill de-elevated winget processes
+  killWingetProcesses();
+  return { success: true };
 });
 
 ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
+  const TAG = '[AppInstall]';
   const cleanId = String(packageId).replace(/[^\x20-\x7E]/g, '').trim();
   const win = BrowserWindow.getAllWindows()[0];
 
@@ -4805,60 +5053,224 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
     }
   };
 
-  /* â”€â”€ Run a winget install command and collect output â”€â”€ */
-  const runInstall = (cmd, label = 'Preparing installationâ€¦') => new Promise((resolve) => {
+  /* ---- Ensure InstallerHashOverride is enabled (3 methods) ---- */
+  const ensureHashOverride = () => {
+    // 1. winget settings CLI
+    try { execSync('winget settings --enable InstallerHashOverride', { stdio: 'ignore', windowsHide: true, timeout: 10000 }); } catch {}
+    // 2. Direct settings.json write
+    try {
+      const settingsDir = path.join(process.env.LOCALAPPDATA || '', 'Packages',
+        'Microsoft.DesktopAppInstaller_8wekyb3d8bbwe', 'LocalState');
+      const settingsFile = path.join(settingsDir, 'settings.json');
+      let cfg = {};
+      try { cfg = JSON.parse(fs.readFileSync(settingsFile, 'utf8')); } catch {}
+      if (!cfg.experimentalFeatures) cfg.experimentalFeatures = {};
+      cfg.experimentalFeatures.enableInstallerHashOverride = true;
+      try { fs.mkdirSync(settingsDir, { recursive: true }); } catch {}
+      fs.writeFileSync(settingsFile, JSON.stringify(cfg, null, 2), 'utf8');
+    } catch {}
+    // 3. Registry policy
+    try {
+      execSync('reg add "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\AppInstaller" /v EnableHashOverride /t REG_DWORD /d 1 /f',
+        { stdio: 'ignore', windowsHide: true, timeout: 5000 });
+    } catch {}
+  };
+
+  /* ---- Launch a .bat file de-elevated (Explorer token) ---- */
+  const launchDeElevated = (batPath) => {
+    // Wrap bat in VBS to run hidden (no visible CMD window)
+    const tmpVbs = path.join(os.tmpdir(), `gs_appinst_vbs_${Date.now()}.vbs`);
+    fs.writeFileSync(tmpVbs,
+      `CreateObject("WScript.Shell").Run "cmd.exe /c """"` + batPath + `""""", 0, True\r\n`, 'utf8');
+
+    // Method 1: Explorer-token via PowerShell (CreateProcessWithTokenW)
+    try {
+      const cs = `
+Add-Type @'
+using System; using System.Runtime.InteropServices; using System.Diagnostics;
+public class DeElev {
+  [DllImport("advapi32.dll", SetLastError=true)]
+  static extern bool OpenProcessToken(IntPtr h, uint a, out IntPtr t);
+  [DllImport("advapi32.dll", SetLastError=true)]
+  static extern bool DuplicateTokenEx(IntPtr t, uint a, IntPtr l, int il, int tt, out IntPtr n);
+  [DllImport("advapi32.dll", SetLastError=true, CharSet=CharSet.Unicode)]
+  static extern bool CreateProcessWithTokenW(IntPtr t, int f, string a, string c, uint cf, IntPtr e, string d, ref STARTUPINFO si, out PROCESS_INFORMATION pi);
+  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)] public struct STARTUPINFO {
+    public int cb; public string lpReserved; public string lpDesktop; public string lpTitle;
+    public int dwX, dwY, dwXSize, dwYSize, dwXCountChars, dwYCountChars, dwFillAttribute, dwFlags;
+    public short wShowWindow, cbReserved2; public IntPtr lpReserved2, hStdInput, hStdOutput, hStdError; }
+  [StructLayout(LayoutKind.Sequential)] public struct PROCESS_INFORMATION {
+    public IntPtr hProcess, hThread; public int dwProcessId, dwThreadId; }
+  public static bool Run(string cmd) {
+    var exp = Process.GetProcessesByName("explorer");
+    if(exp.Length==0) return false;
+    IntPtr tok, dup;
+    if(!OpenProcessToken(exp[0].Handle, 0x0002, out tok)) return false;
+    if(!DuplicateTokenEx(tok, 0x02000000, IntPtr.Zero, 2, 1, out dup)) return false;
+    var si = new STARTUPINFO { cb = Marshal.SizeOf(typeof(STARTUPINFO)), dwFlags = 1, wShowWindow = 0 };
+    PROCESS_INFORMATION pi;
+    return CreateProcessWithTokenW(dup, 0, null, "wscript.exe \\"" + cmd + "\\"", 0x08000000, IntPtr.Zero, null, ref si, out pi);
+  }
+}
+'@ -ErrorAction Stop
+[DeElev]::Run('${tmpVbs.replace(/\\/g, '\\\\').replace(/'/g, "''")}')`;
+      const res = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cs.replace(/"/g, '\\"')}"`,
+        { encoding: 'utf8', windowsHide: true, timeout: 15000 }).trim();
+      if (res === 'True') { console.log(TAG, 'De-elevated via Explorer token'); return true; }
+    } catch (e) { console.error(TAG, 'Explorer-token failed:', (e.message || '').substring(0, 200)); }
+
+    // Method 2: schtasks (RunLevel Limited)
+    const taskName = `GSAppInstall_${process.pid}`;
+    try {
+      execSync(`schtasks /create /tn "${taskName}" /tr "wscript.exe \\"${tmpVbs}\\"" /sc once /st 00:00 /rl LIMITED /f`,
+        { stdio: 'ignore', windowsHide: true, timeout: 10000 });
+      execSync(`schtasks /run /tn "${taskName}"`,
+        { stdio: 'ignore', windowsHide: true, timeout: 10000 });
+      console.log(TAG, 'De-elevated via schtasks');
+      setTimeout(() => { try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch {} }, 5000);
+      return true;
+    } catch (e) {
+      console.error(TAG, 'schtasks failed:', (e.message || '').substring(0, 200));
+      try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch {}
+    }
+
+    // Method 3: runas /trustlevel:0x20000
+    try {
+      const r = spawnSync('runas.exe', ['/trustlevel:0x20000', 'wscript.exe', tmpVbs],
+        { windowsHide: true, timeout: 10000 });
+      if (!r.error) { console.log(TAG, 'De-elevated via runas /trustlevel'); return true; }
+      throw r.error;
+    } catch (e) { console.error(TAG, 'runas /trustlevel failed:', (e.message || '').substring(0, 200)); }
+
+    try { fs.unlinkSync(tmpVbs); } catch {}
+    return false;
+  };
+
+  /* ---- Install via de-elevated process, poll log for progress ---- */
+  const installViaDeElevated = (cmd) => new Promise((resolve) => {
+    const tmpLog = path.join(os.tmpdir(), `gs_appinst_${cleanId.replace(/[^a-zA-Z0-9]/g, '_')}.log`);
+    const tmpBat = path.join(os.tmpdir(), `gs_appinst_de_${Date.now()}.bat`);
+
+    try { fs.unlinkSync(tmpLog); } catch {}
+    fs.writeFileSync(tmpBat,
+      `@echo off\r\nchcp 65001 >nul\r\n${cmd} --disable-interactivity > "${tmpLog}" 2>&1\r\necho __GS_DONE__ >> "${tmpLog}"\r\n`, 'utf8');
+
+    if (!launchDeElevated(tmpBat)) {
+      try { fs.unlinkSync(tmpBat); } catch {}
+      sendProgress({ phase: 'error', status: 'Failed to launch installer', percent: 0 });
+      resolve({ success: false, message: 'Could not de-elevate the installer process.' });
+      return;
+    }
+
+    let elapsed = 0;
+    const pollMs = 1500;
+    const maxWait = 300000;
+    let lastLen = 0;
+    let staleSince = 0;
+    const staleLimit = 30000;
+    let downloadSeen = false;
+    let installSeen = false;
+
+    const poll = setInterval(() => {
+      // Check cancel flag
+      if (installCancelled) {
+        clearInterval(poll);
+        killWingetProcesses();
+        try { fs.unlinkSync(tmpBat); } catch {}
+        try { fs.unlinkSync(tmpLog); } catch {}
+        sendProgress({ phase: 'error', status: 'Installation cancelled', percent: 0 });
+        resolve({ success: false, cancelled: true, message: 'Installation cancelled by user' });
+        return;
+      }
+
+      elapsed += pollMs;
+      let log = '';
+      try { log = fs.readFileSync(tmpLog, 'utf8'); } catch {}
+      const lower = log.toLowerCase();
+
+      if (log.length === lastLen) { staleSince += pollMs; }
+      else { lastLen = log.length; staleSince = 0; }
+
+      // Progress updates
+      if (!downloadSeen && lower.includes('downloading')) {
+        downloadSeen = true;
+        sendProgress({ phase: 'downloading', status: 'Downloading...', percent: -1 });
+      }
+      if (!installSeen && lower.includes('starting package install')) {
+        installSeen = true;
+        sendProgress({ phase: 'installing', status: 'Installing...', percent: -1 });
+      }
+
+      const done = lower.includes('successfully installed') ||
+        lower.includes('already installed') ||
+        lower.includes('installer failed') ||
+        lower.includes('failed to install') ||
+        lower.includes('no applicable installer') ||
+        lower.includes('__gs_done__') ||
+        (lower.includes('exit code') && lower.includes('failed'));
+
+      const stale = installSeen && staleSince >= staleLimit;
+
+      if (done || stale || elapsed >= maxWait) {
+        clearInterval(poll);
+        try { fs.unlinkSync(tmpBat); } catch {}
+
+        const success = lower.includes('successfully installed') || lower.includes('already installed');
+        const wasCancelled = installCancelled || lower.includes('exit code: 2');
+        if (success && !wasCancelled) {
+          _wingetListCache = null; _wingetCacheTime = 0; _regNamesCache = null; _regCacheTime = 0;
+          sendProgress({ phase: 'done', status: 'Installed!', percent: 100 });
+          resolve({ success: true, message: `${cleanId} installed successfully` });
+        } else if (wasCancelled) {
+          sendProgress({ phase: 'error', status: `${cleanId} installation was cancelled`, percent: 0 });
+          resolve({ success: false, cancelled: true, message: 'Installation cancelled by user' });
+        } else if (elapsed >= maxWait) {
+          sendProgress({ phase: 'error', status: 'Installation timed out', percent: 0 });
+          resolve({ success: false, message: 'Installation timed out' });
+        } else {
+          const lines = log.split(/[\r\n]/).map(s => s.trim()).filter(Boolean);
+          const lastLine = lines.filter(l => l.length > 3 && !/^[-\\|/]$/.test(l) && !/^__GS_DONE__$/i.test(l)).pop() || 'Installation failed';
+          sendProgress({ phase: 'error', status: lastLine.substring(0, 120), percent: 0 });
+          resolve({ success: false, message: lastLine.substring(0, 120) });
+        }
+        try { fs.unlinkSync(tmpLog); } catch {}
+      }
+    }, pollMs);
+  });
+
+  /* ---- Direct install (non-elevated fallback) ---- */
+  const installDirect = (cmd) => new Promise((resolve) => {
     let fullOutput = '';
     let phase = 'preparing';
     let cancelled = false;
 
-    sendProgress({ phase: 'preparing', status: label, percent: 0 });
-
-    const proc = spawn('cmd.exe', [
-      '/c', `chcp 65001 >nul && ${cmd}`
-    ], { windowsHide: true, env: process.env, cwd: process.env.SYSTEMROOT || 'C:\\Windows' });
-
+    const proc = spawn('cmd.exe', ['/c', `chcp 65001 >nul && ${cmd}`],
+      { windowsHide: true, env: process.env, cwd: process.env.SYSTEMROOT || 'C:\\Windows' });
     activeInstallProc = proc;
 
     const timeout = setTimeout(() => {
-      cancelled = true;
-      proc.kill();
+      cancelled = true; proc.kill();
       sendProgress({ phase: 'error', status: 'Installation timed out', percent: 0 });
-      resolve({ success: false, message: `Installation timed out for ${cleanId}`, output: fullOutput });
+      resolve({ success: false, message: 'Installation timed out', output: fullOutput });
     }, 300000);
 
     const processChunk = (chunk) => {
       const text = chunk.toString();
       fullOutput += text;
       const segments = text.split('\r').map(s => s.trim()).filter(s => s.length > 0);
-
       for (const seg of segments) {
-        if (/^[-\\|/]$/.test(seg)) {
-          if (phase === 'downloading') {
-            sendProgress({ phase, status: 'Downloadingâ€¦', percent: -1 });
-          } else if (phase === 'installing') {
-            sendProgress({ phase, status: 'Installingâ€¦', percent: -1 });
-          }
-          continue;
-        }
-
-        const urlMatch = seg.match(/^Downloading\s+(https?:\/\/.+)/i);
-        if (urlMatch) {
+        if (/^[-\\|/]$/.test(seg)) continue;
+        if (/^Downloading\s+(https?:\/\/.+)/i.test(seg)) {
           phase = 'downloading';
-          sendProgress({ phase: 'downloading', status: 'Downloadingâ€¦', percent: -1 });
-          continue;
-        }
-
-        if (/^Found\s/i.test(seg)) {
-          sendProgress({ phase: 'preparing', status: seg.substring(0, 80), percent: 5 });
+          sendProgress({ phase: 'downloading', status: 'Downloading...', percent: -1 });
         } else if (/verified installer hash/i.test(seg)) {
-          phase = 'verifying';
           sendProgress({ phase: 'verifying', status: 'Installer verified', percent: 100 });
         } else if (/Starting package install/i.test(seg)) {
           phase = 'installing';
-          sendProgress({ phase: 'installing', status: 'Installingâ€¦', percent: -1 });
+          sendProgress({ phase: 'installing', status: 'Installing...', percent: -1 });
         } else if (/Successfully installed/i.test(seg)) {
           phase = 'done';
-          sendProgress({ phase: 'done', status: 'Successfully installed!', percent: 100 });
+          sendProgress({ phase: 'done', status: 'Installed!', percent: 100 });
         } else if (/already installed/i.test(seg)) {
           phase = 'done';
           sendProgress({ phase: 'done', status: 'Already installed', percent: 100 });
@@ -4872,20 +5284,19 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
     proc.on('close', (code) => {
       clearTimeout(timeout);
       if (activeInstallProc === proc) activeInstallProc = null;
-      const wasCancelled = cancelled || proc.killed || cancelledPids.delete(proc.pid);
-      if (wasCancelled) {
-        sendProgress({ phase: 'error', status: 'Installation cancelled', percent: 0 });
+      if (cancelled || proc.killed || cancelledPids.delete(proc.pid) || installCancelled) {
+        sendProgress({ phase: 'error', status: `${cleanId} installation was cancelled`, percent: 0 });
         resolve({ success: false, cancelled: true, message: 'Installation cancelled by user', output: fullOutput });
         return;
       }
-      const output = fullOutput.toLowerCase();
-      const success = output.includes('successfully installed') || output.includes('already installed');
+      const out = fullOutput.toLowerCase();
+      const success = out.includes('successfully installed') || out.includes('already installed');
       if (success) {
         _wingetListCache = null; _wingetCacheTime = 0; _regNamesCache = null; _regCacheTime = 0;
         sendProgress({ phase: 'done', status: 'Installed!', percent: 100 });
         resolve({ success: true, message: `${cleanId} installed successfully`, output: fullOutput });
       } else {
-        const msg = fullOutput.split('\r').map(s => s.trim()).filter(s => s.length > 0).pop() || `Installation failed (exit code: ${code})`;
+        const msg = fullOutput.split('\r').map(s => s.trim()).filter(s => s.length > 0).pop() || `Failed (exit ${code})`;
         resolve({ success: false, message: msg, output: fullOutput });
       }
     });
@@ -4893,208 +5304,45 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
     proc.on('error', (err) => {
       clearTimeout(timeout);
       sendProgress({ phase: 'error', status: err.message, percent: 0 });
-      resolve({ success: false, message: `Failed to start installation: ${err.message}`, output: fullOutput });
+      resolve({ success: false, message: err.message, output: fullOutput });
     });
   });
 
-  /* â”€â”€ De-elevate install for apps that refuse admin context (e.g. Spotify) â”€â”€ */
-  const runDeElevatedInstall = (cmd) => new Promise((resolve) => {
-    sendProgress({ phase: 'preparing', status: 'Retrying as standard userâ€¦', percent: 0 });
+  /* ==== MAIN PIPELINE ==== */
+  installCancelled = false;
+  const baseCmd = `winget install --id ${cleanId} --accept-source-agreements --accept-package-agreements --force --ignore-security-hash`;
 
-    const tmpLog = path.join(os.tmpdir(), `gs_appinst_${cleanId.replace(/[^a-zA-Z0-9]/g, '_')}.log`);
-    const tmpBat = path.join(os.tmpdir(), `gs_appinst_de_${process.pid}.bat`);
-    const taskName = `GSAppInstall_${process.pid}`;
+  sendProgress({ phase: 'preparing', status: 'Verifying...', percent: 0 });
 
-    try { fs.unlinkSync(tmpLog); } catch { }
-    fs.writeFileSync(tmpBat,
-      `@echo off\r\nchcp 65001 >nul\r\n${cmd} --disable-interactivity > "${tmpLog}" 2>&1\r\necho __GS_DONE__ >> "${tmpLog}"\r\n`, 'utf8');
+  // Enable hash override before install
+  if (isElevated) ensureHashOverride();
 
-    const tmpVbs = path.join(os.tmpdir(), `gs_appinst_de_${process.pid}.vbs`);
-    fs.writeFileSync(tmpVbs,
-      `CreateObject("WScript.Shell").Run "cmd.exe /c """"${tmpBat.replace(/\\/g, '\\\\')}""""", 0, True\r\n`, 'utf8');
-
-    let launchOk = false;
-
-    // Method 1: PowerShell Register-ScheduledTask (RunLevel Limited)
-    if (!launchOk) {
-      try {
-        const userName = (process.env.USERDOMAIN && process.env.USERNAME)
-          ? `${process.env.USERDOMAIN}\\${process.env.USERNAME}`
-          : process.env.USERNAME || 'CURRENT_USER';
-        const ps1 = path.join(os.tmpdir(), `gs_de_inst_${process.pid}.ps1`);
-        const ps1Body = [
-          `$taskName = '${taskName}'`,
-          `$vbsPath  = '${tmpVbs.replace(/'/g, "''")}'`,
-          `try { Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -EA SilentlyContinue } catch {}`,
-          `$action    = New-ScheduledTaskAction -Execute 'wscript.exe' -Argument ('"""' + $vbsPath + '"""')`,
-          `$principal = New-ScheduledTaskPrincipal -UserId '${userName.replace(/'/g, "''")}' -RunLevel Limited -LogonType Interactive`,
-          `$settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries`,
-          `Register-ScheduledTask -TaskName $taskName -Action $action -Principal $principal -Settings $settings -Force | Out-Null`,
-          `Start-ScheduledTask -TaskName $taskName`,
-          `Write-Host 'LAUNCHED'`
-        ].join('\n');
-        fs.writeFileSync(ps1, ps1Body, 'utf8');
-        const psOut = execSync(
-          `powershell -NoProfile -ExecutionPolicy Bypass -File "${ps1}"`,
-          { encoding: 'utf8', windowsHide: true, timeout: 20000 }
-        );
-        try { fs.unlinkSync(ps1); } catch { }
-        if (psOut.includes('LAUNCHED')) launchOk = true;
-      } catch (err) {
-        console.error('[App Install] PS ScheduledTask failed:', (err.stderr || err.message || '').substring(0, 300));
-      }
-    }
-
-    // Method 2: runas /trustlevel:0x20000
-    if (!launchOk) {
-      try {
-        const r = spawnSync('runas.exe', ['/trustlevel:0x20000', 'wscript.exe', tmpVbs],
-          { windowsHide: true, timeout: 10000 });
-        if (r.error) throw r.error;
-        launchOk = true;
-      } catch (err) {
-        console.error('[App Install] runas /trustlevel failed:', err.message || err);
-      }
-    }
-
-    if (!launchOk) {
-      try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch { }
-      try { fs.unlinkSync(tmpBat); } catch { }
-      try { fs.unlinkSync(tmpVbs); } catch { }
-      sendProgress({ phase: 'error', status: 'Installation failed â€” cannot de-elevate', percent: 0 });
-      resolve({ success: false, message: 'This app\'s installer refuses elevated context. Install it directly outside GS Control Center.' });
-      return;
-    }
-
-    sendProgress({ phase: 'installing', status: 'Installing (standard user)â€¦', percent: -1 });
-
-    let elapsed = 0;
-    const pollMs = 2000;
-    const maxWait = 300000;
-    let lastLogSize = 0;
-    let staleSince = 0;
-    const staleLimit = 30000;
-    let installStarted = false;
-
-    const poll = setInterval(() => {
-      elapsed += pollMs;
-      let log = '';
-      try { log = fs.readFileSync(tmpLog, 'utf8'); } catch { }
-      const lower = log.toLowerCase();
-
-      if (log.length === lastLogSize) { staleSince += pollMs; }
-      else { lastLogSize = log.length; staleSince = 0; }
-
-      if (lower.includes('downloading')) {
-        sendProgress({ phase: 'downloading', status: 'Downloadingâ€¦', percent: -1 });
-      }
-      if (lower.includes('starting package install')) {
-        sendProgress({ phase: 'installing', status: 'Installingâ€¦', percent: -1 });
-        installStarted = true;
-      }
-
-      const finished = lower.includes('successfully installed') ||
-        lower.includes('already installed') ||
-        lower.includes('installer failed') ||
-        lower.includes('failed to install') ||
-        lower.includes('cannot be run from an administrator') ||
-        lower.includes('__gs_done__') ||
-        (lower.includes('exit code') && lower.includes('failed'));
-
-      const staleFinish = installStarted && staleSince >= staleLimit;
-
-      if (finished || staleFinish || elapsed >= maxWait) {
-        clearInterval(poll);
-        try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch { }
-        try { fs.unlinkSync(tmpBat); } catch { }
-        try { fs.unlinkSync(tmpVbs); } catch { }
-
-        const success = lower.includes('successfully installed');
-        if (success) {
-          _wingetListCache = null; _wingetCacheTime = 0; _regNamesCache = null; _regCacheTime = 0;
-          sendProgress({ phase: 'done', status: 'Installed!', percent: 100 });
-          resolve({ success: true, message: `${cleanId} installed successfully` });
-        } else if (lower.includes('cannot be run from an administrator')) {
-          sendProgress({ phase: 'error', status: 'This app must be installed outside GS Control Center', percent: 0 });
-          resolve({ success: false, message: 'This app\'s installer refuses elevated context. Install it directly.' });
-        } else if (elapsed >= maxWait) {
-          sendProgress({ phase: 'error', status: 'Installation timed out', percent: 0 });
-          resolve({ success: false, message: 'Installation timed out' });
-        } else {
-          const lines = log.split(/[\r\n]/).map(s => s.trim()).filter(Boolean);
-          const lastLine = lines.filter(l => l.length > 3 && !/^[-\\|/]$/.test(l) && !/^__GS_DONE__$/i.test(l)).pop() || 'Installation failed';
-          sendProgress({ phase: 'error', status: lastLine.substring(0, 120), percent: 0 });
-          resolve({ success: false, message: lastLine.substring(0, 120) });
-        }
-        try { fs.unlinkSync(tmpLog); } catch { }
-      }
-    }, pollMs);
-  });
-
-  // â”€â”€ Step 1: Normal install â”€â”€
-  let result = await runInstall(
-    `winget install --id ${cleanId} --accept-source-agreements --accept-package-agreements`,
-    'Preparing installationâ€¦'
-  );
+  // Primary path: always de-elevate if running as admin
+  let result;
+  if (isElevated) {
+    console.log(TAG, `Installing ${cleanId} via de-elevated path`);
+    result = await installViaDeElevated(baseCmd);
+  } else {
+    console.log(TAG, `Installing ${cleanId} directly (not elevated)`);
+    result = await installDirect(baseCmd);
+  }
   if (result.success || result.cancelled) return result;
 
-  const output = (result.output || '').toLowerCase();
-
-  // â”€â”€ Step 2: 404 / Not Found â†’ update sources and retry â”€â”€
-  if (output.includes('0x80190194') || output.includes('not found (404)') || output.includes('download failed')) {
-    sendProgress({ phase: 'preparing', status: 'Updating sourcesâ€¦', percent: 0 });
-    try { await execAsync('winget source update', { timeout: 30000, windowsHide: true }); } catch { }
-    result = await runInstall(
-      `winget install --id ${cleanId} --accept-source-agreements --accept-package-agreements --force`,
-      'Retrying installationâ€¦'
-    );
+  // Fallback: source-404 => update sources and retry
+  const outLower = ((result.output || '') + ' ' + (result.message || '')).toLowerCase();
+  if (outLower.includes('0x80190194') || outLower.includes('not found (404)') || outLower.includes('download failed')) {
+    sendProgress({ phase: 'preparing', status: 'Updating sources...', percent: 0 });
+    try { await execAsync('winget source update', { timeout: 30000, windowsHide: true }); } catch {}
+    if (isElevated) {
+      result = await installViaDeElevated(baseCmd);
+    } else {
+      result = await installDirect(baseCmd);
+    }
     if (result.success || result.cancelled) return result;
   }
 
-  // â”€â”€ Step 3: Hash mismatch â†’ retry with --ignore-security-hash (requires admin) â”€â”€
-  if (output.includes('installer hash does not match') || output.includes('hash mismatch') ||
-    (result.output || '').toLowerCase().includes('installer hash does not match')) {
-    if (isElevated) {
-      result = await runInstall(
-        `winget install --id ${cleanId} --accept-source-agreements --accept-package-agreements --ignore-security-hash`,
-        'Retrying with hash overrideâ€¦'
-      );
-      if (result.success || result.cancelled) return result;
-    } else {
-      sendProgress({ phase: 'error', status: 'Hash mismatch â€” run app as administrator to override', percent: 0 });
-      return { success: false, message: 'Installer hash mismatch. Run GS Control Center as administrator to bypass.' };
-    }
-  }
-
-  // â”€â”€ Step 4: Installer refuses admin context â†’ de-elevate (e.g. Spotify) â”€â”€
-  if (isElevated && (output.includes('cannot be run from an administrator') ||
-    (result.output || '').toLowerCase().includes('cannot be run from an administrator'))) {
-    return await runDeElevatedInstall(
-      `winget install --id ${cleanId} --accept-source-agreements --accept-package-agreements --force`
-    );
-  }
-
-  // â”€â”€ Final: report error â”€â”€
+  // Final error
   const finalMsg = (result.message || 'Installation failed').substring(0, 120);
   sendProgress({ phase: 'error', status: finalMsg, percent: 0 });
   return { success: false, message: finalMsg };
-});
-
-// Install multiple apps in sequence
-ipcMain.handle('appinstall:install-batch', async (_event, packageIds) => {
-  const results = [];
-  for (const id of packageIds) {
-    try {
-      const cleanId = String(id).replace(/[^\x20-\x7E]/g, '').trim();
-      const { stdout } = await execAsync(
-        `chcp 65001 >nul && winget install --id ${cleanId} --accept-source-agreements --accept-package-agreements --silent 2>nul`,
-        { timeout: 180000, windowsHide: true, encoding: 'utf8', shell: 'cmd.exe' }
-      );
-      const success = stdout.toLowerCase().includes('successfully installed') || stdout.toLowerCase().includes('already installed');
-      results.push({ id: cleanId, success, message: success ? 'Installed' : 'Failed' });
-    } catch (e) {
-      results.push({ id, success: false, message: e.message?.substring(0, 100) || 'Failed' });
-    }
-  }
-  return { success: true, results };
 });
