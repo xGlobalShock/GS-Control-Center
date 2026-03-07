@@ -19,10 +19,10 @@ function runPSScript(script, timeoutMs = 8000) {
     ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', tmpFile],
     { timeout: timeoutMs, windowsHide: true }
   ).then(r => {
-    try { fs.unlinkSync(tmpFile); } catch {}
+    try { fs.unlinkSync(tmpFile); } catch { }
     return r.stdout.trim();
   }).catch(err => {
-    try { fs.unlinkSync(tmpFile); } catch {}
+    try { fs.unlinkSync(tmpFile); } catch { }
     console.warn('[runPSScript] PS error:', err.message?.substring(0, 150));
     if (err.stdout) return err.stdout.trim();
     return '';
@@ -33,14 +33,14 @@ function runPSScript(script, timeoutMs = 8000) {
 function isPermissionError(error) {
   if (!error || !error.message) return false;
   const msg = error.message.toLowerCase();
-  return msg.includes('access is denied') || 
-         msg.includes('permission denied') || 
-         msg.includes('requires elevation') ||
-         msg.includes('administrator') ||
-         msg.includes('privilege') ||
-         msg.includes('command failed') ||
-         msg.includes('cannot remove item') ||
-         msg.includes('unauthorized');
+  return msg.includes('access is denied') ||
+    msg.includes('permission denied') ||
+    msg.includes('requires elevation') ||
+    msg.includes('administrator') ||
+    msg.includes('privilege') ||
+    msg.includes('command failed') ||
+    msg.includes('cannot remove item') ||
+    msg.includes('unauthorized');
 }
 
 // Forza Horizon 5 Shader Cache Cleaner
@@ -199,14 +199,14 @@ function createWindow() {
 app.on('ready', () => {
   // Enable winget InstallerHashOverride (requires admin; allows --ignore-security-hash for de-elevated updates)
   if (isElevated) {
-    try { execSync('winget settings --enable InstallerHashOverride', { stdio: 'ignore', windowsHide: true, timeout: 10000 }); } catch {}
+    try { execSync('winget settings --enable InstallerHashOverride', { stdio: 'ignore', windowsHide: true, timeout: 10000 }); } catch { }
   }
   // Start LHM first (longest startup time) — runs in parallel with window creation
   startLHMService();
   // Start standalone perf counter service (CPU usage + clock speed, no LHM dependency)
   _startPerfCounterService();
   _startDiskRefresh();
-  // Pre-fetch hardware info (loads from disk cache instantly, refreshes in background)
+  // Pre-fetch hardware info (starts fetch early so IPC handler can return immediately)
   _initHardwareInfo();
   createWindow();
   // Start real-time hardware push after window is created (1000ms interval)
@@ -336,8 +336,8 @@ ipcMain.handle('system:open-system-protection', async () => {
     console.log('[Restore Point] Error opening System Protection:', error.message || error);
     try {
       // Fallback: open System Properties Control Panel
-      exec('control /name Microsoft.System', (e) => {});
-    } catch (e) {}
+      exec('control /name Microsoft.System', (e) => { });
+    } catch (e) { }
     return { success: false, message: 'Could not open System Protection UI' };
   }
 });
@@ -385,14 +385,14 @@ function _loadLhmCache() {
     const c = JSON.parse(raw);
     // Cache valid for 24 hours (values are ballpark-reasonable for initial display)
     if (c && Date.now() - (c._ts || 0) < 86400000) {
-      if (c.cpuTemp > 0 && c.cpuTemp < 150)   { _lhmTemp = c.cpuTemp; _lhmAvailable = true; }
-      if (c.cpuLoad >= 0 && c.cpuLoad <= 100)  _lhmCpuLoad = c.cpuLoad;
-      if (c.gpuTemp > 0 && c.gpuTemp < 150)    _lhmGpuTemp = c.gpuTemp;
+      if (c.cpuTemp > 0 && c.cpuTemp < 150) { _lhmTemp = c.cpuTemp; _lhmAvailable = true; }
+      if (c.cpuLoad >= 0 && c.cpuLoad <= 100) _lhmCpuLoad = c.cpuLoad;
+      if (c.gpuTemp > 0 && c.gpuTemp < 150) _lhmGpuTemp = c.gpuTemp;
       if (c.gpuUsage >= 0 && c.gpuUsage <= 100) _lhmGpuUsage = c.gpuUsage;
-      if (c.gpuVramUsed >= 0)   _lhmGpuVramUsed = c.gpuVramUsed;
-      if (c.gpuVramTotal > 0)   _lhmGpuVramTotal = c.gpuVramTotal;
+      if (c.gpuVramUsed >= 0) _lhmGpuVramUsed = c.gpuVramUsed;
+      if (c.gpuVramTotal > 0) _lhmGpuVramTotal = c.gpuVramTotal;
     }
-  } catch {}
+  } catch { }
 }
 
 function _saveLhmCache() {
@@ -405,7 +405,7 @@ function _saveLhmCache() {
       gpuTemp: _lhmGpuTemp, gpuUsage: _lhmGpuUsage,
       gpuVramUsed: _lhmGpuVramUsed, gpuVramTotal: _lhmGpuVramTotal
     }), 'utf8');
-  } catch {}
+  } catch { }
 }
 
 function _startLhmCacheTimer() {
@@ -679,12 +679,12 @@ function stopLHMService() {
   _saveLhmCache();
   if (_lhmCacheTimer) { clearInterval(_lhmCacheTimer); _lhmCacheTimer = null; }
   if (_lhmProcess) {
-    try { _lhmProcess.kill(); } catch {}
+    try { _lhmProcess.kill(); } catch { }
     _lhmProcess = null;
   }
   // Clean up temp script
   const tmpFile = path.join(os.tmpdir(), `gs_lhm_service_${process.pid}.ps1`);
-  try { fs.unlinkSync(tmpFile); } catch {}
+  try { fs.unlinkSync(tmpFile); } catch { }
 }
 
 // ──────────────────────────────────────────────────────
@@ -847,11 +847,11 @@ function _startPerfCounterService() {
 
 function _stopPerfCounterService() {
   if (_perfCounterProcess) {
-    try { _perfCounterProcess.kill(); } catch {}
+    try { _perfCounterProcess.kill(); } catch { }
     _perfCounterProcess = null;
   }
   const tmpFile = path.join(os.tmpdir(), `gs_perfctr_${process.pid}.ps1`);
-  try { fs.unlinkSync(tmpFile); } catch {}
+  try { fs.unlinkSync(tmpFile); } catch { }
 }
 
 let _lastStats = { cpu: 0, ram: 0, disk: 0, temperature: 0 };
@@ -871,7 +871,7 @@ function _startDiskRefresh() {
     `, 4000).then(raw => {
       const v = parseFloat(raw);
       if (!isNaN(v) && v >= 0 && v <= 100) _cachedDiskPct = Math.round(v * 10) / 10;
-    }).catch(() => {});
+    }).catch(() => { });
   };
   refresh(); // initial
   _diskRefreshTimer = setInterval(refresh, 10000);
@@ -922,8 +922,30 @@ let _rtLastLatency = 0;
 let _rtLastPacketLoss = -1;
 let _rtLastSsid = '';
 let _rtLastWifiSignal = -1;
+let _rtLastAdapterName = '';
+let _rtLastAdapterLinkSpeed = '';
+let _rtLastLocalIP = '';
+let _rtLastMac = '';
+let _rtLastGateway = '';
 let _rtPrimed = false;
 let _rtLastTempSource = '';  // tracks temp source changes for diagnostics
+
+// Node.js process count fallback — used when LHM perf counter isn't available
+let _nodeProcessCount = 0;
+(async function _pollProcessCount() {
+  const update = async () => {
+    try {
+      const { stdout } = await execAsync(
+        'powershell -NoProfile -Command "(Get-Process).Count"',
+        { timeout: 4000, windowsHide: true }
+      );
+      const n = parseInt(stdout.trim(), 10);
+      if (n > 0) _nodeProcessCount = n;
+    } catch { /* keep last value */ }
+  };
+  await update();
+  setInterval(update, 5000);
+})();
 
 // nvidia-smi GPU fallback — provides GPU metrics when LHM hasn't detected the GPU yet
 let _nvGpuUsage = -1;
@@ -946,12 +968,12 @@ function _startLatencyPoll() {
       const { stdout } = await execAsync('ping -n 5 -w 2000 8.8.8.8', { shell: true, timeout: 20000 });
       // Parse average latency: "Average = Xms"
       const avgMatch = stdout.match(/Average\s*=\s*(\d+)\s*ms/i)
-                    || stdout.match(/Media\s*=\s*(\d+)\s*ms/i);
+        || stdout.match(/Media\s*=\s*(\d+)\s*ms/i);
       _rtLastLatency = avgMatch ? parseInt(avgMatch[1], 10) : 0;
       // Parse packet loss: "Lost = X (Y% loss)"
       const lossMatch = stdout.match(/Lost\s*=\s*\d+\s*\((\d+)%/i)
-                      || stdout.match(/Perdidos\s*=\s*\d+\s*\((\d+)%/i)
-                      || stdout.match(/=\s*\d+.*=\s*\d+.*=\s*\d+\s*\((\d+)%/);
+        || stdout.match(/Perdidos\s*=\s*\d+\s*\((\d+)%/i)
+        || stdout.match(/=\s*\d+.*=\s*\d+.*=\s*\d+\s*\((\d+)%/);
       _rtLastPacketLoss = lossMatch ? parseInt(lossMatch[1], 10) : 0;
     } catch {
       _rtLastLatency = 0;
@@ -962,28 +984,48 @@ function _startLatencyPoll() {
   _realtimeLatencyTimer = setInterval(doPing, 10000);
 }
 
-// Wi-Fi info — separate timer (every 10s)
+// Active adapter + Wi-Fi info — separate timer (every 5s)
 function _startWifiPoll() {
-  const fetchWifi = async () => {
+  const fetchAdapter = async () => {
     try {
-      // Only report WiFi data if WiFi is the default-route interface
+      // Find the active default-route adapter
       const defaultIface = await si.networkInterfaceDefault();
       const ifaces = await si.networkInterfaces();
       const ifaceArr = Array.isArray(ifaces) ? ifaces : [ifaces];
       const defaultNet = ifaceArr.find(i => i.iface === defaultIface);
-      const isWifiDefault = defaultNet &&
-        (defaultNet.type === 'wireless' || /wi-?fi|wireless|wlan/i.test(defaultNet.iface));
 
-      if (isWifiDefault) {
-        const conns = await si.wifiConnections();
-        if (conns && conns.length > 0) {
-          _rtLastSsid = conns[0].ssid || '';
-          _rtLastWifiSignal = conns[0].quality ?? -1;
+      if (defaultNet) {
+        _rtLastAdapterName = defaultNet.iface || '';
+        _rtLastAdapterLinkSpeed = defaultNet.speed ? `${defaultNet.speed} Mbps` : '';
+        _rtLastLocalIP = defaultNet.ip4 || '';
+        _rtLastMac = defaultNet.mac || '';
+        // Gateway from default route
+        try {
+          const gw = await si.networkGatewayDefault();
+          _rtLastGateway = gw || '';
+        } catch { _rtLastGateway = ''; }
+
+        const isWifiDefault = defaultNet.type === 'wireless' || /wi-?fi|wireless|wlan/i.test(defaultNet.iface);
+
+        if (isWifiDefault) {
+          const conns = await si.wifiConnections();
+          if (conns && conns.length > 0) {
+            _rtLastSsid = conns[0].ssid || '';
+            _rtLastWifiSignal = conns[0].quality ?? -1;
+          } else {
+            _rtLastSsid = '';
+            _rtLastWifiSignal = -1;
+          }
         } else {
           _rtLastSsid = '';
           _rtLastWifiSignal = -1;
         }
       } else {
+        _rtLastAdapterName = '';
+        _rtLastAdapterLinkSpeed = '';
+        _rtLastLocalIP = '';
+        _rtLastMac = '';
+        _rtLastGateway = '';
         _rtLastSsid = '';
         _rtLastWifiSignal = -1;
       }
@@ -992,8 +1034,8 @@ function _startWifiPoll() {
       _rtLastWifiSignal = -1;
     }
   };
-  fetchWifi();
-  _realtimeWifiTimer = setInterval(fetchWifi, 10000);
+  fetchAdapter();
+  _realtimeWifiTimer = setInterval(fetchAdapter, 5000);
 }
 
 // nvidia-smi GPU poll — runs every 3s, skips if LHM is already providing GPU data
@@ -1007,7 +1049,7 @@ function _startNvGpuPoll() {
     try {
       const { stdout } = await execFileAsync('nvidia-smi',
         ['--query-gpu=utilization.gpu,temperature.gpu,memory.used,memory.total',
-         '--format=csv,noheader,nounits'],
+          '--format=csv,noheader,nounits'],
         { timeout: 3000, windowsHide: true });
       const parts = (stdout || '').trim().split(',').map(s => parseFloat(s.trim()));
       if (parts.length >= 4) {
@@ -1146,7 +1188,12 @@ function _startRealtimePush() {
         packetLoss: _rtLastPacketLoss,
         ssid: _rtLastSsid,
         wifiSignal: _rtLastWifiSignal,
-        processCount: _lhmProcessCount,
+        activeAdapterName: _rtLastAdapterName,
+        activeLinkSpeed: _rtLastAdapterLinkSpeed,
+        activeLocalIP: _rtLastLocalIP,
+        activeMac: _rtLastMac,
+        activeGateway: _rtLastGateway,
+        processCount: _lhmProcessCount > 0 ? _lhmProcessCount : _nodeProcessCount,
         systemUptime: _formatUptimeSeconds(os.uptime()),
 
         _ts: Date.now(),
@@ -1193,8 +1240,8 @@ ipcMain.handle('system:stop-realtime', () => {
 });
 
 // ──────────────────────────────────────────────────────
-// Hardware Info — always fetched fresh (no disk caching).
-// 3 parallel PS scripts + nvidia-smi (~5-8s on first call).
+// Hardware Info — always fetched fresh.
+// 1 consolidated PS script + nvidia-smi (~2-4s).
 // ──────────────────────────────────────────────────────
 let _hwInfoResult = null;    // resolved HardwareInfo object
 let _hwInfoPromise = null;   // pending fetch promise (so IPC handler can await)
@@ -1203,6 +1250,10 @@ let _hwInfoPromise = null;   // pending fetch promise (so IPC handler can await)
 function _initHardwareInfo() {
   _hwInfoPromise = _fetchHardwareInfoImpl().then(info => {
     _hwInfoResult = info;
+    // Phase 2: fire-and-forget slow queries in background
+    _fetchSlowHardwareInfo(info).catch(err => {
+      console.error('[HW Info] slow fetch failed:', err.message);
+    });
     return info;
   }).catch(err => {
     console.error('[HW Info] fetch failed:', err.message);
@@ -1259,29 +1310,27 @@ async function _fetchHardwareInfoImpl() {
     batteryStatus: '',
   };
 
-  // ── Consolidated into 3 parallel scripts + nvidia-smi (was 16+ separate processes) ──
-  // Group A: Hardware specs (CPU, GPU, RAM, Disk, Drives) — sections 0-4
-  // Group B: System info (Network, Windows, Uptime, Power, Battery, RAM GB, Disk free) — sections 5-11
-  // Group C: Board info (Motherboard, Serial fallback, Physical disks, BIOS) — sections 12-15
-  // Each group outputs sections separated by §§, fields within section by |||
+  // ── Single consolidated PS script + nvidia-smi + license/update checks (all in parallel) ──
+  // Sections 0-14 run in one PS process; license & update run as separate fast processes alongside.
+  // Sections separated by @@, fields within section by |||
   // Multi-line sections (drives, physical disks) use ~~ as line separator
-  const [hwA, hwB, hwC, nvDriverR] = await Promise.allSettled([
+  const [hwAll, nvDriverR, lastUpdateR, licenseR] = await Promise.allSettled([
 
-    // ── Group A: CPU, GPU, RAM, Disk, All drives ──
+    // ── All hardware info in one PS script ──
     runPSScript(`
+# ── Section 0: CPU ──
 $s0 = 'Unknown CPU|||0|||0|||0'
 try {
   $cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
   $s0 = "$($cpu.Name)|||$($cpu.NumberOfCores)|||$($cpu.NumberOfLogicalProcessors)|||$($cpu.MaxClockSpeed)"
 } catch {}
 
+# ── Section 1: GPU ──
 $s1 = 'Unknown GPU|||0|||N/A'
 try {
   $gpu = Get-CimInstance Win32_VideoController | Where-Object { $_.Status -eq 'OK' -and $_.Name -notmatch '(Virtual|Dummy|Parsec|Remote|Generic)' } | Select-Object -First 1
   if (-not $gpu) { $gpu = Get-CimInstance Win32_VideoController | Where-Object { $_.Status -eq 'OK' } | Select-Object -First 1 }
   if ($gpu) {
-    # AdapterRAM overflows to 0 for GPUs with >4GB VRAM (32-bit WMI limit).
-    # Fallback: query qwMemorySize from registry (reliable for AMD/NVIDIA).
     $vramGB = 0
     if ($gpu.AdapterRAM -and $gpu.AdapterRAM -gt 0) {
       $vramGB = [math]::Round($gpu.AdapterRAM / 1GB, 1)
@@ -1298,7 +1347,6 @@ try {
           } catch {}
         }
       } catch {}
-      # Final fallback: try AdapterCompatibility-based registry lookup
       if ($vramGB -eq 0) {
         try {
           $regPaths2 = Get-ChildItem 'HKLM:\SYSTEM\ControlSet001\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}' -ErrorAction SilentlyContinue
@@ -1316,6 +1364,7 @@ try {
   }
 } catch {}
 
+# ── Section 2: RAM ──
 $s2 = '0||||||||||'
 try {
   $mem = Get-CimInstance Win32_PhysicalMemory
@@ -1324,6 +1373,7 @@ try {
   $s2 = "$totalGB|||$($first.Speed)|||$($first.ConfiguredClockSpeed)|||$($mem.Count) stick(s)|||$($first.Manufacturer)|||$($first.PartNumber)"
 } catch {}
 
+# ── Section 3: Disk ──
 $s3 = '|||||||'
 try {
   $d = Get-PhysicalDisk | Select-Object -First 1
@@ -1335,6 +1385,7 @@ try {
   }
 } catch {}
 
+# ── Section 4: All drives ──
 $s4 = ''
 try {
   $drvs = Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | ForEach-Object {
@@ -1343,11 +1394,7 @@ try {
   $s4 = ($drvs -join '~~')
 } catch {}
 
-Write-Output ($s0 + '@@' + $s1 + '@@' + $s2 + '@@' + $s3 + '@@' + $s4)
-    `, 15000),
-
-    // ── Group B: Network, Windows, Uptime, Power, Battery, RAM GB, Disk free ──
-    runPSScript(`
+# ── Section 5: Network ──
 $s5 = '||||||||||||||'
 try {
   $a = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Select-Object -First 1
@@ -1356,14 +1403,12 @@ try {
   $mac = $a.MacAddress
   $gw = (Get-NetIPConfiguration -InterfaceIndex $a.ifIndex -ErrorAction SilentlyContinue).Ipv4DefaultGateway.NextHop
   $dns = (Get-DnsClientServerAddress -InterfaceIndex $a.ifIndex -ErrorAction SilentlyContinue -AddressFamily IPv4 | Select-Object -First 1).ServerAddresses -join ','
-  # Collect all active adapters with name, type (WiFi/Ethernet), and link speed
   $allAdapters = ''
   try {
     $adapters = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' }
     $parts = @()
     foreach ($ad in $adapters) {
       $adType = if ($ad.MediaType -match '802\.11|Wireless|Wi-?Fi') { 'WiFi' } elseif ($ad.MediaType -match '802\.3|Ethernet') { 'Ethernet' } else { 'Other' }
-      # Fallback: check adapter name if MediaType is ambiguous
       if ($adType -eq 'Other') {
         if ($ad.Name -match 'Wi-?Fi|Wireless|WLAN') { $adType = 'WiFi' }
         elseif ($ad.Name -match 'Ethernet|LAN') { $adType = 'Ethernet' }
@@ -1375,6 +1420,7 @@ try {
   $s5 = "$($a.Name) ($($a.InterfaceDescription))|||$ipv4|||$($a.LinkSpeed)|||$mac|||$ipv6|||$gw|||$dns|||$allAdapters"
 } catch {}
 
+# ── Section 6: Windows ──
 $s6 = 'Windows|||'
 try {
   $r = Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion' -ErrorAction SilentlyContinue
@@ -1386,6 +1432,7 @@ try {
   $s6 = "$prod|||$disp (Build $build)"
 } catch {}
 
+# ── Sections 7-11: Uptime, Power, Battery, RAM GB, Disk free ──
 $osObj = $null
 try { $osObj = Get-CimInstance Win32_OperatingSystem } catch {}
 
@@ -1417,11 +1464,7 @@ if ($osObj) {
 $s11 = '0'
 try { $dc = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"; $s11 = [math]::Round($dc.FreeSpace/1GB,1) } catch {}
 
-Write-Output ($s5 + '@@' + $s6 + '@@' + $s7 + '@@' + $s8 + '@@' + $s9 + '@@' + $s10 + '@@' + $s11)
-    `, 15000),
-
-    // ── Group C: Motherboard, Serial fallback, Physical disks, BIOS ──
-    runPSScript(`
+# ── Section 12: Motherboard ──
 $s12 = '|||'
 try {
   $bb = Get-CimInstance Win32_BaseBoard -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -1431,70 +1474,72 @@ try {
   }
 } catch {}
 
-# Collect ALL possible serial sources (pipe-separated) — JS picks the first valid one.
-# Previously only tried SystemEnclosure, and if it returned a placeholder the fallback never ran.
-$serials = @()
-try { $v = (Get-CimInstance Win32_SystemEnclosure -ErrorAction SilentlyContinue | Select-Object -First 1).SerialNumber; if ($v) { $serials += $v } } catch {}
-try { $v = (Get-CimInstance Win32_ComputerSystemProduct -ErrorAction SilentlyContinue).IdentifyingNumber; if ($v) { $serials += $v } } catch {}
-try { $v = (Get-CimInstance Win32_BIOS -ErrorAction SilentlyContinue | Select-Object -First 1).SerialNumber; if ($v) { $serials += $v } } catch {}
-$s13 = $serials -join '|||'
-
-$s14 = ''
+# ── Section 13: Physical disks ──
+$s13 = ''
 try {
   $pds = Get-CimInstance Win32_DiskDrive | ForEach-Object {
     $m = ($_.Model -replace '\\n',' '); $sn = ($_.SerialNumber -replace '\\s',''); $fw = ($_.FirmwareRevision -replace '\\s',''); $size = [math]::Round($_.Size/1GB)
     "$m|||$sn|||$fw|||$size"
   }
-  $s14 = ($pds -join '~~')
+  $s13 = ($pds -join '~~')
 } catch {}
 
-$s15 = '|||'
+# ── Section 14: BIOS ──
+$s14 = '|||'
 try {
   $bio = Get-CimInstance Win32_BIOS -ErrorAction SilentlyContinue | Select-Object -First 1
   if ($bio) {
     $ver = $bio.SMBIOSBIOSVersion; if (-not $ver) { $ver = $bio.Version } if (-not $ver) { $ver = $bio.BIOSVersion -join ',' }
     $date = ''; try { $date = ([Management.ManagementDateTimeConverter]::ToDateTime($bio.ReleaseDate).ToString('yyyy-MM-dd')) } catch {}
-    $s15 = "$ver|||$date"
+    $s14 = "$ver|||$date"
   }
 } catch {}
 
-$s16 = '|||'
-try {
-  # Last Windows Update
-  $lastUpd = 'Unknown'
-  try {
-    $hf = Get-HotFix -ErrorAction SilentlyContinue | Where-Object { $_.InstalledOn } | Sort-Object InstalledOn -Descending | Select-Object -First 1
-    if ($hf) { $lastUpd = $hf.InstalledOn.ToString('yyyy-MM-dd') }
-  } catch {}
-  # Windows Activation
-  $act = 'Unknown'
-  try { $lic = Get-CimInstance SoftwareLicensingProduct -Filter "ApplicationID='55c92734-d682-4d71-983e-d6ec3f16059f' AND LicenseStatus=1" -ErrorAction SilentlyContinue | Select-Object -First 1; if ($lic) { $act = 'Licensed' } else { $act = 'Not Activated' } } catch { $act = 'Unknown' }
-  $s16 = "$lastUpd|||$act"
-} catch {}
-
-Write-Output ($s12 + '@@' + $s13 + '@@' + $s14 + '@@' + $s15 + '@@' + $s16)
+Write-Output ($s0 + '@@' + $s1 + '@@' + $s2 + '@@' + $s3 + '@@' + $s4 + '@@' + $s5 + '@@' + $s6 + '@@' + $s7 + '@@' + $s8 + '@@' + $s9 + '@@' + $s10 + '@@' + $s11 + '@@' + $s12 + '@@' + $s13 + '@@' + $s14)
     `, 15000),
 
     // ── nvidia-smi for GPU driver version + accurate VRAM total (separate binary, runs in parallel) ──
     execFileAsync('nvidia-smi', ['--query-gpu=driver_version,memory.total', '--format=csv,noheader,nounits'], { timeout: 3000, windowsHide: true })
       .then(r => (r.stdout || '').trim().split('\n')[0].trim()).catch(() => ''),
+
+    // ── Last Windows Update (separate PS — ~1s, runs in parallel with main script) ──
+    runPSScript(`
+try {
+  $hf = Get-HotFix -EA SilentlyContinue | Where-Object { $_.InstalledOn } | Sort-Object InstalledOn -Descending | Select-Object -First 1
+  if ($hf) { Write-Output $hf.InstalledOn.ToString('yyyy-MM-dd') } else { Write-Output 'Unknown' }
+} catch { Write-Output 'Unknown' }
+    `, 10000),
+
+    // ── Windows License (slmgr.vbs — ~0.6s native, runs in parallel with main script) ──
+    execAsync('cscript //nologo C:\\Windows\\System32\\slmgr.vbs /dli', { timeout: 8000, windowsHide: true })
+      .then(({ stdout }) => (stdout || '').trim()).catch(() => ''),
   ]);
 
-  // ── Parse: split each group by @@ into sections ──
+  // ── Parse: split the single output by @@ into sections 0-14 ──
   const valOf = (r) => r.status === 'fulfilled' ? (r.value || '') : '';
-  const sectionsA = valOf(hwA).split('@@');   // sections 0-4
-  const sectionsB = valOf(hwB).split('@@');   // sections 5-11 (mapped as 0-6)
-  const sectionsC = valOf(hwC).split('@@');   // sections 12-16 (mapped as 0-4)
+  const allSections = valOf(hwAll).split('@@');
   // Parse nvidia-smi result: "driver_version, memory_total_mib" e.g. "546.33, 8192"
   const nvRaw = valOf(nvDriverR);
   const nvParts = nvRaw.split(',').map(s => s.trim());
   const nvDriverVal = nvParts[0] || '';
   const nvVramMiB = nvParts.length >= 2 ? parseInt(nvParts[1]) : 0;
-  const get = (i) => {
-    if (i <= 4) return (sectionsA[i] || '').trim();
-    if (i <= 11) return (sectionsB[i - 5] || '').trim();
-    return (sectionsC[i - 12] || '').trim();
-  };
+  const get = (i) => (allSections[i] || '').trim();
+
+  // Parse last Windows Update (ran in parallel)
+  const lastUpdRaw = valOf(lastUpdateR).trim();
+  if (lastUpdRaw && lastUpdRaw !== 'Unknown') info.lastWindowsUpdate = lastUpdRaw;
+
+  // Parse Windows License from slmgr output (ran in parallel)
+  const slmgrOut = valOf(licenseR).toLowerCase();
+  if (slmgrOut) {
+    if (slmgrOut.includes('licensed') || slmgrOut.includes('license status: licensed')) {
+      info.windowsActivation = 'Licensed';
+    } else if (slmgrOut.includes('notification') || slmgrOut.includes('grace')) {
+      info.windowsActivation = 'Not Activated';
+    } else if (slmgrOut.includes('initial grace') || slmgrOut.includes('oob grace')) {
+      info.windowsActivation = 'Trial';
+    }
+  }
 
   // 0: CPU
   try {
@@ -1537,18 +1582,18 @@ Write-Output ($s12 + '@@' + $s13 + '@@' + $s14 + '@@' + $s15 + '@@' + $s16)
       const gskillSeries = {
         'GTZRX': 'G.Skill Trident Z Royal',
         'GTZRS': 'G.Skill Trident Z Royal Silver',
-        'GTZR':  'G.Skill Trident Z RGB',
-        'GTZ':   'G.Skill Trident Z',
-        'GTZN':  'G.Skill Trident Z Neo',
+        'GTZR': 'G.Skill Trident Z RGB',
+        'GTZ': 'G.Skill Trident Z',
+        'GTZN': 'G.Skill Trident Z Neo',
         'GTZNR': 'G.Skill Trident Z Neo',
-        'GFX':   'G.Skill Trident Z5 RGB',
-        'GX':    'G.Skill Trident Z5',
-        'GVK':   'G.Skill Ripjaws V',
-        'GRK':   'G.Skill Ripjaws V',
-        'GBKD':  'G.Skill Ripjaws 4',
-        'GNT':   'G.Skill Aegis',
-        'GIS':   'G.Skill ARES',
-        'GQSB':  'G.Skill Sniper X',
+        'GFX': 'G.Skill Trident Z5 RGB',
+        'GX': 'G.Skill Trident Z5',
+        'GVK': 'G.Skill Ripjaws V',
+        'GRK': 'G.Skill Ripjaws V',
+        'GBKD': 'G.Skill Ripjaws 4',
+        'GNT': 'G.Skill Aegis',
+        'GIS': 'G.Skill ARES',
+        'GQSB': 'G.Skill Sniper X',
       };
       // Try longest match first
       for (const [code, name] of Object.entries(gskillSeries)) {
@@ -1595,10 +1640,10 @@ Write-Output ($s12 + '@@' + $s13 + '@@' + $s14 + '@@' + $s15 + '@@' + $s16)
     // ── JEDEC hex manufacturer code fallback ──
     const jedecMap = {
       '04f1': 'G.Skill', '04cd': 'Kingston', '9e': 'Kingston',
-      'ce': 'Samsung',   '00ce': 'Samsung',   '80ce': 'Samsung',
-      'ad': 'SK Hynix',  '00ad': 'SK Hynix',  '80ad': 'SK Hynix',
-      '2c': 'Micron',    '002c': 'Micron',    '802c': 'Micron',
-      '859b': 'Corsair', '0cf8': 'Crucial',   '0b': 'Nanya', '0783': 'Transcend',
+      'ce': 'Samsung', '00ce': 'Samsung', '80ce': 'Samsung',
+      'ad': 'SK Hynix', '00ad': 'SK Hynix', '80ad': 'SK Hynix',
+      '2c': 'Micron', '002c': 'Micron', '802c': 'Micron',
+      '859b': 'Corsair', '0cf8': 'Crucial', '0b': 'Nanya', '0783': 'Transcend',
     };
     const mfrKey = mfrLow.replace(/^0x/, '');
     if (jedecMap[mfrKey]) return jedecMap[mfrKey];
@@ -1646,7 +1691,7 @@ Write-Output ($s12 + '@@' + $s13 + '@@' + $s14 + '@@' + $s15 + '@@' + $s16)
         return { letter: letter || '', totalGB: parseFloat(totalGB) || 0, freeGB: parseFloat(freeGB) || 0, label: label || '' };
       });
     }
-  } catch {}
+  } catch { }
 
   // 5: Network
   try {
@@ -1665,18 +1710,18 @@ Write-Output ($s12 + '@@' + $s13 + '@@' + $s14 + '@@' + $s15 + '@@' + $s16)
         return { name: name || '', type: type || 'Other', linkSpeed: linkSpeed || '' };
       });
     }
-  } catch {}
+  } catch { }
 
   // 6: Windows — with additional validation for Win11 vs Win10
   try {
     let parts = get(6).split('|||').map((s) => s.trim());
     let prod = parts[0] || '';
     let build = parts[1] || '';
-    
+
     // Extract build number for verification
     const buildMatch = build.match(/Build (\d+)/);
     const buildNum = buildMatch ? parseInt(buildMatch[1]) : 0;
-    
+
     // If build >= 22000, it's Windows 11; if < 22000, it's Windows 10
     // Correct any mislabeling
     if (buildNum >= 22000 && !prod.includes('11')) {
@@ -1684,7 +1729,7 @@ Write-Output ($s12 + '@@' + $s13 + '@@' + $s14 + '@@' + $s15 + '@@' + $s16)
     } else if (buildNum > 0 && buildNum < 22000 && prod.includes('11')) {
       prod = prod.replace(/Windows 11/i, 'Windows 10');
     }
-    
+
     info.windowsVersion = prod || 'Unknown';
     info.windowsBuild = build || 'Unknown';
   } catch {
@@ -1693,10 +1738,10 @@ Write-Output ($s12 + '@@' + $s13 + '@@' + $s14 + '@@' + $s15 + '@@' + $s16)
   }
 
   // 7: Uptime
-  try { info.systemUptime = get(7) || ''; } catch {}
+  try { info.systemUptime = get(7) || ''; } catch { }
 
   // 8: Power plan
-  try { info.powerPlan = get(8) || ''; } catch {}
+  try { info.powerPlan = get(8) || ''; } catch { }
 
   // Fallback: some systems may not expose Win32_PowerPlan; try powercfg as a reliable fallback
   if (!info.powerPlan) {
@@ -1726,17 +1771,17 @@ Write-Output ($s12 + '@@' + $s13 + '@@' + $s14 + '@@' + $s15 + '@@' + $s16)
       info.batteryPercent = parseInt(parts[1]) || 0;
       info.batteryStatus = parts[2] || '';
     }
-  } catch {}
+  } catch { }
 
   // 10: RAM GB usage
   try {
     const parts = get(10).split('|||').map((s) => s.trim());
     info.ramUsedGB = parseFloat(parts[0]) || 0;
     info.ramTotalGB = parseFloat(parts[1]) || info.ramTotalGB;
-  } catch {}
+  } catch { }
 
   // 11: Disk free
-  try { info.diskFreeGB = parseFloat(get(11)) || 0; } catch {}
+  try { info.diskFreeGB = parseFloat(get(11)) || 0; } catch { }
 
   // 12: Motherboard
   try {
@@ -1746,50 +1791,35 @@ Write-Output ($s12 + '@@' + $s13 + '@@' + $s14 + '@@' + $s15 + '@@' + $s16)
 
     // Sanitize the motherboard serial: many OEMs return placeholders like "Default string" or "To be filled by OEM"
     let rawSerial = (parts[2] || '').trim();
-    const invalidSerials = ['default string','to be filled by o.e.m.','to be filled by oem','system serial number','not specified','none','unknown','baseboard serial number'];
+    const invalidSerials = ['default string', 'to be filled by o.e.m.', 'to be filled by oem', 'system serial number', 'not specified', 'none', 'unknown', 'baseboard serial number'];
     const serialLower = rawSerial.toLowerCase();
     const isBad = !rawSerial || invalidSerials.includes(serialLower) || /^0+$/.test(rawSerial) || rawSerial.length < 3;
 
-    if (!isBad) {
-      info.motherboardSerial = rawSerial;
-    } else {
-      // 13: Fallback serials from SystemEnclosure, ComputerSystemProduct, BIOS (pipe-separated)
-      // Pick the first one that passes validation
-      const candidates = (get(13) || '').split('|||').map(s => s.trim());
-      const validFb = candidates.find(s => s && s.length >= 3 && !/^0+$/.test(s) && !invalidSerials.includes(s.toLowerCase()));
-      info.motherboardSerial = validFb || '';
-    }
-  } catch {}
+    info.motherboardSerial = isBad ? '' : rawSerial;
+  } catch { }
 
-  // 14: Physical disks
+  // 13: Physical disks
   try {
-    const pdRaw = get(14);
+    const pdRaw = get(13);
     if (pdRaw) {
       info.physicalDisks = pdRaw.split('~~').filter(l => l.trim()).map((line) => {
         const parts = line.split('|||').map(s => s.trim());
         return { model: parts[0] || '', serial: parts[1] || '', firmware: parts[2] || '', sizeGB: parseInt(parts[3]) || 0 };
       });
     }
-  } catch {}
+  } catch { }
 
-  // 15: BIOS
+  // 14: BIOS
   try {
-    const bioRaw = get(15);
+    const bioRaw = get(14);
     if (bioRaw) {
       const parts = bioRaw.split('|||').map(s => s.trim());
       info.biosVersion = parts[0] || '';
       info.biosDate = parts[1] || '';
     }
-  } catch {}
+  } catch { }
 
-  // 16: Last Windows Update, Windows Activation
-  try {
-    const parts = get(16).split('|||').map(s => s.trim());
-    info.lastWindowsUpdate = parts[0] || 'Unknown';
-    info.windowsActivation = parts[1] || 'Unknown';
-  } catch {}
-
-  // ── Fallbacks: fill missing system details using Node.js APIs and wmic ──
+  // ── Lightweight fallbacks (Node.js only, no shell) ──
 
   // Uptime: always available via os.uptime()
   if (!info.systemUptime) {
@@ -1799,83 +1829,147 @@ Write-Output ($s12 + '@@' + $s13 + '@@' + $s14 + '@@' + $s15 + '@@' + $s16)
       const hours = Math.floor((uptimeSec % 86400) / 3600);
       const minutes = Math.floor((uptimeSec % 3600) / 60);
       info.systemUptime = `${days}d ${hours}h ${minutes}m`;
-    } catch {}
-  }
-
-  // Motherboard: fallback via wmic if CIM failed
-  if (!info.motherboardProduct && !info.motherboardManufacturer) {
-    try {
-      const { stdout } = await execAsync('wmic baseboard get Manufacturer,Product /format:csv', { timeout: 8000, windowsHide: true });
-      const lines = stdout.trim().split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('Node,') && !l.startsWith('Node'));
-      if (lines.length > 0) {
-        const parts = lines[lines.length - 1].split(',');
-        if (parts.length >= 3) {
-          info.motherboardManufacturer = parts[1]?.trim() || '';
-          info.motherboardProduct = parts[2]?.trim() || '';
-        }
-      }
-    } catch (e) { }
-  }
-
-  // BIOS: fallback via wmic if CIM failed
-  if (!info.biosVersion) {
-    try {
-      const { stdout } = await execAsync('wmic bios get SMBIOSBIOSVersion,ReleaseDate /format:csv', { timeout: 8000, windowsHide: true });
-      const lines = stdout.trim().split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('Node,') && !l.startsWith('Node'));
-      if (lines.length > 0) {
-        const parts = lines[lines.length - 1].split(',');
-        if (parts.length >= 3) {
-          // CSV order: Node, ReleaseDate, SMBIOSBIOSVersion
-          const relDate = (parts[1] || '').trim();
-          info.biosVersion = (parts[2] || '').trim();
-          if (relDate && !info.biosDate) {
-            // Convert WMI date format (20231015000000.000000+000) to readable
-            const m = relDate.match(/^(\d{4})(\d{2})(\d{2})/);
-            info.biosDate = m ? `${m[1]}-${m[2]}-${m[3]}` : relDate;
-          }
-        }
-      }
-    } catch (e) { }
-  }
-
-  // Windows Activation: fallback via slmgr if CIM failed
-  if (!info.windowsActivation || info.windowsActivation === 'Unknown' || info.windowsActivation === '') {
-    try {
-      const { stdout } = await execAsync('cscript //nologo C:\\Windows\\System32\\slmgr.vbs /dli', { timeout: 12000, windowsHide: true });
-      const out = stdout.toLowerCase();
-      if (out.includes('licensed') || out.includes('license status: licensed')) {
-        info.windowsActivation = 'Licensed';
-      } else if (out.includes('notification') || out.includes('grace')) {
-        info.windowsActivation = 'Not Activated';
-      } else if (out.includes('initial grace') || out.includes('oob grace')) {
-        info.windowsActivation = 'Trial';
-      } else {
-        info.windowsActivation = 'Unknown';
-      }
-    } catch (e) { }
-  }
-
-  // Windows version: fallback via registry if CIM failed
-  if (!info.windowsVersion || info.windowsVersion === 'Unknown') {
-    try {
-      const { stdout } = await execAsync('reg query "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion" /v ProductName', { timeout: 5000, windowsHide: true });
-      const m = stdout.match(/ProductName\s+REG_SZ\s+(.+)/i);
-      if (m && m[1]) info.windowsVersion = m[1].trim();
-    } catch {}
-  }
-
-  if (!info.windowsBuild || info.windowsBuild === 'Unknown') {
-    try {
-      const { stdout } = await execAsync('reg query "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion" /v CurrentBuildNumber', { timeout: 5000, windowsHide: true });
-      const m = stdout.match(/CurrentBuildNumber\s+REG_SZ\s+(.+)/i);
-      if (m && m[1]) {
-        const dispVer = await execAsync('reg query "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion" /v DisplayVersion', { timeout: 3000, windowsHide: true }).then(r => { const mv = r.stdout.match(/DisplayVersion\s+REG_SZ\s+(.+)/i); return mv ? mv[1].trim() : ''; }).catch(() => '');
-        info.windowsBuild = `${dispVer ? dispVer + ' ' : ''}(Build ${m[1].trim()})`;
-      }
-    } catch {}
+    } catch { }
   }
 
   return info;
+}
+
+// ── Phase 2: Slow background queries — each pushes its result to the renderer immediately ──
+// Runs after fast data is returned to the renderer. Streams partial updates via IPC.
+async function _fetchSlowHardwareInfo(fastInfo) {
+  // Push each piece of data to the renderer the moment it's ready (no waiting for others)
+  const pushUpdate = (partial) => {
+    Object.assign(_hwInfoResult, partial);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('hw-info-update', partial);
+    }
+  };
+
+  const tasks = [];
+
+  // ── Serial fallback (SystemEnclosure, ComputerSystemProduct, BIOS) ──
+  if (!fastInfo.motherboardSerial) {
+    tasks.push(runPSScript(`
+$serials = @()
+try { $v = (Get-CimInstance Win32_SystemEnclosure -ErrorAction SilentlyContinue | Select-Object -First 1).SerialNumber; if ($v) { $serials += $v } } catch {}
+try { $v = (Get-CimInstance Win32_ComputerSystemProduct -ErrorAction SilentlyContinue).IdentifyingNumber; if ($v) { $serials += $v } } catch {}
+try { $v = (Get-CimInstance Win32_BIOS -ErrorAction SilentlyContinue | Select-Object -First 1).SerialNumber; if ($v) { $serials += $v } } catch {}
+Write-Output ($serials -join '|||')
+    `, 10000).then(result => {
+      if (!result) return;
+      const invalidSerials = ['default string', 'to be filled by o.e.m.', 'to be filled by oem', 'system serial number', 'not specified', 'none', 'unknown', 'baseboard serial number'];
+      const candidates = String(result).split('|||').map(s => s.trim());
+      const valid = candidates.find(s => s && s.length >= 3 && !/^0+$/.test(s) && !invalidSerials.includes(s.toLowerCase()));
+      if (valid) pushUpdate({ motherboardSerial: valid });
+    }).catch(() => {}));
+  }
+
+  // ── Last Windows Update (only if Phase 1 didn't get it) ──
+  if (!fastInfo.lastWindowsUpdate || fastInfo.lastWindowsUpdate === 'Unknown') {
+    tasks.push(runPSScript(`
+$lastUpd = 'Unknown'
+try {
+  $hf = Get-HotFix -ErrorAction SilentlyContinue | Where-Object { $_.InstalledOn } | Sort-Object InstalledOn -Descending | Select-Object -First 1
+  if ($hf) { $lastUpd = $hf.InstalledOn.ToString('yyyy-MM-dd') }
+} catch {}
+Write-Output $lastUpd
+    `, 10000).then(result => {
+      pushUpdate({ lastWindowsUpdate: (result || '').trim() || 'Unknown' });
+    }).catch(() => {
+      pushUpdate({ lastWindowsUpdate: 'Unknown' });
+    }));
+  }
+
+  // ── Windows License (only if Phase 1 didn't get it) ──
+  if (!fastInfo.windowsActivation || fastInfo.windowsActivation === 'Unknown') {
+    tasks.push(execAsync('cscript //nologo C:\\Windows\\System32\\slmgr.vbs /dli', {
+      timeout: 8000, windowsHide: true
+    }).then(({ stdout }) => {
+      const out = (stdout || '').toLowerCase();
+      let activation = 'Unknown';
+      if (out.includes('licensed') || out.includes('license status: licensed')) {
+        activation = 'Licensed';
+      } else if (out.includes('notification') || out.includes('grace')) {
+        activation = 'Not Activated';
+      } else if (out.includes('initial grace') || out.includes('oob grace')) {
+        activation = 'Trial';
+      }
+      pushUpdate({ windowsActivation: activation });
+    }).catch(() => {
+      pushUpdate({ windowsActivation: 'Unknown' });
+    }));
+  }
+
+  // ── Motherboard wmic fallback ──
+  if (!fastInfo.motherboardProduct && !fastInfo.motherboardManufacturer) {
+    tasks.push(execAsync('wmic baseboard get Manufacturer,Product /format:csv', {
+      timeout: 8000, windowsHide: true
+    }).then(({ stdout }) => {
+      const lines = stdout.trim().split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('Node,') && !l.startsWith('Node'));
+      if (lines.length > 0) {
+        const parts = lines[lines.length - 1].split(',');
+        if (parts.length >= 3) {
+          pushUpdate({
+            motherboardManufacturer: parts[1]?.trim() || '',
+            motherboardProduct: parts[2]?.trim() || '',
+          });
+        }
+      }
+    }).catch(() => {}));
+  }
+
+  // ── BIOS wmic fallback ──
+  if (!fastInfo.biosVersion) {
+    tasks.push(execAsync('wmic bios get SMBIOSBIOSVersion,ReleaseDate /format:csv', {
+      timeout: 8000, windowsHide: true
+    }).then(({ stdout }) => {
+      const lines = stdout.trim().split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('Node,') && !l.startsWith('Node'));
+      if (lines.length > 0) {
+        const parts = lines[lines.length - 1].split(',');
+        if (parts.length >= 3) {
+          const relDate = (parts[1] || '').trim();
+          const bv = (parts[2] || '').trim();
+          const update = { biosVersion: bv };
+          if (relDate) {
+            const m = relDate.match(/^(\d{4})(\d{2})(\d{2})/);
+            update.biosDate = m ? `${m[1]}-${m[2]}-${m[3]}` : relDate;
+          }
+          pushUpdate(update);
+        }
+      }
+    }).catch(() => {}));
+  }
+
+  // ── Windows version registry fallback ──
+  if (!fastInfo.windowsVersion || fastInfo.windowsVersion === 'Unknown') {
+    tasks.push(execAsync('reg query "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion" /v ProductName', {
+      timeout: 5000, windowsHide: true
+    }).then(({ stdout }) => {
+      const m = stdout.match(/ProductName\s+REG_SZ\s+(.+)/i);
+      if (m && m[1]) pushUpdate({ windowsVersion: m[1].trim() });
+    }).catch(() => {}));
+  }
+
+  // ── Windows build registry fallback ──
+  if (!fastInfo.windowsBuild || fastInfo.windowsBuild === 'Unknown') {
+    tasks.push(execAsync('reg query "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion" /v CurrentBuildNumber', {
+      timeout: 5000, windowsHide: true
+    }).then(async ({ stdout }) => {
+      const m = stdout.match(/CurrentBuildNumber\s+REG_SZ\s+(.+)/i);
+      if (m && m[1]) {
+        let dispVer = '';
+        try {
+          const r = await execAsync('reg query "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion" /v DisplayVersion', { timeout: 3000, windowsHide: true });
+          const mv = r.stdout.match(/DisplayVersion\s+REG_SZ\s+(.+)/i);
+          if (mv) dispVer = mv[1].trim();
+        } catch { }
+        pushUpdate({ windowsBuild: `${dispVer ? dispVer + ' ' : ''}(Build ${m[1].trim()})` });
+      }
+    }).catch(() => {}));
+  }
+
+  await Promise.allSettled(tasks);
 }
 
 let _extInFlight = false;
@@ -1988,7 +2082,7 @@ if ($netAdapter) { $adName = $netAdapter.Name; $adLink = $netAdapter.LinkSpeed }
 # ── Output: 3 sections separated by @@ ──
 Write-Output "$clock|$ramU|$ramT|$procs|$uptime|$lat@@$coreStr|$([math]::Round($dr))|$([math]::Round($dw))@@$netUp|$netDn|$ssid|$sig|$adName|$adLink"
     `, 8000),
-    
+
     execFileAsync(
       'nvidia-smi',
       ['--query-gpu=utilization.gpu,temperature.gpu,memory.used,memory.total', '--format=csv,noheader,nounits'],
@@ -2015,7 +2109,7 @@ Write-Output "$clock|$ramU|$ramT|$procs|$uptime|$lat@@$coreStr|$([math]::Round($
       ext.systemUptime = parts[4] || '';
       ext.latencyMs = parseInt(parts[5]) || 0;
     }
-  } catch {}
+  } catch { }
 
   // Counter: coreCSV|diskRead|diskWrite
   try {
@@ -2029,7 +2123,7 @@ Write-Output "$clock|$ramU|$ramT|$procs|$uptime|$lat@@$coreStr|$([math]::Round($
         ext.diskWriteSpeed = parseInt(parts[2]) || 0;
       }
     }
-  } catch {}
+  } catch { }
 
   // Network: up|down|ssid|signal|adapterName|linkSpeed
   try {
@@ -2042,7 +2136,7 @@ Write-Output "$clock|$ramU|$ramT|$procs|$uptime|$lat@@$coreStr|$([math]::Round($
       if (parts[4]) ext.activeAdapterName = parts[4];
       if (parts[5]) ext.activeLinkSpeed = parts[5];
     }
-  } catch {}
+  } catch { }
 
   // GPU: prefer LHM real-time data (1s), fall back to nvidia-smi (5s)
   if (_lhmGpuTemp >= 0) ext.gpuTemp = _lhmGpuTemp;
@@ -2062,7 +2156,7 @@ Write-Output "$clock|$ramU|$ramT|$procs|$uptime|$lat@@$coreStr|$([math]::Round($
         if (ext.gpuVramTotal < 0) ext.gpuVramTotal = isNaN(parts[3]) ? -1 : Math.round(parts[3]);
       }
     }
-  } catch {}
+  } catch { }
 
   _lastExt = ext;
   _extHasResult = true;
@@ -2181,7 +2275,7 @@ ipcMain.handle('cleaner:clear-apex-shaders', async () => {
     const sizeInMB = (sizeFreed / (1024 * 1024)).toFixed(2);
     return {
       success: true,
-      message: cleared > 0 
+      message: cleared > 0
         ? 'Successfully cleared Apex Legends psoCache.pso'
         : 'Apex cache not found or already cleared',
       filesDeleted: cleared,
@@ -2218,7 +2312,7 @@ ipcMain.handle('cleaner:clear-cod-shaders', async () => {
         try {
           const files = fs.readdirSync(codCachePath, { recursive: true });
           filesBefore += files.length;
-          
+
           const deleteDir = (dir) => {
             try {
               const items = fs.readdirSync(dir);
@@ -2238,7 +2332,7 @@ ipcMain.handle('cleaner:clear-cod-shaders', async () => {
               // Continue on error
             }
           };
-          
+
           deleteDir(codCachePath);
         } catch (e) {
           // Path might not exist or be accessible
@@ -2691,7 +2785,7 @@ ipcMain.handle('cleaner:clear-windows-temp', async () => {
           totalSize += stats.size;
           fs.rmSync(fp, { recursive: true, force: true });
           filesDeleted++;
-        } catch (e) {}
+        } catch (e) { }
       }
     }
     return { success: true, message: 'Cleared Windows Temp', filesDeleted, filesBefore, filesAfter: filesBefore - filesDeleted, spaceSaved: `${(totalSize / (1024 * 1024)).toFixed(2)} MB` };
@@ -2716,7 +2810,7 @@ ipcMain.handle('cleaner:clear-thumbnail-cache', async () => {
           totalSize += stats.size;
           fs.rmSync(fp, { force: true });
           filesDeleted++;
-        } catch (e) {}
+        } catch (e) { }
       }
     }
     return { success: true, message: 'Cleared Thumbnail Cache', filesDeleted, filesBefore, filesAfter: filesBefore - filesDeleted, spaceSaved: `${(totalSize / (1024 * 1024)).toFixed(2)} MB` };
@@ -2743,9 +2837,9 @@ ipcMain.handle('cleaner:clear-windows-logs', async () => {
               totalSize += entry.isDirectory() ? 0 : stats.size;
               fs.rmSync(fp, { recursive: true, force: true });
               filesDeleted++;
-            } catch (e) {}
+            } catch (e) { }
           }
-        } catch (e) {}
+        } catch (e) { }
       };
       walkAndDelete(logsDir);
     }
@@ -2771,7 +2865,7 @@ ipcMain.handle('cleaner:clear-crash-dumps', async () => {
           totalSize += stats.size;
           fs.rmSync(fp, { recursive: true, force: true });
           filesDeleted++;
-        } catch (e) {}
+        } catch (e) { }
       }
     }
     return { success: true, message: 'Cleared Crash Dumps', filesDeleted, filesBefore, filesAfter: filesBefore - filesDeleted, spaceSaved: `${(totalSize / (1024 * 1024)).toFixed(2)} MB` };
@@ -2796,7 +2890,7 @@ ipcMain.handle('cleaner:clear-error-reports', async () => {
           totalSize += stats.isDirectory() ? 0 : stats.size;
           fs.rmSync(fp, { recursive: true, force: true });
           filesDeleted++;
-        } catch (e) {}
+        } catch (e) { }
       }
     }
     return { success: true, message: 'Cleared Error Reports', filesDeleted, filesBefore, filesAfter: filesBefore - filesDeleted, spaceSaved: `${(totalSize / (1024 * 1024)).toFixed(2)} MB` };
@@ -2821,7 +2915,7 @@ ipcMain.handle('cleaner:clear-delivery-optimization', async () => {
           totalSize += stats.isDirectory() ? 0 : stats.size;
           fs.rmSync(fp, { recursive: true, force: true });
           filesDeleted++;
-        } catch (e) {}
+        } catch (e) { }
       }
     }
     return { success: true, message: 'Cleared Delivery Optimization Cache', filesDeleted, filesBefore, filesAfter: filesBefore - filesDeleted, spaceSaved: `${(totalSize / (1024 * 1024)).toFixed(2)} MB` };
@@ -2846,7 +2940,7 @@ ipcMain.handle('cleaner:clear-font-cache', async () => {
           totalSize += stats.size;
           fs.rmSync(fp, { force: true });
           filesDeleted++;
-        } catch (e) {}
+        } catch (e) { }
       }
     }
     return { success: true, message: 'Cleared Font Cache', filesDeleted, filesBefore, filesAfter: filesBefore - filesDeleted, spaceSaved: `${(totalSize / (1024 * 1024)).toFixed(2)} MB` };
@@ -2871,7 +2965,7 @@ ipcMain.handle('cleaner:clear-recent-files', async () => {
           totalSize += stats.size;
           fs.rmSync(fp, { force: true });
           filesDeleted++;
-        } catch (e) {}
+        } catch (e) { }
       }
     }
     return { success: true, message: 'Cleared Recent Files', filesDeleted, filesBefore, filesAfter: filesBefore - filesDeleted, spaceSaved: `${(totalSize / (1024 * 1024)).toFixed(2)} MB` };
@@ -2934,7 +3028,7 @@ ipcMain.handle('cleaner:clear-prefetch', async () => {
     if (fs.existsSync(prefetch)) {
       const allFiles = fs.readdirSync(prefetch);
       filesBefore = allFiles.filter(f => f.endsWith('.pf')).length;
-      
+
       for (const file of allFiles) {
         if (file.endsWith('.pf')) {
           try {
@@ -2948,7 +3042,7 @@ ipcMain.handle('cleaner:clear-prefetch', async () => {
           }
         }
       }
-      
+
       filesAfter = filesBefore - filesDeleted;
     }
 
@@ -2978,8 +3072,8 @@ ipcMain.handle('cleaner:clear-memory-dumps', async () => {
 
     // Diagnostic logging
 
-      if (!fs.existsSync(dumpDir)) {
-        return { success: false, message: 'Minidump folder not found.' };
+    if (!fs.existsSync(dumpDir)) {
+      return { success: false, message: 'Minidump folder not found.' };
     }
     const files = fs.readdirSync(dumpDir);
     filesBefore = files.length;
@@ -3044,7 +3138,7 @@ ipcMain.handle('cleaner:clear-update-cache', async () => {
       # Wait longer to ensure all locks are released
       Start-Sleep -Milliseconds 1500
     "`;
-    
+
     try {
       await execAsync(stopServicesCmd, { shell: true, timeout: 30000 });
     } catch (e) {
@@ -3084,7 +3178,7 @@ ipcMain.handle('cleaner:clear-update-cache', async () => {
     // 3. Clear the cache folder with retry logic
     let deletionSuccess = false;
     let lastError = null;
-    
+
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         // First two attempts: Try standard removal
@@ -3137,7 +3231,7 @@ ipcMain.handle('cleaner:clear-update-cache', async () => {
 
     // 5. Return result
     const sizeInMB = (totalSize / (1024 * 1024)).toFixed(2);
-    
+
     if (deletionSuccess) {
       return {
         success: true,
@@ -3151,7 +3245,7 @@ ipcMain.handle('cleaner:clear-update-cache', async () => {
     } else {
       // Check what went wrong
       const errorOutput = lastError ? (lastError.stderr || lastError.stdout || lastError.message || '').toLowerCase() : '';
-      
+
       if (errorOutput.includes('access is denied') || errorOutput.includes('access denied')) {
         return { success: false, message: 'Run the app as administrator' };
       } else if (errorOutput.includes('is in use') || errorOutput.includes('cannot be removed') || errorOutput.includes('being used')) {
@@ -3181,12 +3275,12 @@ ipcMain.handle('cleaner:clear-dns-cache', async () => {
     } catch (e) {
       // Ignore errors getting count
     }
-    
+
     // Try multiple methods to clear DNS cache
     let dnsCleared = false;
     let method = '';
     let lastError = null;
-    
+
     // Method 1: Try PowerShell Clear-DnsClientCache (Windows 8+)
     try {
       await execAsync('powershell -NoProfile -ExecutionPolicy Bypass -Command "Clear-DnsClientCache -Confirm:$false"', { shell: true, timeout: 15000 });
@@ -3196,7 +3290,7 @@ ipcMain.handle('cleaner:clear-dns-cache', async () => {
       lastError = error;
       // Method 1 failed, try next method
     }
-    
+
     // Method 2: If Method 1 fails, try ipconfig /flushdns directly
     if (!dnsCleared) {
       try {
@@ -3218,7 +3312,7 @@ ipcMain.handle('cleaner:clear-dns-cache', async () => {
         }
       }
     }
-    
+
     // Method 3: Restart DNS Client service (most reliable on locked systems)
     if (!dnsCleared) {
       try {
@@ -3233,7 +3327,7 @@ ipcMain.handle('cleaner:clear-dns-cache', async () => {
         // Method 3 failed
       }
     }
-    
+
     if (!dnsCleared) {
       return {
         success: false,
@@ -3241,11 +3335,11 @@ ipcMain.handle('cleaner:clear-dns-cache', async () => {
         details: lastError ? lastError.message : 'Unknown error'
       };
     }
-    
-    
+
+
     // Wait a moment for DNS cache to fully clear
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     // Verify DNS cache was actually cleared
     let entriesAfter = 0;
     try {
@@ -3262,18 +3356,18 @@ ipcMain.handle('cleaner:clear-dns-cache', async () => {
       spaceSaved: entriesBefore > 0 ? `${entriesBefore} DNS entries removed` : 'DNS cache cleared',
       details: `Method: ${method}`,
     };
-    
+
   } catch (error) {
-    if (error.message.includes('access') || 
-        error.message.includes('denied') || 
-        error.message.includes('administrator') ||
-        error.message.includes('privilege')) {
-      return { 
-        success: false, 
-        message: 'Administrator privileges required. Please run the app as Administrator.' 
+    if (error.message.includes('access') ||
+      error.message.includes('denied') ||
+      error.message.includes('administrator') ||
+      error.message.includes('privilege')) {
+      return {
+        success: false,
+        message: 'Administrator privileges required. Please run the app as Administrator.'
       };
     }
-    
+
     return { success: false, message: `Error: ${error.message}` };
   }
 });
@@ -3370,24 +3464,24 @@ Write-Output "$result|FreedMB=$freedMB"
 `;
 
     fs.writeFileSync(tempScript, scriptContent, 'utf8');
-    
+
     // Execute the script
     const result = await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${tempScript}"`, { shell: true });
-    
+
     // Clean up
     try {
       fs.unlinkSync(tempScript);
-    } catch {}
-    
+    } catch { }
+
     const output = result.stdout.trim();
-    
+
     const lines = output.split('\n');
     const statusLine = lines[lines.length - 1].trim();
-    
+
     if (statusLine.includes('SUCCESS:4') || statusLine.includes('SUCCESS:2')) {
       const freedMatch = statusLine.match(/FreedMB=(-?\d+)/);
       const freedMB = freedMatch ? parseInt(freedMatch[1]) : -1;
-      
+
       if (freedMB > 0) {
         return {
           success: true,
@@ -3417,13 +3511,13 @@ Write-Output "$result|FreedMB=$freedMB"
         message: 'Unexpected result. Check console logs.',
       };
     }
-    
+
   } catch (error) {
     if (isPermissionError(error)) {
       return { success: false, message: 'Run the app as administrator' };
     }
-    return { 
-      success: false, 
+    return {
+      success: false,
       message: `Failed: ${error.message}`,
     };
   }
@@ -3436,7 +3530,7 @@ ipcMain.handle('cleaner:empty-recycle-bin', async () => {
     try {
       const cmd = `[void](Clear-RecycleBin -Force -Confirm:$false -ErrorAction Stop); Write-Host 'SUCCESS'`;
       const result = await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cmd}"`, { shell: true });
-      
+
       if (result.stdout.includes('SUCCESS') || !result.stderr) {
         return {
           success: true,
@@ -3445,7 +3539,7 @@ ipcMain.handle('cleaner:empty-recycle-bin', async () => {
         };
       }
     } catch (e) {
-  }
+    }
 
     const fallbackCmd = `
 $shell = New-Object -ComObject Shell.Application
@@ -3453,16 +3547,16 @@ $recycleBin = $shell.NameSpace(10)
 $recycleBin.Items() | ForEach-Object { Remove-Item $_.Path -Recurse -Force -ErrorAction SilentlyContinue }
 Write-Host 'EMPTIED'
 `;
-    
+
     const tempScript = path.join(app.getPath('temp'), 'empty-bin.ps1');
     fs.writeFileSync(tempScript, fallbackCmd, 'utf8');
-    
+
     const result = await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${tempScript}"`, { shell: true });
-    
+
     try {
       fs.unlinkSync(tempScript);
-    } catch {}
-    
+    } catch { }
+
     if (result.stdout.includes('EMPTIED') || !result.stderr.toLowerCase().includes('denied')) {
       return {
         success: true,
@@ -3470,27 +3564,27 @@ Write-Host 'EMPTIED'
         spaceSaved: 'Disk space freed',
       };
     }
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       message: 'Recycle bin emptied successfully',
       spaceSaved: 'Disk space freed',
     };
-    
+
   } catch (error) {
     if (isPermissionError(error)) {
       return { success: false, message: 'Run the app as administrator' };
     }
     if (error.message.toLowerCase().includes('empty') || error.message.toLowerCase().includes('already')) {
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: 'Recycle bin is already empty',
         spaceSaved: 'Already empty',
       };
     }
     // Even if there's an error, recycle bin was likely emptied
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: 'Recycle bin operation completed',
       spaceSaved: 'Check recycle bin status',
     };
@@ -3849,7 +3943,7 @@ ipcMain.handle('obs:apply-preset', async (event, presetId) => {
   try {
     const roamingAppData = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
     const obsConfigPath = path.join(roamingAppData, 'obs-studio');
-    
+
     // Check if OBS config directory exists
     if (!fs.existsSync(obsConfigPath)) {
       return {
@@ -3861,12 +3955,12 @@ ipcMain.handle('obs:apply-preset', async (event, presetId) => {
     console.log(`Found OBS config directory at: ${obsConfigPath}`);
 
     // Get the preset files from the app
-    const appPath = app.isPackaged 
+    const appPath = app.isPackaged
       ? path.join(process.resourcesPath, 'data', 'obsPresetConfigs')
       : path.join(__dirname, 'src', 'data', 'obsPresetConfigs');
-    
+
     const presetPath = path.join(appPath, presetId);
-    
+
     console.log(`Looking for preset at: ${presetPath}`);
 
     if (!fs.existsSync(presetPath)) {
@@ -3878,11 +3972,11 @@ ipcMain.handle('obs:apply-preset', async (event, presetId) => {
 
     // Find the default profile directory - use standard OBS structure: basic/profiles/ProfileName
     let profileDir = null;
-    
+
     // First, check if profiles.ini exists and read the default profile
     const profilesIniPath = path.join(obsConfigPath, 'profiles.ini');
     console.log(`Checking for profiles.ini at: ${profilesIniPath}`);
-    
+
     if (fs.existsSync(profilesIniPath)) {
       try {
         const profilesContent = fs.readFileSync(profilesIniPath, 'utf-8');
@@ -3897,15 +3991,15 @@ ipcMain.handle('obs:apply-preset', async (event, presetId) => {
         console.warn(`Could not read profiles.ini: ${e.message}`);
       }
     }
-    
+
     // If no profile found yet, check what profiles actually exist
     if (!profileDir) {
       const profilesPath = path.join(obsConfigPath, 'basic', 'profiles');
       if (fs.existsSync(profilesPath)) {
-        const profiles = fs.readdirSync(profilesPath).filter(f => 
+        const profiles = fs.readdirSync(profilesPath).filter(f =>
           fs.statSync(path.join(profilesPath, f)).isDirectory()
         );
-        
+
         if (profiles.length > 0) {
           // Use the first existing profile
           profileDir = path.join(profilesPath, profiles[0]);
@@ -3913,7 +4007,7 @@ ipcMain.handle('obs:apply-preset', async (event, presetId) => {
         }
       }
     }
-    
+
     // If still no profile, default to "Untitled"
     if (!profileDir) {
       profileDir = path.join(obsConfigPath, 'basic', 'profiles', 'Untitled');
@@ -3933,7 +4027,7 @@ ipcMain.handle('obs:apply-preset', async (event, presetId) => {
     if (fs.existsSync(presetProfileDir)) {
       const profileFiles = fs.readdirSync(presetProfileDir).filter(f => !f.includes('.bak'));
       console.log(`Found ${profileFiles.length} profile configuration files to copy`);
-      
+
       for (const profileFile of profileFiles) {
         const sourceFile = path.join(presetProfileDir, profileFile);
         const targetFile = path.join(profileDir, profileFile);
@@ -3954,7 +4048,7 @@ ipcMain.handle('obs:apply-preset', async (event, presetId) => {
     if (fs.existsSync(presetScenesDir)) {
       const sceneFiles = fs.readdirSync(presetScenesDir).filter(f => f.endsWith('.json'));
       console.log(`Found ${sceneFiles.length} scene files to copy`);
-      
+
       for (const sceneFile of sceneFiles) {
         const sourceFile = path.join(presetScenesDir, sceneFile);
         const targetFile = path.join(basicScenesDir, sceneFile);
@@ -4010,9 +4104,9 @@ ipcMain.handle('obs:launch', async () => {
       'C:\\Program Files (x86)\\obs-studio\\bin\\32bit\\obs32.exe',
       'C:\\Program Files (x86)\\obs-studio\\bin\\32bit\\obs.exe',
     ];
-    
+
     let executablePath = null;
-    
+
     // Try common paths first
     for (const obsPath of commonPaths) {
       if (fs.existsSync(obsPath)) {
@@ -4082,7 +4176,7 @@ ipcMain.handle('software:check-updates', async () => {
       }
     }
 
-    
+
     // winget uses \r for progress spinner - clean by taking last non-empty \r segment per line
     const lines = stdout.split('\n').map(l => {
       const parts = l.split('\r').map(p => p.trimEnd()).filter(p => p.length > 0);
@@ -4216,7 +4310,7 @@ ipcMain.handle('software:cancel-update', async () => {
     activeUpdateProc = null;
     try {
       spawn('taskkill', ['/F', '/T', '/PID', String(pid)], { windowsHide: true });
-    } catch (e) {}
+    } catch (e) { }
     cancelled = true;
   }
 
@@ -4224,15 +4318,15 @@ ipcMain.handle('software:cancel-update', async () => {
   if (activeDeElevated) {
     const de = activeDeElevated;
     activeDeElevated = null;
-    try { clearInterval(de.pollInterval); } catch {}
+    try { clearInterval(de.pollInterval); } catch { }
     // Stop the scheduled task and kill any winget it spawned
-    try { execSync(`schtasks /end /tn "${de.taskName}"`, { stdio: 'ignore', windowsHide: true }); } catch {}
-    try { execSync(`schtasks /delete /tn "${de.taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch {}
-    try { execSync('taskkill /F /IM winget.exe /T', { stdio: 'ignore', windowsHide: true }); } catch {}
+    try { execSync(`schtasks /end /tn "${de.taskName}"`, { stdio: 'ignore', windowsHide: true }); } catch { }
+    try { execSync(`schtasks /delete /tn "${de.taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch { }
+    try { execSync('taskkill /F /IM winget.exe /T', { stdio: 'ignore', windowsHide: true }); } catch { }
     // Cleanup temp files
-    try { fs.unlinkSync(de.tmpBat); } catch {}
-    try { fs.unlinkSync(de.tmpVbs); } catch {}
-    try { fs.unlinkSync(de.tmpLog); } catch {}
+    try { fs.unlinkSync(de.tmpBat); } catch { }
+    try { fs.unlinkSync(de.tmpVbs); } catch { }
+    try { fs.unlinkSync(de.tmpLog); } catch { }
     // Resolve the pending promise
     if (de.resolve) de.resolve({ success: false, cancelled: true, message: 'Update cancelled' });
     cancelled = true;
@@ -4320,8 +4414,8 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
       }
       const lower = fullOutput.toLowerCase();
       const success = lower.includes('successfully installed') ||
-                      lower.includes('no available upgrade') ||
-                      lower.includes('no applicable');
+        lower.includes('no available upgrade') ||
+        lower.includes('no applicable');
       if (success) {
         _wingetListCache = null; _wingetCacheTime = 0; _regNamesCache = null; _regCacheTime = 0;
         sendProgress({ phase: 'done', status: 'Update complete!', percent: 100 });
@@ -4388,7 +4482,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
     const taskName = `GSOptUpdate_${process.pid}`;
 
     // Clean up any previous log so polling starts fresh
-    try { fs.unlinkSync(tmpLog); } catch {}
+    try { fs.unlinkSync(tmpLog); } catch { }
 
     // Bat: run winget non-interactively, redirect all output to log, write DONE marker when finished
     fs.writeFileSync(tmpBat,
@@ -4424,7 +4518,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
           `powershell -NoProfile -ExecutionPolicy Bypass -File "${ps1}"`,
           { encoding: 'utf8', windowsHide: true, timeout: 20000 }
         );
-        try { fs.unlinkSync(ps1); } catch {}
+        try { fs.unlinkSync(ps1); } catch { }
         if (psOut.includes('LAUNCHED')) launchOk = true;
         else console.error('[Software Update] PS ScheduledTask: no LAUNCHED marker, output:', psOut.substring(0, 200));
       } catch (err) {
@@ -4446,7 +4540,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
 
     // ── Method 3: schtasks CLI /rl limited (legacy) ──
     if (!launchOk) {
-      try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch {}
+      try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch { }
       try {
         execSync(
           `schtasks /create /tn "${taskName}" /tr "wscript.exe \\"${tmpVbs}\\"" /sc once /st 00:00 /f /rl limited`,
@@ -4460,9 +4554,9 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
     }
 
     if (!launchOk) {
-      try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch {}
-      try { fs.unlinkSync(tmpBat); } catch {}
-      try { fs.unlinkSync(tmpVbs); } catch {}
+      try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch { }
+      try { fs.unlinkSync(tmpBat); } catch { }
+      try { fs.unlinkSync(tmpVbs); } catch { }
       sendProgress({ phase: 'error', status: 'Update failed', percent: 0 });
       resolve({ success: false, message: 'Update failed' });
       return;
@@ -4491,7 +4585,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
       }
       elapsed += pollMs;
       let log = '';
-      try { log = fs.readFileSync(tmpLog, 'utf8'); } catch {}
+      try { log = fs.readFileSync(tmpLog, 'utf8'); } catch { }
       const lower = log.toLowerCase();
 
       // Track stale log (no new output)
@@ -4518,18 +4612,18 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
       }
 
       const finished = lower.includes('successfully installed') ||
-                       lower.includes('no available upgrade') ||
-                       lower.includes('no applicable') ||
-                       lower.includes('installer failed') ||
-                       lower.includes('failed to install') ||
-                       lower.includes('cannot be upgraded') ||
-                       lower.includes('cannot be run from an administrator') ||
-                       lower.includes('cannot be overridden when running as admin') ||
-                       lower.includes('installer log is available') ||
-                       lower.includes('installation complete') ||
-                       lower.includes('upgrade successful') ||
-                       lower.includes('__gs_done__') ||
-                       (lower.includes('exit code') && lower.includes('failed'));
+        lower.includes('no available upgrade') ||
+        lower.includes('no applicable') ||
+        lower.includes('installer failed') ||
+        lower.includes('failed to install') ||
+        lower.includes('cannot be upgraded') ||
+        lower.includes('cannot be run from an administrator') ||
+        lower.includes('cannot be overridden when running as admin') ||
+        lower.includes('installer log is available') ||
+        lower.includes('installation complete') ||
+        lower.includes('upgrade successful') ||
+        lower.includes('__gs_done__') ||
+        (lower.includes('exit code') && lower.includes('failed'));
 
       // Also finish if log has been stale (no new output) for 30s after install started
       const staleFinish = installStarted && staleSince >= staleLimit;
@@ -4537,9 +4631,9 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
       if (finished || staleFinish || elapsed >= maxWait) {
         clearInterval(poll);
         activeDeElevated = null;
-        try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch {}
-        try { fs.unlinkSync(tmpBat); } catch {}
-        try { fs.unlinkSync(tmpVbs); } catch {}
+        try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch { }
+        try { fs.unlinkSync(tmpBat); } catch { }
+        try { fs.unlinkSync(tmpVbs); } catch { }
 
         const success = lower.includes('successfully installed');
         if (success) {
@@ -4558,7 +4652,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
           sendProgress({ phase: 'error', status: lastLine, percent: 0 });
           resolve({ success: false, message: lastLine });
         }
-        try { fs.unlinkSync(tmpLog); } catch {}
+        try { fs.unlinkSync(tmpLog); } catch { }
       }
     }, pollMs);
 
@@ -4586,7 +4680,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
 
   // Step 3a: Hash override blocked when running as admin → de-elevate with hash skip + silent
   if (isElevated && result.output &&
-      result.output.includes('cannot be overridden when running as admin')) {
+    result.output.includes('cannot be overridden when running as admin')) {
     sendProgress({ phase: 'preparing', status: 'Preparing update…', percent: 0 });
     return await runDeElevated(
       `winget upgrade --id ${cleanId} --accept-source-agreements --accept-package-agreements --force --ignore-security-hash --silent`
@@ -4595,7 +4689,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
 
   // Step 3b: Installer refuses admin context (e.g. Spotify) → de-elevate without silent
   if (isElevated && result.output &&
-      result.output.includes('cannot be run from an administrator')) {
+    result.output.includes('cannot be run from an administrator')) {
     sendProgress({ phase: 'preparing', status: 'Preparing update…', percent: 0 });
     return await runDeElevated(
       `winget upgrade --id ${cleanId} --accept-source-agreements --accept-package-agreements --force`
@@ -4689,51 +4783,51 @@ function getAvailableDrives() {
   const drives = [];
   for (let code = 65; code <= 90; code++) { // A-Z
     const letter = String.fromCharCode(code);
-    try { if (fs.existsSync(`${letter}:\\`)) drives.push(`${letter}:`); } catch {}
+    try { if (fs.existsSync(`${letter}:\\`)) drives.push(`${letter}:`); } catch { }
   }
   return drives;
 }
 
 const KNOWN_APP_DIRS = {
-  'Brave.Brave':                            ['BraveSoftware\\Brave-Browser'],
-  'Google.Chrome':                          ['Google\\Chrome'],
-  'Microsoft.Edge':                         ['Microsoft\\Edge'],
-  'Mozilla.Firefox':                        ['Mozilla Firefox'],
-  'Opera.OperaGX':                          ['Opera GX'],
-  'TorProject.TorBrowser':                  ['Tor Browser'],
-  'Discord.Discord':                        ['Discord'],
-  'Microsoft.Teams':                        ['Microsoft\\Teams'],
-  'Telegram.TelegramDesktop':               ['Telegram Desktop'],
-  'Zoom.Zoom':                              ['Zoom\\bin'],
-  'Valve.Steam':                            ['Steam'],
-  'EpicGames.EpicGamesLauncher':            ['Epic Games\\Launcher'],
-  'ElectronicArts.EADesktop':               ['Electronic Arts\\EA Desktop'],
-  'GOG.Galaxy':                             ['GOG Galaxy'],
-  'Ubisoft.Connect':                        ['Ubisoft\\Ubisoft Game Launcher'],
-  'Blizzard.BattleNet':                     ['Battle.net'],
-  'Nvidia.GeForceNow':                      ['NVIDIA Corporation\\GeForceNOW'],
-  'Guru3D.Afterburner':                     ['MSI Afterburner'],
-  'REALiX.HWiNFO':                          ['HWiNFO64', 'HWiNFO32'],
-  'TechPowerUp.GPU-Z':                      ['GPU-Z'],
-  'CPUID.CPU-Z':                            ['CPUID\\CPU-Z'],
-  'OBSProject.OBSStudio':                   ['obs-studio'],
-  'Streamlabs.Streamlabs':                  ['Streamlabs OBS', 'Streamlabs'],
-  'File-New-Project.EarTrumpet':            [],  // Store-only
-  'SteelSeries.GG':                         ['SteelSeries\\GG'],
-  'VideoLAN.VLC':                           ['VideoLAN\\VLC'],
-  'Microsoft.VisualStudioCode':             ['Microsoft VS Code'],
-  'Git.Git':                                ['Git'],
-  'GitHub.GitHubDesktop':                   ['GitHub Desktop', 'GitHubDesktop'],
-  'OpenJS.NodeJS.LTS':                      ['nodejs'],
-  'Python.Python.3.12':                     ['Python312', 'Python311', 'Python310', 'Python3'],
-  'Microsoft.VisualStudio.2022.Community':  ['Microsoft Visual Studio\\2022\\Community'],
-  'Microsoft.WindowsTerminal':              [],  // Store-only
-  'Notepad++.Notepad++':                    ['Notepad++'],
-  '7zip.7zip':                              ['7-Zip'],
-  'RARLab.WinRAR':                          ['WinRAR'],
-  'RevoUninstaller.RevoUninstaller':        ['VS Revo Group\\Revo Uninstaller'],
-  'Bitwarden.Bitwarden':                    ['Bitwarden'],
-  'Spotify.Spotify':                        ['Spotify'],
+  'Brave.Brave': ['BraveSoftware\\Brave-Browser'],
+  'Google.Chrome': ['Google\\Chrome'],
+  'Microsoft.Edge': ['Microsoft\\Edge'],
+  'Mozilla.Firefox': ['Mozilla Firefox'],
+  'Opera.OperaGX': ['Opera GX'],
+  'TorProject.TorBrowser': ['Tor Browser'],
+  'Discord.Discord': ['Discord'],
+  'Microsoft.Teams': ['Microsoft\\Teams'],
+  'Telegram.TelegramDesktop': ['Telegram Desktop'],
+  'Zoom.Zoom': ['Zoom\\bin'],
+  'Valve.Steam': ['Steam'],
+  'EpicGames.EpicGamesLauncher': ['Epic Games\\Launcher'],
+  'ElectronicArts.EADesktop': ['Electronic Arts\\EA Desktop'],
+  'GOG.Galaxy': ['GOG Galaxy'],
+  'Ubisoft.Connect': ['Ubisoft\\Ubisoft Game Launcher'],
+  'Blizzard.BattleNet': ['Battle.net'],
+  'Nvidia.GeForceNow': ['NVIDIA Corporation\\GeForceNOW'],
+  'Guru3D.Afterburner': ['MSI Afterburner'],
+  'REALiX.HWiNFO': ['HWiNFO64', 'HWiNFO32'],
+  'TechPowerUp.GPU-Z': ['GPU-Z'],
+  'CPUID.CPU-Z': ['CPUID\\CPU-Z'],
+  'OBSProject.OBSStudio': ['obs-studio'],
+  'Streamlabs.Streamlabs': ['Streamlabs OBS', 'Streamlabs'],
+  'File-New-Project.EarTrumpet': [],  // Store-only
+  'SteelSeries.GG': ['SteelSeries\\GG'],
+  'VideoLAN.VLC': ['VideoLAN\\VLC'],
+  'Microsoft.VisualStudioCode': ['Microsoft VS Code'],
+  'Git.Git': ['Git'],
+  'GitHub.GitHubDesktop': ['GitHub Desktop', 'GitHubDesktop'],
+  'OpenJS.NodeJS.LTS': ['nodejs'],
+  'Python.Python.3.12': ['Python312', 'Python311', 'Python310', 'Python3'],
+  'Microsoft.VisualStudio.2022.Community': ['Microsoft Visual Studio\\2022\\Community'],
+  'Microsoft.WindowsTerminal': [],  // Store-only
+  'Notepad++.Notepad++': ['Notepad++'],
+  '7zip.7zip': ['7-Zip'],
+  'RARLab.WinRAR': ['WinRAR'],
+  'RevoUninstaller.RevoUninstaller': ['VS Revo Group\\Revo Uninstaller'],
+  'Bitwarden.Bitwarden': ['Bitwarden'],
+  'Spotify.Spotify': ['Spotify'],
 };
 
 // ── Filesystem-based detection for apps not found by registry/winget ──
@@ -4805,13 +4899,13 @@ async function getAppxPackageNames() {
 
 // Maps catalog winget IDs to known AppX package name fragments
 const APPX_ID_MAP = {
-  'Spotify.Spotify':                  'spotify',
-  'Discord.Discord':                  'discord',
-  'Microsoft.Teams':                  'msteams',
-  'Microsoft.WindowsTerminal':        'windowsterminal',
-  'File-New-Project.EarTrumpet':      'eartrumpet',
-  'Microsoft.Edge':                   'microsoftedge',
-  'Bitwarden.Bitwarden':              'bitwarden',
+  'Spotify.Spotify': 'spotify',
+  'Discord.Discord': 'discord',
+  'Microsoft.Teams': 'msteams',
+  'Microsoft.WindowsTerminal': 'windowsterminal',
+  'File-New-Project.EarTrumpet': 'eartrumpet',
+  'Microsoft.Edge': 'microsoftedge',
+  'Bitwarden.Bitwarden': 'bitwarden',
 };
 
 function matchAppxPackages(undetectedApps, appxNames) {
@@ -4829,113 +4923,101 @@ function matchAppxPackages(undetectedApps, appxNames) {
 }
 
 // Pre-warm registry cache on startup (non-blocking)
-getRegistryDisplayNames().catch(() => {});
+getRegistryDisplayNames().catch(() => { });
 
-// ── Fast registry-only check (Phase 1) — returns in ~100ms (cached) / ~200ms (cold) ──
-ipcMain.handle('appinstall:check-installed-fast', async (_event, catalogApps) => {
-  try {
-    const apps = Array.isArray(catalogApps)
-      ? catalogApps.map(a => typeof a === 'string' ? { id: a, name: '' } : a)
-      : [];
-    const regNames = await getRegistryDisplayNames();
-    const installed = matchCatalogToRegistry(apps, regNames);
-    return { success: true, installed };
-  } catch (e) {
-    return { success: false, installed: {} };
-  }
-});
-
-// ── Full winget + registry check (Phase 2) — thorough, cached like Phase 1 ──
+// ── Single-pass installed-app detection: registry + winget + filesystem + AppX in parallel ──
 ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
+  const apps = Array.isArray(catalogApps)
+    ? catalogApps.map(a => typeof a === 'string' ? { id: a, name: '' } : a)
+    : [];
+
   try {
     const now = Date.now();
-    let installedEntries, installedIdSet, installedNameSet;
 
-    // Use cached winget list if available and fresh
-    if (_wingetListCache && (now - _wingetCacheTime) < WINGET_CACHE_TTL) {
-      installedEntries = _wingetListCache.installedEntries;
-      installedIdSet = _wingetListCache.installedIdSet;
-      installedNameSet = _wingetListCache.installedNameSet;
-    } else {
-      const { stdout } = await execAsync(
-        'chcp 65001 >nul && winget list --accept-source-agreements 2>nul',
-        { timeout: 30000, windowsHide: true, encoding: 'utf8', shell: 'cmd.exe', maxBuffer: 1024 * 1024 * 5, env: process.env, cwd: process.env.SYSTEMROOT || 'C:\\Windows' }
-      );
-
-      // ── Clean \r spinner characters, then rejoin wrapped lines ──
-      const rawLines = stdout.split('\n').map(l => {
-        const parts = l.split('\r').map(p => p.trimEnd()).filter(p => p.length > 0);
-        return parts.length > 0 ? parts[parts.length - 1] : '';
-      }).filter(l => l.length > 0);
-
-      const lines = [];
-      for (const l of rawLines) {
-        if (/^\s+\S/.test(l) && lines.length > 0 && lines[lines.length - 1] !== '') {
-          lines[lines.length - 1] += l;
-        } else {
-          lines.push(l);
+    // ── Launch registry + winget scans in parallel ──
+    const [regNames, wingetResult] = await Promise.all([
+      getRegistryDisplayNames().catch(() => new Set()),
+      (async () => {
+        if (_wingetListCache && (now - _wingetCacheTime) < WINGET_CACHE_TTL) {
+          return _wingetListCache;
         }
-      }
+        try {
+          const { stdout } = await execAsync(
+            'chcp 65001 >nul && winget list --accept-source-agreements 2>nul',
+            { timeout: 30000, windowsHide: true, encoding: 'utf8', shell: 'cmd.exe', maxBuffer: 1024 * 1024 * 5, env: process.env, cwd: process.env.SYSTEMROOT || 'C:\\Windows' }
+          );
 
-      // ── Parse the winget table: extract both Name and Id columns ──
-      const headerIdx = lines.findIndex(l => /Name\s+Id\s+Version/i.test(l));
-      installedEntries = [];
+          const rawLines = stdout.split('\n').map(l => {
+            const parts = l.split('\r').map(p => p.trimEnd()).filter(p => p.length > 0);
+            return parts.length > 0 ? parts[parts.length - 1] : '';
+          }).filter(l => l.length > 0);
 
-      if (headerIdx !== -1) {
-        const headerLine = lines[headerIdx];
-        const nameStart = 0;
-        const idStart = headerLine.search(/\bId\b/i);
-        const versionStart = headerLine.search(/\bVersion\b/i);
-
-        const dataStart = headerIdx + 2;
-        for (let i = dataStart; i < lines.length; i++) {
-          const line = lines[i];
-          if (line.length < idStart + 2) continue;
-          const rawName = line.substring(nameStart, idStart).trim();
-          const rawId = line.substring(idStart, versionStart > idStart ? versionStart : line.length).trim();
-          if (rawId && rawId !== '---' && rawName) {
-            installedEntries.push({ name: rawName.toLowerCase(), id: rawId.toLowerCase() });
+          const lines = [];
+          for (const l of rawLines) {
+            if (/^\s+\S/.test(l) && lines.length > 0 && lines[lines.length - 1] !== '') {
+              lines[lines.length - 1] += l;
+            } else {
+              lines.push(l);
+            }
           }
+
+          const headerIdx = lines.findIndex(l => /Name\s+Id\s+Version/i.test(l));
+          const installedEntries = [];
+
+          if (headerIdx !== -1) {
+            const headerLine = lines[headerIdx];
+            const idStart = headerLine.search(/\bId\b/i);
+            const versionStart = headerLine.search(/\bVersion\b/i);
+            const dataStart = headerIdx + 2;
+            for (let i = dataStart; i < lines.length; i++) {
+              const line = lines[i];
+              if (line.length < idStart + 2) continue;
+              const rawName = line.substring(0, idStart).trim();
+              const rawId = line.substring(idStart, versionStart > idStart ? versionStart : line.length).trim();
+              if (rawId && rawId !== '---' && rawName) {
+                installedEntries.push({ name: rawName.toLowerCase(), id: rawId.toLowerCase() });
+              }
+            }
+          }
+
+          const result = {
+            installedEntries,
+            installedIdSet: new Set(installedEntries.map(e => e.id)),
+            installedNameSet: new Set(installedEntries.map(e => e.name)),
+          };
+          _wingetListCache = result;
+          _wingetCacheTime = Date.now();
+          return result;
+        } catch {
+          return { installedEntries: [], installedIdSet: new Set(), installedNameSet: new Set() };
         }
-      }
+      })()
+    ]);
 
-      installedIdSet = new Set(installedEntries.map(e => e.id));
-      installedNameSet = new Set(installedEntries.map(e => e.name));
+    const { installedEntries, installedIdSet, installedNameSet } = wingetResult;
 
-      // Cache the results
-      _wingetListCache = { installedEntries, installedIdSet, installedNameSet };
-      _wingetCacheTime = Date.now();
-    }
-
-    // catalogApps is either [{id, name}] (new) or [string] (legacy fallback)
-    const apps = Array.isArray(catalogApps)
-      ? catalogApps.map(a => typeof a === 'string' ? { id: a, name: '' } : a)
-      : [];
-
+    // ── Merge registry + winget matches ──
+    const regMatches = matchCatalogToRegistry(apps, regNames);
     const installed = {};
+
     for (const app of apps) {
+      // Registry hit from parallel scan
+      if (regMatches[app.id]) { installed[app.id] = true; continue; }
+
       const catalogIdLower = app.id.toLowerCase();
       const catalogNameLower = (app.name || '').toLowerCase();
 
-      // Strategy 1: Exact winget ID match (e.g. Brave.Brave === Brave.Brave)
-      if (installedIdSet.has(catalogIdLower)) {
-        installed[app.id] = true;
-        continue;
-      }
+      // Winget: Exact ID match
+      if (installedIdSet.has(catalogIdLower)) { installed[app.id] = true; continue; }
 
-      // Strategy 2: Installed ID starts with catalog ID
-      // Catches Google.Chrome matching Google.Chrome.EXE
+      // Winget: ID prefix match (e.g. Google.Chrome → Google.Chrome.EXE)
       let found = false;
       for (const entry of installedEntries) {
         if (entry.id.startsWith(catalogIdLower) && entry.id.length <= catalogIdLower.length + 10) {
-          found = true;
-          break;
+          found = true; break;
         }
       }
-      if (found) {
-        installed[app.id] = true;
-        continue;
-      }
+      if (found) { installed[app.id] = true; continue; }
 
       // Strategy 3: Exact name match from winget list Name column
       // Catches Discord (ARP\User\X64\Discord has Name="Discord")
@@ -4964,69 +5046,39 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
       installed[app.id] = found;
     }
 
-    // ── Supplementary: Use cached registry scan for apps winget missed ──
+    // ── Supplementary: Filesystem + AppX for still-undetected apps (in parallel) ──
     const undetected = apps.filter(a => !installed[a.id]);
     if (undetected.length > 0) {
-      try {
-        const regNames = await getRegistryDisplayNames();
-        const regMatches = matchCatalogToRegistry(undetected, regNames);
-        for (const [id, ok] of Object.entries(regMatches)) { if (ok) installed[id] = true; }
-      } catch (e) {
-      }
-    }
-
-    // ── Supplementary 2: Filesystem scan on ALL drives for still-undetected apps ──
-    const stillUndetected = apps.filter(a => !installed[a.id]);
-    if (stillUndetected.length > 0) {
-      try {
-        const fsMatches = scanFilesystemForApps(stillUndetected);
-        for (const [id, ok] of Object.entries(fsMatches)) { if (ok) installed[id] = true; }
-      } catch (e) {
-      }
-    }
-
-    // ── Supplementary 3: AppX / MSIX Store package detection ──
-    const yetUndetected = apps.filter(a => !installed[a.id]);
-    if (yetUndetected.length > 0) {
-      try {
-        const appxNames = await getAppxPackageNames();
-        if (appxNames.size > 0) {
-          const appxMatches = matchAppxPackages(yetUndetected, appxNames);
+      const [fsMatches, appxNames] = await Promise.all([
+        Promise.resolve().then(() => { try { return scanFilesystemForApps(undetected); } catch { return {}; } }),
+        getAppxPackageNames().catch(() => new Set())
+      ]);
+      for (const [id, ok] of Object.entries(fsMatches)) { if (ok) installed[id] = true; }
+      if (appxNames.size > 0) {
+        const stillUn = undetected.filter(a => !installed[a.id]);
+        if (stillUn.length > 0) {
+          const appxMatches = matchAppxPackages(stillUn, appxNames);
           for (const [id, ok] of Object.entries(appxMatches)) { if (ok) installed[id] = true; }
         }
-      } catch (e) {
       }
     }
 
     return { success: true, installed };
   } catch (error) {
-    // Fallback: registry-only detection if winget is unavailable (uses cached reg.exe results)
+    // Fallback: registry-only + filesystem + AppX if everything else failed
     try {
-      const apps = Array.isArray(catalogApps)
-        ? catalogApps.map(a => typeof a === 'string' ? { id: a, name: '' } : a)
-        : [];
       const regNames = await getRegistryDisplayNames();
       const installed = matchCatalogToRegistry(apps, regNames);
-      // Also run filesystem scan + AppX detection in fallback
       const undetected = apps.filter(a => !installed[a.id]);
       if (undetected.length > 0) {
-        try {
-          const fsMatches = scanFilesystemForApps(undetected);
-          for (const [id, ok] of Object.entries(fsMatches)) { if (ok) installed[id] = true; }
-        } catch {}
+        try { const fs = scanFilesystemForApps(undetected); for (const [id, ok] of Object.entries(fs)) { if (ok) installed[id] = true; } } catch { }
         const stillUn = apps.filter(a => !installed[a.id]);
         if (stillUn.length > 0) {
-          try {
-            const appxNames = await getAppxPackageNames();
-            if (appxNames.size > 0) {
-              const appxMatches = matchAppxPackages(stillUn, appxNames);
-              for (const [id, ok] of Object.entries(appxMatches)) { if (ok) installed[id] = true; }
-            }
-          } catch {}
+          try { const ax = await getAppxPackageNames(); if (ax.size > 0) { const m = matchAppxPackages(stillUn, ax); for (const [id, ok] of Object.entries(m)) { if (ok) installed[id] = true; } } } catch { }
         }
       }
       return { success: true, installed };
-    } catch (regErr) {
+    } catch {
       return { success: false, installed: {} };
     }
   }
@@ -5161,7 +5213,7 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
     const tmpBat = path.join(os.tmpdir(), `gs_appinst_de_${process.pid}.bat`);
     const taskName = `GSAppInstall_${process.pid}`;
 
-    try { fs.unlinkSync(tmpLog); } catch {}
+    try { fs.unlinkSync(tmpLog); } catch { }
     fs.writeFileSync(tmpBat,
       `@echo off\r\nchcp 65001 >nul\r\n${cmd} --disable-interactivity > "${tmpLog}" 2>&1\r\necho __GS_DONE__ >> "${tmpLog}"\r\n`, 'utf8');
 
@@ -5194,7 +5246,7 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
           `powershell -NoProfile -ExecutionPolicy Bypass -File "${ps1}"`,
           { encoding: 'utf8', windowsHide: true, timeout: 20000 }
         );
-        try { fs.unlinkSync(ps1); } catch {}
+        try { fs.unlinkSync(ps1); } catch { }
         if (psOut.includes('LAUNCHED')) launchOk = true;
       } catch (err) {
         console.error('[App Install] PS ScheduledTask failed:', (err.stderr || err.message || '').substring(0, 300));
@@ -5214,9 +5266,9 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
     }
 
     if (!launchOk) {
-      try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch {}
-      try { fs.unlinkSync(tmpBat); } catch {}
-      try { fs.unlinkSync(tmpVbs); } catch {}
+      try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch { }
+      try { fs.unlinkSync(tmpBat); } catch { }
+      try { fs.unlinkSync(tmpVbs); } catch { }
       sendProgress({ phase: 'error', status: 'Installation failed — cannot de-elevate', percent: 0 });
       resolve({ success: false, message: 'This app\'s installer refuses elevated context. Install it directly outside GS Control Center.' });
       return;
@@ -5235,7 +5287,7 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
     const poll = setInterval(() => {
       elapsed += pollMs;
       let log = '';
-      try { log = fs.readFileSync(tmpLog, 'utf8'); } catch {}
+      try { log = fs.readFileSync(tmpLog, 'utf8'); } catch { }
       const lower = log.toLowerCase();
 
       if (log.length === lastLogSize) { staleSince += pollMs; }
@@ -5250,20 +5302,20 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
       }
 
       const finished = lower.includes('successfully installed') ||
-                       lower.includes('already installed') ||
-                       lower.includes('installer failed') ||
-                       lower.includes('failed to install') ||
-                       lower.includes('cannot be run from an administrator') ||
-                       lower.includes('__gs_done__') ||
-                       (lower.includes('exit code') && lower.includes('failed'));
+        lower.includes('already installed') ||
+        lower.includes('installer failed') ||
+        lower.includes('failed to install') ||
+        lower.includes('cannot be run from an administrator') ||
+        lower.includes('__gs_done__') ||
+        (lower.includes('exit code') && lower.includes('failed'));
 
       const staleFinish = installStarted && staleSince >= staleLimit;
 
       if (finished || staleFinish || elapsed >= maxWait) {
         clearInterval(poll);
-        try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch {}
-        try { fs.unlinkSync(tmpBat); } catch {}
-        try { fs.unlinkSync(tmpVbs); } catch {}
+        try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch { }
+        try { fs.unlinkSync(tmpBat); } catch { }
+        try { fs.unlinkSync(tmpVbs); } catch { }
 
         const success = lower.includes('successfully installed');
         if (success) {
@@ -5282,7 +5334,7 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
           sendProgress({ phase: 'error', status: lastLine.substring(0, 120), percent: 0 });
           resolve({ success: false, message: lastLine.substring(0, 120) });
         }
-        try { fs.unlinkSync(tmpLog); } catch {}
+        try { fs.unlinkSync(tmpLog); } catch { }
       }
     }, pollMs);
   });
@@ -5299,7 +5351,7 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
   // ── Step 2: 404 / Not Found → update sources and retry ──
   if (output.includes('0x80190194') || output.includes('not found (404)') || output.includes('download failed')) {
     sendProgress({ phase: 'preparing', status: 'Updating sources…', percent: 0 });
-    try { await execAsync('winget source update', { timeout: 30000, windowsHide: true }); } catch {}
+    try { await execAsync('winget source update', { timeout: 30000, windowsHide: true }); } catch { }
     result = await runInstall(
       `winget install --id ${cleanId} --accept-source-agreements --accept-package-agreements --force`,
       'Retrying installation…'
@@ -5309,7 +5361,7 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
 
   // ── Step 3: Hash mismatch → retry with --ignore-security-hash (requires admin) ──
   if (output.includes('installer hash does not match') || output.includes('hash mismatch') ||
-      (result.output || '').toLowerCase().includes('installer hash does not match')) {
+    (result.output || '').toLowerCase().includes('installer hash does not match')) {
     if (isElevated) {
       result = await runInstall(
         `winget install --id ${cleanId} --accept-source-agreements --accept-package-agreements --ignore-security-hash`,
@@ -5324,7 +5376,7 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
 
   // ── Step 4: Installer refuses admin context → de-elevate (e.g. Spotify) ──
   if (isElevated && (output.includes('cannot be run from an administrator') ||
-      (result.output || '').toLowerCase().includes('cannot be run from an administrator'))) {
+    (result.output || '').toLowerCase().includes('cannot be run from an administrator'))) {
     return await runDeElevatedInstall(
       `winget install --id ${cleanId} --accept-source-agreements --accept-package-agreements --force`
     );

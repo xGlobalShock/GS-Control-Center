@@ -53,6 +53,11 @@ export interface RealtimeHWPayload {
   packetLoss: number;
   ssid?: string;
   wifiSignal: number;
+  activeAdapterName?: string;
+  activeLinkSpeed?: string;
+  activeLocalIP?: string;
+  activeMac?: string;
+  activeGateway?: string;
 
   // System
   processCount: number;
@@ -86,6 +91,11 @@ export interface RealtimeExtendedStats {
   networkDown: number;
   ssid?: string;
   wifiSignal: number;
+  activeAdapterName?: string;
+  activeLinkSpeed?: string;
+  activeLocalIP?: string;
+  activeMac?: string;
+  activeGateway?: string;
   latencyMs?: number;
   packetLoss?: number;
   ramUsedGB: number;
@@ -164,6 +174,11 @@ export function useRealtimeHardware(options: UseRealtimeHardwareOptions = {}) {
         networkDown: p.networkDown,
         ssid: p.ssid,
         wifiSignal: p.wifiSignal,
+        activeAdapterName: p.activeAdapterName,
+        activeLinkSpeed: p.activeLinkSpeed,
+        activeLocalIP: p.activeLocalIP,
+        activeMac: p.activeMac,
+        activeGateway: p.activeGateway,
         latencyMs: p.latencyMs,
         packetLoss: p.packetLoss,
         ramUsedGB: p.ramUsedGB,

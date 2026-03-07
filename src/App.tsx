@@ -74,6 +74,9 @@ export interface ExtendedStats {
   wifiSignal: number;
   activeAdapterName?: string;
   activeLinkSpeed?: string;
+  activeLocalIP?: string;
+  activeMac?: string;
+  activeGateway?: string;
   latencyMs?: number;
   packetLoss?: number;
   ramUsedGB: number;
@@ -133,6 +136,15 @@ function App() {
       }
     };
     fetchHardwareInfo();
+
+    // Listen for slow background data (phase 2) and merge into state
+    let unsub: (() => void) | undefined;
+    if (window.electron?.ipcRenderer) {
+      unsub = window.electron.ipcRenderer.on('hw-info-update', (partial: Partial<HardwareInfo>) => {
+        setHardwareInfo(prev => prev ? { ...prev, ...partial } : prev);
+      });
+    }
+    return () => { unsub?.(); };
   }, []);
 
   // Pre-computed display styles to avoid creating new objects on every render

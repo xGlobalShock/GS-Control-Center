@@ -69,21 +69,9 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
 
   const checkInstalled = useCallback(async () => {
     if (!window.electron?.ipcRenderer) return;
-    const allApps = APP_CATALOG.map(a => ({ id: a.id, name: a.name }));
-
-    // Phase 1: instant registry scan (~100ms cached, ~200ms cold)
-    try {
-      const fast = await window.electron.ipcRenderer.invoke('appinstall:check-installed-fast', allApps);
-      if (fast.success) {
-        const set = new Set<string>();
-        for (const [id, ok] of Object.entries(fast.installed)) { if (ok) set.add(id); }
-        setInstalled(set);
-      }
-    } catch { /* ignore — full scan will cover it */ }
-
-    // Phase 2: full winget refinement (background, no spinner — Phase 1 already populated)
     setCheckingInstalled(true);
     try {
+      const allApps = APP_CATALOG.map(a => ({ id: a.id, name: a.name }));
       const result = await window.electron.ipcRenderer.invoke('appinstall:check-installed', allApps);
       if (result.success) {
         const set = new Set<string>();

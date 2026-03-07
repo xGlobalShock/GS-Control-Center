@@ -753,12 +753,12 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
           {/* Static info — standard rows (double-click to blur/unblur) */}
           <Row label="Local IP Address" loading={hwLoading} value={
             <span className={blurredFields['ip'] ? 'hud-blurred' : 'hud-blurrable'} onDoubleClick={() => toggleBlur('ip')} title="Double-click to blur">
-              {hw?.ipAddress ?? '—'}
+              {ext?.activeLocalIP || hw?.ipAddress || '—'}
             </span>
           } />
           <Row label="Gateway" loading={hwLoading} value={
             <span className={blurredFields['gateway'] ? 'hud-blurred' : 'hud-blurrable'} onDoubleClick={() => toggleBlur('gateway')} title="Double-click to blur">
-              {hw?.gateway ?? '—'}
+              {ext?.activeGateway || hw?.gateway || '—'}
             </span>
           } />
           <Row label="DNS" loading={hwLoading} value={
@@ -766,13 +766,11 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
               {hw?.dns ?? '—'}
             </span>
           } />
-          {hw?.macAddress ? <Row label="MAC" value={
+          {(ext?.activeMac || hw?.macAddress) ? <Row label="MAC" value={
             <span className={blurredFields['mac'] ? 'hud-blurred' : 'hud-blurrable'} onDoubleClick={() => toggleBlur('mac')} title="Double-click to blur">
-              {hw.macAddress}
+              {ext?.activeMac || hw?.macAddress}
             </span>
           } /> : hwLoading && <Row label="MAC" loading />}
-          {ext?.ssid && <Row label="Wi‑Fi SSID" value={ext.ssid} />}
-
           {/* ── Active connection ── */}
           {(() => {
             // Determine connection type: WiFi if SSID present, otherwise Ethernet
@@ -781,23 +779,27 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
             const activeAdapter = adapters
               ? adapters.find(a => isWifi ? a.type === 'WiFi' : a.type === 'Ethernet') || adapters[0]
               : null;
-            // Prefer realtime link speed from extended stats (refreshes every ~2s)
+            // Prefer realtime link speed from extended stats (refreshes every ~5s)
             const linkSpeed = ext?.activeLinkSpeed || activeAdapter?.linkSpeed || hw?.networkLinkSpeed || '—';
+            const adapterName = ext?.activeAdapterName || activeAdapter?.name || (isWifi ? 'Wi-Fi' : 'Ethernet');
 
-            if (!activeAdapter && !hw?.networkLinkSpeed && hwLoading) {
+            if (!activeAdapter && !hw?.networkLinkSpeed && !ext?.activeLinkSpeed && hwLoading) {
               return <Row label="Connection" loading />;
             }
 
-            return activeAdapter || hw?.networkLinkSpeed ? (
+            return activeAdapter || hw?.networkLinkSpeed || ext?.activeLinkSpeed ? (
               <div className="hud-net-adapters">
                 <div className="hud-net-adapter">
                   <span className="hud-net-adapter-icon">
                     {isWifi ? <Wifi size={11} /> : <Network size={11} />}
                   </span>
                   <span className="hud-net-adapter-name">
-                    {ext?.activeAdapterName || activeAdapter?.name || (isWifi ? 'Wi-Fi' : 'Ethernet')}
+                    {adapterName}
                   </span>
                   <span className="hud-net-adapter-right">
+                    {isWifi && ext?.ssid && (
+                      <><span className="hud-net-adapter-lbl">SSID:</span><span className="hud-net-wifi-sig">{ext.ssid}</span></>
+                    )}
                     {isWifi && ext && ext.wifiSignal > 0 && (
                       <><span className="hud-net-adapter-lbl">Signal:</span><span className="hud-net-wifi-sig">{ext.wifiSignal}%</span></>
                     )}
