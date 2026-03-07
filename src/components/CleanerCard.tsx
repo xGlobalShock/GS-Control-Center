@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, ArrowCounterClockwise } from 'phosphor-react';
+import { Check } from 'phosphor-react';
 import '../styles/CleanerCard.css';
 
 interface CleanerCardProps {

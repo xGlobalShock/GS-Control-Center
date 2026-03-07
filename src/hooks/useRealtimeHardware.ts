@@ -40,6 +40,8 @@ export interface RealtimeHWPayload {
   ram: number;                // usage %
   ramUsedGB: number;
   ramTotalGB: number;
+  ramAvailableGB: number;
+  ramCachedGB: number;
 
   // Disk
   disk: number;               // usage %
@@ -100,6 +102,8 @@ export interface RealtimeExtendedStats {
   packetLoss?: number;
   ramUsedGB: number;
   ramTotalGB: number;
+  ramAvailableGB: number;
+  ramCachedGB: number;
   diskReadSpeed: number;
   diskWriteSpeed: number;
   processCount: number;
@@ -113,7 +117,7 @@ const EMPTY_STATS: RealtimeSystemStats = {
 const EMPTY_EXT: RealtimeExtendedStats = {
   cpuClock: 0, perCoreCpu: [], gpuUsage: -1, gpuTemp: -1,
   gpuVramUsed: -1, gpuVramTotal: -1, networkUp: 0, networkDown: 0,
-  wifiSignal: -1, ramUsedGB: 0, ramTotalGB: 0, diskReadSpeed: 0,
+  wifiSignal: -1, ramUsedGB: 0, ramTotalGB: 0, ramAvailableGB: 0, ramCachedGB: 0, diskReadSpeed: 0,
   diskWriteSpeed: 0, processCount: 0, systemUptime: '', latencyMs: 0, packetLoss: -1,
 };
 
@@ -183,6 +187,8 @@ export function useRealtimeHardware(options: UseRealtimeHardwareOptions = {}) {
         packetLoss: p.packetLoss,
         ramUsedGB: p.ramUsedGB,
         ramTotalGB: p.ramTotalGB,
+        ramAvailableGB: p.ramAvailableGB,
+        ramCachedGB: p.ramCachedGB,
         diskReadSpeed: p.diskReadSpeed,
         diskWriteSpeed: p.diskWriteSpeed,
         processCount: p.processCount,

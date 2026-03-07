@@ -34,7 +34,6 @@ const Performance: React.FC = () => {
   const [enabledTweaks, setEnabledTweaks] = useState<{ [key: string]: boolean }>({});
   const [tweakChecks, setTweakChecks] = useState<Record<string, any>>({});
   const [creatingRestore, setCreatingRestore] = useState(false);
-  const [lastRestoreInfo, setLastRestoreInfo] = useState<any | null>(null);
   const { addToast } = useToast();
 
   const runChecksOnDemand = async () => {
@@ -80,7 +79,6 @@ const Performance: React.FC = () => {
           attempt++;
           const restoreResult: any = await window.electron.ipcRenderer.invoke('system:create-restore-point', restoreDesc);
           if (restoreResult && restoreResult.success) {
-            setLastRestoreInfo(restoreResult.verify || null);
             addToast(restoreResult.message || `System restore point created (attempt ${attempt})`, 'info');
             success = true;
             break;
@@ -92,7 +90,6 @@ const Performance: React.FC = () => {
         }
 
         if (!success) {
-          setLastRestoreInfo(null);
           addToast(lastMessage, 'error');
         }
       }

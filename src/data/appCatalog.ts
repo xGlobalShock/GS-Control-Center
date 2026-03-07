@@ -36,7 +36,6 @@ export const APP_CATALOG: CatalogApp[] = [
   { name: 'Steam', id: 'Valve.Steam', category: 'Gaming' },
   { name: 'Epic Games Launcher', id: 'EpicGames.EpicGamesLauncher', category: 'Gaming' },
   { name: 'EA App', id: 'ElectronicArts.EADesktop', category: 'Gaming' },
-  { name: 'GOG Galaxy', id: 'GOG.Galaxy', category: 'Gaming' },
   { name: 'Ubisoft Connect', id: 'Ubisoft.Connect', category: 'Gaming' },
   { name: 'Battle.net', id: 'Blizzard.BattleNet', category: 'Gaming' },
   { name: 'GeForce NOW', id: 'Nvidia.GeForceNow', category: 'Gaming' },

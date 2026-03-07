@@ -12,7 +12,6 @@ interface DashboardProps {
   };
   hardwareInfo?: HardwareInfo;
   extendedStats?: ExtendedStats;
-  statsLoaded?: boolean;
 }
 
 import { Home } from 'lucide-react';

@@ -81,6 +81,8 @@ export interface ExtendedStats {
   packetLoss?: number;
   ramUsedGB: number;
   ramTotalGB: number;
+  ramAvailableGB: number;
+  ramCachedGB: number;
   diskReadSpeed: number;
   diskWriteSpeed: number;
   processCount: number;
@@ -172,7 +174,6 @@ function App() {
             systemStats={systemStats}
             hardwareInfo={hardwareInfo}
             extendedStats={extendedStats}
-            statsLoaded={connected}
           />
         </div>
         {staticPages}

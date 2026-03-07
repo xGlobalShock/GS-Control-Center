@@ -35,22 +35,6 @@
   letter-spacing: 1.5px;
 }
 
-.page-header-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 12px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: #00F2FF;
-  border: 1px solid rgba(0, 242, 255, 0.25);
-  border-radius: 999px;
-  background: rgba(0, 242, 255, 0.06);
-  white-space: nowrap;
-}
-
 /* ── Action buttons row ── */
 .page-header-actions {
   flex-shrink: 0;
@@ -58,37 +42,4 @@
   align-items: center;
   gap: 8px;
   margin-left: 12px;
-}
-
-.page-header-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 14px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: #00F2FF;
-  background: rgba(0, 242, 255, 0.06);
-  border: 1px solid rgba(0, 242, 255, 0.2);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
-  white-space: nowrap;
-}
-
-.page-header-btn:hover {
-  background: rgba(0, 242, 255, 0.12);
-  border-color: rgba(0, 242, 255, 0.4);
-  box-shadow: 0 0 12px rgba(0, 242, 255, 0.15);
-}
-
-.page-header-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.page-header-btn svg {
-  flex-shrink: 0;
 }

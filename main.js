@@ -201,11 +201,12 @@ app.on('ready', () => {
   if (isElevated) {
     try { execSync('winget settings --enable InstallerHashOverride', { stdio: 'ignore', windowsHide: true, timeout: 10000 }); } catch { }
   }
-  // Start LHM first (longest startup time) — runs in parallel with window creation
+  // Start LHM first (longest startup time) â€” runs in parallel with window creation
   startLHMService();
   // Start standalone perf counter service (CPU usage + clock speed, no LHM dependency)
   _startPerfCounterService();
   _startDiskRefresh();
+  _startRamCacheRefresh();
   // Pre-fetch hardware info (starts fetch early so IPC handler can return immediately)
   _initHardwareInfo();
   createWindow();
@@ -245,7 +246,7 @@ ipcMain.handle('network:ping', async (event, host) => {
   }
 });
 
-// Video Settings Presets – save preset file to videosettings-presets folder
+// Video Settings Presets â€“ save preset file to videosettings-presets folder
 ipcMain.handle('preset:save-video-settings', async (event, filename, content) => {
   try {
     const { app } = require('electron');
@@ -325,38 +326,21 @@ ipcMain.handle('system:create-restore-point', async (event, description) => {
   }
 });
 
-// Open System Protection UI (SystemPropertiesProtection)
-ipcMain.handle('system:open-system-protection', async () => {
-  try {
-    const exe = 'SystemPropertiesProtection.exe';
-    // Spawn without waiting
-    spawn(exe, [], { detached: true, stdio: 'ignore' }).unref();
-    return { success: true };
-  } catch (error) {
-    console.log('[Restore Point] Error opening System Protection:', error.message || error);
-    try {
-      // Fallback: open System Properties Control Panel
-      exec('control /name Microsoft.System', (e) => { });
-    } catch (e) { }
-    return { success: false, message: 'Could not open System Protection UI' };
-  }
-});
-
-// ──────────────────────────────────────────────────────
-// System Stats IPC Handler — instant reads (no PS spawn)
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// System Stats IPC Handler â€” instant reads (no PS spawn)
 // CPU + Temp from LHM background service, RAM from Node.js,
 // Disk from background cache. Zero latency.
-// ──────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 ipcMain.handle('system:get-stats', () => {
   return _getStatsImpl();
 });
 
-// ──────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // LibreHardwareMonitor Background Temperature Service
 // Loads the LHM .NET DLL in a persistent PowerShell process
 // to read real CPU package temperature via MSR registers.
 // Requires admin (app runs elevated in production).
-// ──────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let _lhmProcess = null;
 let _lhmTemp = 0;           // latest CPU package temp from LHM
 let _lhmCpuLoad = -1;       // latest CPU total load % from LHM
@@ -369,30 +353,13 @@ let _lhmDiskWrite = 0;      // disk write bytes/sec from perf counter
 let _lhmProcessCount = 0;   // running process count from perf counter
 let _lhmCpuClock = -1;      // CPU max core clock (MHz) from LHM MSR sensors
 let _lhmAvailable = false;  // true once we get a valid CPU temp reading
-let _lhmServiceRunning = false; // true once LHM returns ANY data
 let _estimatedTemp = 40;    // smoothed estimation (thermal inertia)
 let _lhmCacheTimer = null;  // periodic save timer
 
-// ── LHM sensor cache: restore last-known readings for instant startup ──
+// â”€â”€ LHM sensor cache: restore last-known readings for instant startup â”€â”€
 function _getLhmCachePath() {
   try { return path.join(app.getPath('userData'), 'gs_lhm_cache.json'); }
   catch { return path.join(os.tmpdir(), 'gs_lhm_cache.json'); }
-}
-
-function _loadLhmCache() {
-  try {
-    const raw = fs.readFileSync(_getLhmCachePath(), 'utf8');
-    const c = JSON.parse(raw);
-    // Cache valid for 24 hours (values are ballpark-reasonable for initial display)
-    if (c && Date.now() - (c._ts || 0) < 86400000) {
-      if (c.cpuTemp > 0 && c.cpuTemp < 150) { _lhmTemp = c.cpuTemp; _lhmAvailable = true; }
-      if (c.cpuLoad >= 0 && c.cpuLoad <= 100) _lhmCpuLoad = c.cpuLoad;
-      if (c.gpuTemp > 0 && c.gpuTemp < 150) _lhmGpuTemp = c.gpuTemp;
-      if (c.gpuUsage >= 0 && c.gpuUsage <= 100) _lhmGpuUsage = c.gpuUsage;
-      if (c.gpuVramUsed >= 0) _lhmGpuVramUsed = c.gpuVramUsed;
-      if (c.gpuVramTotal > 0) _lhmGpuVramTotal = c.gpuVramTotal;
-    }
-  } catch { }
 }
 
 function _saveLhmCache() {
@@ -414,9 +381,7 @@ function _startLhmCacheTimer() {
 }
 
 function startLHMService() {
-  // [BYPASS CACHE] Do NOT restore stale sensor values — always start fresh
-  // _loadLhmCache();  // DISABLED: real-time metrics must come from live hardware reads
-  // Start periodic cache saves (still useful for crash recovery)
+  // Start periodic cache saves (useful for crash recovery)
   _startLhmCacheTimer();
 
   // In production builds __dirname points inside the asar archive.
@@ -438,10 +403,10 @@ function startLHMService() {
   // Write a long-running PS script that loads LHM, opens CPU sensors,
   // and prints sensor data every 500ms.
   const scriptContent = [
-    '# LHM sensor service — errors reported on stderr, data on stdout',
+    '# LHM sensor service â€” errors reported on stderr, data on stdout',
     '$ErrorActionPreference = "Stop"',
     '',
-    '# ── Admin detection (ring0 driver needs admin for MSR temp reads) ──',
+    '# â”€â”€ Admin detection (ring0 driver needs admin for MSR temp reads) â”€â”€',
     '$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)',
     '[Console]::Error.WriteLine("LHMINFO:ADMIN=" + $isAdmin)',
     '',
@@ -452,7 +417,7 @@ function startLHMService() {
     '  exit 1',
     '}',
     '',
-    '# ── UpdateVisitor: the official LHM pattern for refreshing all sensors ──',
+    '# â”€â”€ UpdateVisitor: the official LHM pattern for refreshing all sensors â”€â”€',
     'try {',
     '  Add-Type -ReferencedAssemblies @($(' + "'" + resolvedDllPath + "'" + ')) -Language CSharp -TypeDefinition @"',
     'using LibreHardwareMonitor.Hardware;',
@@ -550,7 +515,7 @@ function startLHMService() {
     '    # Motherboard SuperIO CPU temp fallback when LHM ring0 cannot read DTS',
     '    if ($cpuTemp -eq $null -and $mbCpuTemp -ne $null) { $cpuTemp = $mbCpuTemp }',
     '',
-    '    # ── Diagnostic dump on first iteration ──',
+    '    # â”€â”€ Diagnostic dump on first iteration â”€â”€',
     '    if ($iteration -eq 0) {',
     '      $sensorInfo = @()',
     '      foreach ($hw in $computer.Hardware) {',
@@ -626,11 +591,11 @@ function startLHMService() {
         const v = parseFloat(valStr);
         if (isNaN(v)) continue;
         switch (key) {
-          case 'CPUT': if (v > 0 && v < 150) { _lhmTemp = Math.round(v * 10) / 10; _lhmAvailable = true; _lhmServiceRunning = true; } break;
+          case 'CPUT': if (v > 0 && v < 150) { _lhmTemp = Math.round(v * 10) / 10; _lhmAvailable = true; } break;
           case 'CPUL': if (v >= 0 && v <= 100) _lhmCpuLoad = Math.round(v * 10) / 10; break;
           case 'CPUCLK': if (v > 0 && v < 10000) _lhmCpuClock = Math.round(v); break;
           case 'GPUT': if (v > 0 && v < 150) _lhmGpuTemp = Math.round(v); break;
-          case 'GPUL': if (v >= 0 && v <= 100) { _lhmGpuUsage = Math.round(v); _lhmServiceRunning = true; } break;
+          case 'GPUL': if (v >= 0 && v <= 100) { _lhmGpuUsage = Math.round(v); } break;
           case 'GPUVRU': if (v >= 0) _lhmGpuVramUsed = Math.round(v); break;
           case 'GPUVRT': if (v > 0) _lhmGpuVramTotal = Math.round(v); break;
           case 'DR': if (v >= 0) _lhmDiskRead = Math.round(v); break;
@@ -687,15 +652,15 @@ function stopLHMService() {
   try { fs.unlinkSync(tmpFile); } catch { }
 }
 
-// ──────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Standalone Performance Counter Service
-// Reads % Processor Utility (matches Task Manager) and
+// Reads % Processor Time (matches Task Manager) and
 // % Processor Performance (for real-time clock speed).
-// Does NOT require LHM — works on any Windows system.
-// ──────────────────────────────────────────────────────
+// Does NOT require LHM â€” works on any Windows system.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let _perfCounterProcess = null;
-let _perfCpuUtility = -1;     // % Processor Utility (matches Task Manager)
-let _perfCpuPerfPct = -1;     // % Processor Performance (current/base ratio × 100)
+let _perfCpuUtility = -1;     // % Processor Time (matches Task Manager)
+let _perfCpuPerfPct = -1;     // % Processor Performance (current/base ratio Ã— 100)
 let _perfPerCoreCpu = [];     // per-logical-processor % Processor Utility
 
 function _startPerfCounterService() {
@@ -704,89 +669,16 @@ function _startPerfCounterService() {
   const scriptContent = [
     '$ErrorActionPreference = "SilentlyContinue"',
     '',
-    '# ── Total CPU counters (PerformanceCounter API — fastest) ──',
-    'try { $cpuU = New-Object System.Diagnostics.PerformanceCounter("Processor Information", "% Processor Utility", "_Total") } catch { $cpuU = $null }',
+    '# CPU clock speed counter (% Processor Performance = current/base ratio x 100)',
     'try { $cpuP = New-Object System.Diagnostics.PerformanceCounter("Processor Information", "% Processor Performance", "_Total") } catch { $cpuP = $null }',
     '',
-    '# ── Per-core counters (PerformanceCounter API — lightweight, delta-based) ──',
-    '$coreCounters = @()',
-    'try {',
-    '  $cat = New-Object System.Diagnostics.PerformanceCounterCategory("Processor Information")',
-    '  $instances = $cat.GetInstanceNames() | Where-Object { $_ -ne "_Total" -and $_ -notlike "*_Total" } | Sort-Object { $p = $_ -split ","; [int]$p[0] * 1000 + [int]$p[1] }',
-    '  foreach ($inst in $instances) {',
-    '    try {',
-    '      $c = New-Object System.Diagnostics.PerformanceCounter("Processor Information", "% Processor Utility", $inst)',
-    '      $c.NextValue() | Out-Null',
-    '      $coreCounters += $c',
-    '    } catch {}',
-    '  }',
-    '} catch {}',
-    'if ($coreCounters.Count -eq 0) { [Console]::Error.WriteLine("[PerfCtr] Per-core counters unavailable, will use WMI fallback") }',
-    '',
-    '# ── WMI fallback flag ──',
-    '$useWmi = ($cpuU -eq $null)',
-    'if ($useWmi) { [Console]::Error.WriteLine("[PerfCtr] PerformanceCounter unavailable, using WMI fallback") }',
-    '',
-    '# Prime total counters (first delta read is always 0)',
-    'if ($cpuU) { $cpuU.NextValue() | Out-Null }',
+    '# Prime counter (first delta read is always 0)',
     'if ($cpuP) { $cpuP.NextValue() | Out-Null }',
     'Start-Sleep -Milliseconds 500',
     '',
     'while ($true) {',
     '  $parts = @()',
-    '',
-    '  # Total CPU utility',
-    '  if ($cpuU) {',
-    '    try { $v = $cpuU.NextValue(); if ($v -gt 100) { $v = 100 }; $parts += "CPUU:" + [math]::Round($v, 1) } catch {}',
-    '  } elseif ($useWmi) {',
-    '    try {',
-    '      $wmiObj = Get-CimInstance Win32_PerfFormattedData_Counters_ProcessorInformation -Filter "Name=\'_Total\'" -ErrorAction Stop',
-    '      if ($wmiObj -and $wmiObj.PercentProcessorUtility -ne $null) {',
-    '        $v = [double]$wmiObj.PercentProcessorUtility; if ($v -gt 100) { $v = 100 }',
-    '        $parts += "CPUU:" + [math]::Round($v, 1)',
-    '      }',
-    '    } catch {}',
-    '  }',
-    '',
-    '  # Processor Performance (for clock speed)',
     '  if ($cpuP) { try { $parts += "CPUP:" + [math]::Round($cpuP.NextValue(), 1) } catch {} }',
-    '',
-    '  # Per-core utility: prefer PerformanceCounter objects (lightweight delta-based)',
-    '  $coreVals = @()',
-    '  if ($coreCounters.Count -gt 0) {',
-    '    foreach ($cc in $coreCounters) {',
-    '      try {',
-    '        $v = [double]$cc.NextValue()',
-    '        if ($v -lt 0) { $v = 0 }',
-    '        if ($v -gt 100) { $v = 100 }',
-    '        $coreVals += [math]::Round($v, 1)',
-    '      } catch { $coreVals += 0 }',
-    '    }',
-    '  } else {',
-    '    # Fallback: WMI query (heavier, can inflate readings)',
-    '    try {',
-    '      $allCores = Get-CimInstance Win32_PerfFormattedData_Counters_ProcessorInformation -ErrorAction Stop | Where-Object { $_.Name -notlike "*_Total*" }',
-    '      $allCores = $allCores | Sort-Object { $p = $_.Name -split ","; [int]$p[0] * 1000 + [int]$p[1] }',
-    '      foreach ($core in $allCores) {',
-    '        $v = [double]$core.PercentProcessorUtility',
-    '        if ($v -lt 0) { $v = 0 }',
-    '        if ($v -gt 100) { $v = 100 }',
-    '        $coreVals += [math]::Round($v, 1)',
-    '      }',
-    '    } catch {',
-    '      # Fallback: PerfOS_Processor (less accurate but always available)',
-    '      try {',
-    '        $allCores = Get-CimInstance Win32_PerfFormattedData_PerfOS_Processor -ErrorAction Stop | Where-Object { $_.Name -ne "_Total" } | Sort-Object { [int]$_.Name }',
-    '        foreach ($core in $allCores) {',
-    '          $v = [double]$core.PercentProcessorTime',
-    '          if ($v -gt 100) { $v = 100 }',
-    '          $coreVals += [math]::Round($v, 1)',
-    '        }',
-    '      } catch {}',
-    '    }',
-    '  }',
-    '  if ($coreVals.Count -gt 0) { $parts += "CORES:" + ($coreVals -join ",") }',
-    '',
     '  if ($parts.Count -gt 0) {',
     '    [Console]::Out.WriteLine($parts -join "|")',
     '    [Console]::Out.Flush()',
@@ -813,21 +705,9 @@ function _startPerfCounterService() {
         const colonIdx = token.indexOf(':');
         if (colonIdx < 0) continue;
         const key = token.substring(0, colonIdx);
-        const valStr = token.substring(colonIdx + 1);
-        if (key === 'CORES') {
-          // Per-core utility: comma-separated floats
-          _perfPerCoreCpu = valStr.split(',').map(s => {
-            const n = parseFloat(s);
-            return isNaN(n) ? 0 : Math.min(Math.round(n * 10) / 10, 100);
-          });
-          continue;
-        }
-        const v = parseFloat(valStr);
+        const v = parseFloat(token.substring(colonIdx + 1));
         if (isNaN(v)) continue;
-        switch (key) {
-          case 'CPUU': if (v >= 0 && v <= 100) _perfCpuUtility = Math.round(v * 10) / 10; break;
-          case 'CPUP': if (v > 0) _perfCpuPerfPct = Math.round(v * 10) / 10; break;
-        }
+        if (key === 'CPUP' && v > 0) _perfCpuPerfPct = Math.round(v * 10) / 10;
       }
     }
   });
@@ -842,7 +722,7 @@ function _startPerfCounterService() {
     _perfCounterProcess = null;
   });
 
-  // PerfCtr service started silently — errors reported via exit/error handlers
+  // PerfCtr service started silently â€” errors reported via exit/error handlers
 }
 
 function _stopPerfCounterService() {
@@ -858,6 +738,8 @@ let _lastStats = { cpu: 0, ram: 0, disk: 0, temperature: 0 };
 let _tempSource = 'none';       // 'lhm', 'estimation'
 let _cachedDiskPct = 0;         // disk % refreshed in background (not latency-critical)
 let _diskRefreshTimer = null;
+let _cachedRamCachedGB = 0;     // Windows cached RAM (Standby + Modified) in GB
+let _ramCacheTimer = null;
 
 // Refresh disk usage in background every 10s (disk changes slowly, no need to block stats)
 function _startDiskRefresh() {
@@ -875,6 +757,24 @@ function _startDiskRefresh() {
   };
   refresh(); // initial
   _diskRefreshTimer = setInterval(refresh, 10000);
+}
+
+// Refresh Windows cached RAM (Standby + Modified pages) every 5s
+function _startRamCacheRefresh() {
+  const refresh = () => {
+    runPSScript(`
+      try {
+        $m = Get-CimInstance Win32_PerfFormattedData_PerfOS_Memory
+        $c = [long]$m.StandbyCacheCoreBytes + [long]$m.StandbyCacheNormalPriorityBytes + [long]$m.StandbyCacheReserveBytes + [long]$m.ModifiedPageListBytes
+        Write-Output ([math]::Round($c / 1073741824, 1))
+      } catch { Write-Output '0' }
+    `, 4000).then(raw => {
+      const v = parseFloat(raw);
+      if (!isNaN(v) && v >= 0) _cachedRamCachedGB = Math.round(v * 10) / 10;
+    }).catch(() => { });
+  };
+  refresh();
+  _ramCacheTimer = setInterval(refresh, 5000);
 }
 
 function _getStatsImpl() {
@@ -930,7 +830,7 @@ let _rtLastGateway = '';
 let _rtPrimed = false;
 let _rtLastTempSource = '';  // tracks temp source changes for diagnostics
 
-// Node.js process count fallback — used when LHM perf counter isn't available
+// Node.js process count fallback â€” used when LHM perf counter isn't available
 let _nodeProcessCount = 0;
 (async function _pollProcessCount() {
   const update = async () => {
@@ -947,7 +847,7 @@ let _nodeProcessCount = 0;
   setInterval(update, 5000);
 })();
 
-// nvidia-smi GPU fallback — provides GPU metrics when LHM hasn't detected the GPU yet
+// nvidia-smi GPU fallback â€” provides GPU metrics when LHM hasn't detected the GPU yet
 let _nvGpuUsage = -1;
 let _nvGpuTemp = -1;
 let _nvGpuVramUsed = -1;
@@ -960,7 +860,7 @@ function _formatUptimeSeconds(seconds) {
   return `${d}d ${h}h ${m}m`;
 }
 
-// Latency + Packet Loss ping — separate timer (every 10s)
+// Latency + Packet Loss ping â€” separate timer (every 10s)
 // Uses Windows ping -n 5 to get both latency and loss in one call
 function _startLatencyPoll() {
   const doPing = async () => {
@@ -984,7 +884,7 @@ function _startLatencyPoll() {
   _realtimeLatencyTimer = setInterval(doPing, 10000);
 }
 
-// Active adapter + Wi-Fi info — separate timer (every 5s)
+// Active adapter + Wi-Fi info â€” separate timer (every 5s)
 function _startWifiPoll() {
   const fetchAdapter = async () => {
     try {
@@ -1038,8 +938,8 @@ function _startWifiPoll() {
   _realtimeWifiTimer = setInterval(fetchAdapter, 5000);
 }
 
-// nvidia-smi GPU poll — runs every 3s, skips if LHM is already providing GPU data
-// Stops retrying after 3 consecutive failures (e.g. AMD GPU — no nvidia-smi available)
+// nvidia-smi GPU poll â€” runs every 3s, skips if LHM is already providing GPU data
+// Stops retrying after 3 consecutive failures (e.g. AMD GPU â€” no nvidia-smi available)
 function _startNvGpuPoll() {
   let failCount = 0;
   const MAX_FAILS = 3;
@@ -1064,7 +964,7 @@ function _startNvGpuPoll() {
       if (failCount >= MAX_FAILS && _realtimeNvGpuTimer) {
         clearInterval(_realtimeNvGpuTimer);
         _realtimeNvGpuTimer = null;
-        // nvidia-smi not available (AMD/Intel GPU) — stopped polling
+        // nvidia-smi not available (AMD/Intel GPU) â€” stopped polling
       }
     }
   };
@@ -1094,35 +994,38 @@ function _startRealtimePush() {
     if (!mainWindow || mainWindow.isDestroyed()) return;
 
     try {
-      // SI calls run in parallel — mem, network only (CPU comes from perf counters, temp from LHM/estimation)
-      const [memData, netData] = await Promise.allSettled([
+      // SI calls run in parallel â€” mem, network only (CPU comes from perf counters, temp from LHM/estimation)
+      const [memData, netData, cpuData] = await Promise.allSettled([
         si.mem(),                   // Memory usage (instant kernel call)
         si.networkStats('*'),       // Network throughput per interface (delta-based tx_sec/rx_sec)
+        si.currentLoad(),           // CPU load per-core + total (idle-time delta, matches Task Manager)
       ]);
 
       const mem = memData.status === 'fulfilled' ? memData.value : null;
       const net = netData.status === 'fulfilled' ? netData.value : null;
+      const cpuLoad = cpuData.status === 'fulfilled' ? cpuData.value : null;
 
-      // ── Compute real-time CPU clock from perf counter ──
-      // % Processor Performance = (current_freq / base_freq) × 100
-      // e.g. base 3700 MHz, boost 5090 MHz → perfPct ≈ 137.6 → 3700 × 1.376 = 5091 MHz
+      // â”€â”€ Compute real-time CPU clock from perf counter â”€â”€
+      // % Processor Performance = (current_freq / base_freq) Ã— 100
+      // e.g. base 3700 MHz, boost 5090 MHz â†’ perfPct â‰ˆ 137.6 â†’ 3700 Ã— 1.376 = 5091 MHz
       const baseClock = os.cpus()[0]?.speed || 0; // base clock in MHz from Node.js
       let resolvedClock = 0;
       if (_lhmCpuClock > 0) {
         // LHM MSR sensor: most accurate, direct per-core max clock
         resolvedClock = _lhmCpuClock;
       } else if (_perfCpuPerfPct > 0 && baseClock > 0) {
-        // Perf counter ratio × base clock
+        // Perf counter ratio Ã— base clock
         resolvedClock = Math.round(baseClock * (_perfCpuPerfPct / 100));
       }
 
-      // ── Resolve CPU usage from PerfCounter (% Processor Utility) ──
-      // Matches Task Manager exactly. No SI fallback needed.
-      let resolvedCpu = _perfCpuUtility >= 0 ? _perfCpuUtility : 0;
+      // â”€â”€ Resolve CPU usage from PerfCounter (% Processor Utility) â”€â”€
+      // — Resolve CPU usage from si.currentLoad() (idle-time deltas, matches Task Manager) —
+      let resolvedCpu = cpuLoad ? Math.round(cpuLoad.currentLoad * 10) / 10 : (_perfCpuUtility >= 0 ? _perfCpuUtility : 0);
+      const perCoreCpu = cpuLoad && cpuLoad.cpus ? cpuLoad.cpus.map(c => Math.round(c.load * 10) / 10) : _perfPerCoreCpu;
 
-      // ── Resolve temperature (priority: LHM → smart estimation) ──
+      // â”€â”€ Resolve temperature (priority: LHM â†’ smart estimation) â”€â”€
       // Note: SI ACPI (si.cpuTemperature) returns static ACPI thermal zone on desktop
-      // boards (e.g. 27°C constant), so we skip it entirely and use smart estimation.
+      // boards (e.g. 27Â°C constant), so we skip it entirely and use smart estimation.
       let resolvedTemp = 0;
       let tempSource = 'none';
       if (_lhmAvailable && _lhmTemp > 0) {
@@ -1149,37 +1052,39 @@ function _startRealtimePush() {
         _rtLastTempSource = tempSource;
       }
 
-      // ── Build unified payload (replaces both system:get-stats + system:get-extended-stats) ──
+      // â”€â”€ Build unified payload (replaces both system:get-stats + system:get-extended-stats) â”€â”€
       const payload = {
-        // CPU — % Processor Utility from perf counter service (matches Task Manager)
+        // CPU â€” % Processor Utility from perf counter service (matches Task Manager)
         cpu: resolvedCpu,
-        // Per-core utilization from perf counter service (% Processor Utility per logical core)
-        perCoreCpu: _perfPerCoreCpu.length > 0 ? _perfPerCoreCpu : [],
-        // Current clock speed — real-time boost from LHM or perf counter
+        // Per-core utilization from si.currentLoad() (idle-time deltas per logical core)
+        perCoreCpu: perCoreCpu.length > 0 ? perCoreCpu : [],
+        // Current clock speed â€” real-time boost from LHM or perf counter
         cpuClock: resolvedClock,
 
-        // Temperature — resolved with fallback chain
+        // Temperature â€” resolved with fallback chain
         temperature: resolvedTemp,
         tempSource: tempSource,
         lhmReady: _lhmAvailable || _perfCpuUtility >= 0,
 
-        // GPU — prefer LHM (500ms refresh), fallback to nvidia-smi (3s poll)
+        // GPU â€” prefer LHM (500ms refresh), fallback to nvidia-smi (3s poll)
         gpuTemp: _lhmGpuTemp >= 0 ? _lhmGpuTemp : (_nvGpuTemp >= 0 ? _nvGpuTemp : -1),
         gpuUsage: _lhmGpuUsage >= 0 ? _lhmGpuUsage : (_nvGpuUsage >= 0 ? _nvGpuUsage : -1),
         gpuVramUsed: _lhmGpuVramUsed >= 0 ? _lhmGpuVramUsed : (_nvGpuVramUsed >= 0 ? _nvGpuVramUsed : -1),
         gpuVramTotal: _lhmGpuVramTotal > 0 ? _lhmGpuVramTotal : (_nvGpuVramTotal > 0 ? _nvGpuVramTotal : -1),
 
-        // Memory — from SI (active memory, not just "used" which includes cache)
+        // Memory â€” from SI (active memory, not just "used" which includes cache)
         ram: mem ? Math.round((mem.active / mem.total) * 1000) / 10 : 0,
         ramUsedGB: mem ? Math.round(mem.active / (1024 * 1024 * 1024) * 10) / 10 : 0,
         ramTotalGB: mem ? Math.round(mem.total / (1024 * 1024 * 1024) * 10) / 10 : 0,
+        ramAvailableGB: mem ? Math.round(mem.available / (1024 * 1024 * 1024) * 10) / 10 : 0,
+        ramCachedGB: _cachedRamCachedGB,
 
-        // Disk — percentage from background cache, I/O from LHM perf counters (500ms delta)
+        // Disk â€” percentage from background cache, I/O from LHM perf counters (500ms delta)
         disk: _cachedDiskPct,
         diskReadSpeed: _lhmDiskRead,
         diskWriteSpeed: _lhmDiskWrite,
 
-        // Network — from SI (delta-based bytes/sec, summed across all active interfaces)
+        // Network â€” from SI (delta-based bytes/sec, summed across all active interfaces)
         networkUp: 0,
         networkDown: 0,
 
@@ -1228,21 +1133,16 @@ function _stopRealtimePush() {
   // RT push stopped
 }
 
-// IPC: frontend can request start/stop of real-time push
+// IPC: frontend can request start of real-time push
 ipcMain.handle('system:start-realtime', () => {
   _startRealtimePush();
   return { success: true };
 });
 
-ipcMain.handle('system:stop-realtime', () => {
-  _stopRealtimePush();
-  return { success: true };
-});
-
-// ──────────────────────────────────────────────────────
-// Hardware Info — always fetched fresh.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Hardware Info â€” always fetched fresh.
 // 1 consolidated PS script + nvidia-smi (~2-4s).
-// ──────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let _hwInfoResult = null;    // resolved HardwareInfo object
 let _hwInfoPromise = null;   // pending fetch promise (so IPC handler can await)
 
@@ -1310,22 +1210,22 @@ async function _fetchHardwareInfoImpl() {
     batteryStatus: '',
   };
 
-  // ── Single consolidated PS script + nvidia-smi + license/update checks (all in parallel) ──
+  // â”€â”€ Single consolidated PS script + nvidia-smi + license/update checks (all in parallel) â”€â”€
   // Sections 0-14 run in one PS process; license & update run as separate fast processes alongside.
   // Sections separated by @@, fields within section by |||
   // Multi-line sections (drives, physical disks) use ~~ as line separator
   const [hwAll, nvDriverR, lastUpdateR, licenseR] = await Promise.allSettled([
 
-    // ── All hardware info in one PS script ──
+    // â”€â”€ All hardware info in one PS script â”€â”€
     runPSScript(`
-# ── Section 0: CPU ──
+# â”€â”€ Section 0: CPU â”€â”€
 $s0 = 'Unknown CPU|||0|||0|||0'
 try {
   $cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
   $s0 = "$($cpu.Name)|||$($cpu.NumberOfCores)|||$($cpu.NumberOfLogicalProcessors)|||$($cpu.MaxClockSpeed)"
 } catch {}
 
-# ── Section 1: GPU ──
+# â”€â”€ Section 1: GPU â”€â”€
 $s1 = 'Unknown GPU|||0|||N/A'
 try {
   $gpu = Get-CimInstance Win32_VideoController | Where-Object { $_.Status -eq 'OK' -and $_.Name -notmatch '(Virtual|Dummy|Parsec|Remote|Generic)' } | Select-Object -First 1
@@ -1364,7 +1264,7 @@ try {
   }
 } catch {}
 
-# ── Section 2: RAM ──
+# â”€â”€ Section 2: RAM â”€â”€
 $s2 = '0||||||||||'
 try {
   $mem = Get-CimInstance Win32_PhysicalMemory
@@ -1373,7 +1273,7 @@ try {
   $s2 = "$totalGB|||$($first.Speed)|||$($first.ConfiguredClockSpeed)|||$($mem.Count) stick(s)|||$($first.Manufacturer)|||$($first.PartNumber)"
 } catch {}
 
-# ── Section 3: Disk ──
+# â”€â”€ Section 3: Disk â”€â”€
 $s3 = '|||||||'
 try {
   $d = Get-PhysicalDisk | Select-Object -First 1
@@ -1385,7 +1285,7 @@ try {
   }
 } catch {}
 
-# ── Section 4: All drives ──
+# â”€â”€ Section 4: All drives â”€â”€
 $s4 = ''
 try {
   $drvs = Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | ForEach-Object {
@@ -1394,7 +1294,7 @@ try {
   $s4 = ($drvs -join '~~')
 } catch {}
 
-# ── Section 5: Network ──
+# â”€â”€ Section 5: Network â”€â”€
 $s5 = '||||||||||||||'
 try {
   $a = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Select-Object -First 1
@@ -1420,7 +1320,7 @@ try {
   $s5 = "$($a.Name) ($($a.InterfaceDescription))|||$ipv4|||$($a.LinkSpeed)|||$mac|||$ipv6|||$gw|||$dns|||$allAdapters"
 } catch {}
 
-# ── Section 6: Windows ──
+# â”€â”€ Section 6: Windows â”€â”€
 $s6 = 'Windows|||'
 try {
   $r = Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion' -ErrorAction SilentlyContinue
@@ -1432,7 +1332,7 @@ try {
   $s6 = "$prod|||$disp (Build $build)"
 } catch {}
 
-# ── Sections 7-11: Uptime, Power, Battery, RAM GB, Disk free ──
+# â”€â”€ Sections 7-11: Uptime, Power, Battery, RAM GB, Disk free â”€â”€
 $osObj = $null
 try { $osObj = Get-CimInstance Win32_OperatingSystem } catch {}
 
@@ -1464,7 +1364,7 @@ if ($osObj) {
 $s11 = '0'
 try { $dc = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"; $s11 = [math]::Round($dc.FreeSpace/1GB,1) } catch {}
 
-# ── Section 12: Motherboard ──
+# â”€â”€ Section 12: Motherboard â”€â”€
 $s12 = '|||'
 try {
   $bb = Get-CimInstance Win32_BaseBoard -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -1474,7 +1374,7 @@ try {
   }
 } catch {}
 
-# ── Section 13: Physical disks ──
+# â”€â”€ Section 13: Physical disks â”€â”€
 $s13 = ''
 try {
   $pds = Get-CimInstance Win32_DiskDrive | ForEach-Object {
@@ -1484,7 +1384,7 @@ try {
   $s13 = ($pds -join '~~')
 } catch {}
 
-# ── Section 14: BIOS ──
+# â”€â”€ Section 14: BIOS â”€â”€
 $s14 = '|||'
 try {
   $bio = Get-CimInstance Win32_BIOS -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -1498,11 +1398,11 @@ try {
 Write-Output ($s0 + '@@' + $s1 + '@@' + $s2 + '@@' + $s3 + '@@' + $s4 + '@@' + $s5 + '@@' + $s6 + '@@' + $s7 + '@@' + $s8 + '@@' + $s9 + '@@' + $s10 + '@@' + $s11 + '@@' + $s12 + '@@' + $s13 + '@@' + $s14)
     `, 15000),
 
-    // ── nvidia-smi for GPU driver version + accurate VRAM total (separate binary, runs in parallel) ──
+    // â”€â”€ nvidia-smi for GPU driver version + accurate VRAM total (separate binary, runs in parallel) â”€â”€
     execFileAsync('nvidia-smi', ['--query-gpu=driver_version,memory.total', '--format=csv,noheader,nounits'], { timeout: 3000, windowsHide: true })
       .then(r => (r.stdout || '').trim().split('\n')[0].trim()).catch(() => ''),
 
-    // ── Last Windows Update (separate PS — ~1s, runs in parallel with main script) ──
+    // â”€â”€ Last Windows Update (separate PS â€” ~1s, runs in parallel with main script) â”€â”€
     runPSScript(`
 try {
   $hf = Get-HotFix -EA SilentlyContinue | Where-Object { $_.InstalledOn } | Sort-Object InstalledOn -Descending | Select-Object -First 1
@@ -1510,12 +1410,12 @@ try {
 } catch { Write-Output 'Unknown' }
     `, 10000),
 
-    // ── Windows License (slmgr.vbs — ~0.6s native, runs in parallel with main script) ──
+    // â”€â”€ Windows License (slmgr.vbs â€” ~0.6s native, runs in parallel with main script) â”€â”€
     execAsync('cscript //nologo C:\\Windows\\System32\\slmgr.vbs /dli', { timeout: 8000, windowsHide: true })
       .then(({ stdout }) => (stdout || '').trim()).catch(() => ''),
   ]);
 
-  // ── Parse: split the single output by @@ into sections 0-14 ──
+  // â”€â”€ Parse: split the single output by @@ into sections 0-14 â”€â”€
   const valOf = (r) => r.status === 'fulfilled' ? (r.value || '') : '';
   const allSections = valOf(hwAll).split('@@');
   // Parse nvidia-smi result: "driver_version, memory_total_mib" e.g. "546.33, 8192"
@@ -1556,7 +1456,7 @@ try {
     info.gpuName = parts[0] || 'Unknown GPU';
 
     // VRAM: prefer nvidia-smi memory.total (accurate for >4GB GPUs).
-    // Win32_VideoController.AdapterRAM is a uint32 — overflows/caps at ~4 GB.
+    // Win32_VideoController.AdapterRAM is a uint32 â€” overflows/caps at ~4 GB.
     if (nvVramMiB > 0) {
       const gb = nvVramMiB / 1024;
       info.gpuVramTotal = gb % 1 === 0 ? `${gb.toFixed(0)} GB` : `${gb.toFixed(1)} GB`;
@@ -1575,7 +1475,7 @@ try {
     const partLow = part.toLowerCase();
     const mfrLow = (mfr || '').toLowerCase().trim();
 
-    // ── G.Skill series decode from part number suffix ──
+    // â”€â”€ G.Skill series decode from part number suffix â”€â”€
     // Format: F4-<speed>C<cas>-<size><series-code>
     if (/^f[34]-\d/i.test(part)) {
       const suffix = (part.split('-').pop() || '').replace(/^\d+/, '').toUpperCase();
@@ -1602,7 +1502,7 @@ try {
       return 'G.Skill';
     }
 
-    // ── Corsair series ──
+    // â”€â”€ Corsair series â”€â”€
     if (/^cmk/i.test(part)) return 'Corsair Vengeance RGB Pro';
     if (/^cmt/i.test(part)) return 'Corsair Dominator Platinum';
     if (/^cmd/i.test(part)) return 'Corsair Dominator';
@@ -1611,33 +1511,33 @@ try {
     if (/vengeance/i.test(partLow)) return 'Corsair Vengeance';
     if (/dominator/i.test(partLow)) return 'Corsair Dominator';
 
-    // ── Kingston / HyperX / Fury ──
+    // â”€â”€ Kingston / HyperX / Fury â”€â”€
     if (/^khx/i.test(part)) return 'Kingston HyperX';
     if (/^hx\d/i.test(part)) return 'Kingston HyperX';
     if (/^kf\d/i.test(part)) return 'Kingston Fury';
     if (/^kcp/i.test(part)) return 'Kingston';
     if (/fury/i.test(partLow)) return 'Kingston Fury';
 
-    // ── Crucial / Micron ──
+    // â”€â”€ Crucial / Micron â”€â”€
     if (/^ble/i.test(part)) return 'Crucial Ballistix';
     if (/^bls/i.test(part)) return 'Crucial Ballistix Sport';
     if (/^ct\d/i.test(part)) return 'Crucial';
     if (/^mt\d/i.test(part)) return 'Micron';
 
-    // ── SK Hynix ──
+    // â”€â”€ SK Hynix â”€â”€
     if (/^hma|^hmt|^hmab/i.test(part)) return 'SK Hynix';
 
-    // ── Samsung ──
+    // â”€â”€ Samsung â”€â”€
     if (/^m3[78]/i.test(part)) return 'Samsung';
 
-    // ── TeamGroup ──
+    // â”€â”€ TeamGroup â”€â”€
     if (/^tf[ab]\d|^tdeed/i.test(part)) return 'TeamGroup T-Force';
     if (/^tf\d/i.test(part)) return 'TeamGroup';
 
-    // ── Patriot ──
+    // â”€â”€ Patriot â”€â”€
     if (/^psd|^pv[e34]/i.test(part)) return 'Patriot Viper';
 
-    // ── JEDEC hex manufacturer code fallback ──
+    // â”€â”€ JEDEC hex manufacturer code fallback â”€â”€
     const jedecMap = {
       '04f1': 'G.Skill', '04cd': 'Kingston', '9e': 'Kingston',
       'ce': 'Samsung', '00ce': 'Samsung', '80ce': 'Samsung',
@@ -1712,7 +1612,7 @@ try {
     }
   } catch { }
 
-  // 6: Windows — with additional validation for Win11 vs Win10
+  // 6: Windows â€” with additional validation for Win11 vs Win10
   try {
     let parts = get(6).split('|||').map((s) => s.trim());
     let prod = parts[0] || '';
@@ -1759,7 +1659,7 @@ try {
         if (last) info.powerPlan = last.replace(/^\(|\)$/g, '').trim();
       }
     } catch (e) {
-      // ignore — leave powerPlan empty
+      // ignore â€” leave powerPlan empty
     }
   }
 
@@ -1819,7 +1719,7 @@ try {
     }
   } catch { }
 
-  // ── Lightweight fallbacks (Node.js only, no shell) ──
+  // â”€â”€ Lightweight fallbacks (Node.js only, no shell) â”€â”€
 
   // Uptime: always available via os.uptime()
   if (!info.systemUptime) {
@@ -1835,7 +1735,7 @@ try {
   return info;
 }
 
-// ── Phase 2: Slow background queries — each pushes its result to the renderer immediately ──
+// â”€â”€ Phase 2: Slow background queries â€” each pushes its result to the renderer immediately â”€â”€
 // Runs after fast data is returned to the renderer. Streams partial updates via IPC.
 async function _fetchSlowHardwareInfo(fastInfo) {
   // Push each piece of data to the renderer the moment it's ready (no waiting for others)
@@ -1848,7 +1748,7 @@ async function _fetchSlowHardwareInfo(fastInfo) {
 
   const tasks = [];
 
-  // ── Serial fallback (SystemEnclosure, ComputerSystemProduct, BIOS) ──
+  // â”€â”€ Serial fallback (SystemEnclosure, ComputerSystemProduct, BIOS) â”€â”€
   if (!fastInfo.motherboardSerial) {
     tasks.push(runPSScript(`
 $serials = @()
@@ -1865,7 +1765,7 @@ Write-Output ($serials -join '|||')
     }).catch(() => {}));
   }
 
-  // ── Last Windows Update (only if Phase 1 didn't get it) ──
+  // â”€â”€ Last Windows Update (only if Phase 1 didn't get it) â”€â”€
   if (!fastInfo.lastWindowsUpdate || fastInfo.lastWindowsUpdate === 'Unknown') {
     tasks.push(runPSScript(`
 $lastUpd = 'Unknown'
@@ -1881,7 +1781,7 @@ Write-Output $lastUpd
     }));
   }
 
-  // ── Windows License (only if Phase 1 didn't get it) ──
+  // â”€â”€ Windows License (only if Phase 1 didn't get it) â”€â”€
   if (!fastInfo.windowsActivation || fastInfo.windowsActivation === 'Unknown') {
     tasks.push(execAsync('cscript //nologo C:\\Windows\\System32\\slmgr.vbs /dli', {
       timeout: 8000, windowsHide: true
@@ -1901,7 +1801,7 @@ Write-Output $lastUpd
     }));
   }
 
-  // ── Motherboard wmic fallback ──
+  // â”€â”€ Motherboard wmic fallback â”€â”€
   if (!fastInfo.motherboardProduct && !fastInfo.motherboardManufacturer) {
     tasks.push(execAsync('wmic baseboard get Manufacturer,Product /format:csv', {
       timeout: 8000, windowsHide: true
@@ -1919,7 +1819,7 @@ Write-Output $lastUpd
     }).catch(() => {}));
   }
 
-  // ── BIOS wmic fallback ──
+  // â”€â”€ BIOS wmic fallback â”€â”€
   if (!fastInfo.biosVersion) {
     tasks.push(execAsync('wmic bios get SMBIOSBIOSVersion,ReleaseDate /format:csv', {
       timeout: 8000, windowsHide: true
@@ -1941,7 +1841,7 @@ Write-Output $lastUpd
     }).catch(() => {}));
   }
 
-  // ── Windows version registry fallback ──
+  // â”€â”€ Windows version registry fallback â”€â”€
   if (!fastInfo.windowsVersion || fastInfo.windowsVersion === 'Unknown') {
     tasks.push(execAsync('reg query "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion" /v ProductName', {
       timeout: 5000, windowsHide: true
@@ -1951,7 +1851,7 @@ Write-Output $lastUpd
     }).catch(() => {}));
   }
 
-  // ── Windows build registry fallback ──
+  // â”€â”€ Windows build registry fallback â”€â”€
   if (!fastInfo.windowsBuild || fastInfo.windowsBuild === 'Unknown') {
     tasks.push(execAsync('reg query "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion" /v CurrentBuildNumber', {
       timeout: 5000, windowsHide: true
@@ -1971,198 +1871,6 @@ Write-Output $lastUpd
 
   await Promise.allSettled(tasks);
 }
-
-let _extInFlight = false;
-let _extHasResult = false;
-let _lastExt = {
-  cpuClock: 0, perCoreCpu: [], gpuUsage: -1, gpuTemp: -1,
-  gpuVramUsed: -1, gpuVramTotal: -1, networkUp: 0, networkDown: 0,
-  wifiSignal: -1, ramUsedGB: 0, ramTotalGB: 0, diskReadSpeed: 0,
-  diskWriteSpeed: 0, processCount: 0, systemUptime: '', latencyMs: 0,
-};
-
-ipcMain.handle('system:get-extended-stats', async () => {
-  if (_extInFlight) return _extHasResult ? _lastExt : null;
-  _extInFlight = true;
-  try {
-    return await _getExtStatsImpl();
-  } finally {
-    _extInFlight = false;
-  }
-});
-
-async function _getExtStatsImpl() {
-  const ext = {
-    cpuClock: 0, perCoreCpu: [], gpuUsage: -1, gpuTemp: -1,
-    gpuVramUsed: -1, gpuVramTotal: -1, networkUp: 0, networkDown: 0,
-    wifiSignal: -1, ramUsedGB: 0, ramTotalGB: 0, diskReadSpeed: 0,
-    diskWriteSpeed: 0, processCount: 0, systemUptime: '', latencyMs: 0,
-  };
-
-  const [allR, gpuR] = await Promise.allSettled([
-
-    runPSScript(`
-# ── Network: pick adapter with default route (= active connection) ──
-$netAdapter = $null; $netBefore = $null
-try {
-  $defRoute = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Sort-Object RouteMetric | Select-Object -First 1
-  if ($defRoute) { $netAdapter = Get-NetAdapter -InterfaceIndex $defRoute.InterfaceIndex -ErrorAction SilentlyContinue }
-} catch {}
-if (-not $netAdapter) {
-  try { $netAdapter = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and $_.Name -notmatch 'Virtual|vEthernet|Loopback|Microsoft|Container' } | Select-Object -First 1 } catch {}
-}
-try { if ($netAdapter) { $netBefore = Get-NetAdapterStatistics -Name $netAdapter.Name } } catch {}
-$sw = [System.Diagnostics.Stopwatch]::StartNew()
-
-# ── Fast CIM queries ──
-try { $clock = (Get-CimInstance Win32_Processor | Select-Object -First 1).CurrentClockSpeed } catch { $clock = 0 }
-try {
-  $o = Get-CimInstance Win32_OperatingSystem
-  $ramT = [math]::Round($o.TotalVisibleMemorySize / 1MB, 1)
-  $ramU = [math]::Round(($o.TotalVisibleMemorySize - $o.FreePhysicalMemory) / 1MB, 1)
-  $up = (Get-Date) - $o.LastBootUpTime
-  $uptime = '{0}d {1}h {2}m' -f $up.Days, $up.Hours, $up.Minutes
-} catch { $ramT = 0; $ramU = 0; $uptime = '' }
-try { $procs = (Get-Process).Count } catch { $procs = 0 }
-try {
-  $pinger = New-Object System.Net.NetworkInformation.Ping
-  $lat = $pinger.Send('8.8.8.8', 1000).RoundtripTime
-} catch { $lat = 0 }
-
-# ── Get-Counter: per-core CPU + disk I/O (1-second sample) ──
-$coreStr = ''; $dr = 0; $dw = 0
-try {
-  $c = Get-Counter -Counter @(
-    '\\Processor(*)\\% Processor Time',
-    '\\PhysicalDisk(_Total)\\Disk Read Bytes/sec',
-    '\\PhysicalDisk(_Total)\\Disk Write Bytes/sec'
-  ) -SampleInterval 1 -MaxSamples 1 -ErrorAction SilentlyContinue
-  $s = $c.CounterSamples
-  $cores = $s | Where-Object { $_.Path -like '*processor(*)*' -and $_.InstanceName -ne '_total' } | Sort-Object InstanceName
-  $coreStr = ($cores | ForEach-Object { [math]::Round($_.CookedValue, 1) }) -join ','
-  $dr = ($s | Where-Object { $_.Path -like '*read*' }).CookedValue
-  $dw = ($s | Where-Object { $_.Path -like '*write*' }).CookedValue
-} catch {}
-
-# ── Network: snapshot AFTER (elapsed covers CIM + Get-Counter = 1-2s) ──
-$netUp = 0; $netDn = 0
-if ($netAdapter -and $netBefore) {
-  try {
-    $netAfter = Get-NetAdapterStatistics -Name $netAdapter.Name
-    $elapsed = $sw.Elapsed.TotalSeconds
-    if ($elapsed -gt 0) {
-      $netUp = [math]::Round(($netAfter.SentBytes - $netBefore.SentBytes) / $elapsed)
-      $netDn = [math]::Round(($netAfter.ReceivedBytes - $netBefore.ReceivedBytes) / $elapsed)
-    }
-  } catch {}
-}
-
-# ── Wi-Fi info (only if primary adapter is Wi-Fi) ──
-$ssid = ''; $sig = ''
-$isWifiPrimary = $false
-if ($netAdapter) {
-  $isWifiPrimary = ($netAdapter.MediaType -match '802\.11|Wireless|Wi-?Fi') -or ($netAdapter.Name -match 'Wi-?Fi|Wireless|WLAN')
-}
-if ($isWifiPrimary) {
-  try {
-    $w = netsh wlan show interfaces 2>$null
-    if ($w) {
-      $sl = $w | Select-String -Pattern '^\\s*SSID' | Where-Object { $_.ToString() -notmatch 'BSSID' } | Select-Object -First 1
-      $sg2 = $w | Select-String 'Signal' | Select-Object -First 1
-      if ($sl) { $ssid = $sl.ToString().Split(':',2)[1].Trim() }
-      if ($sg2) { $sig = $sg2.ToString().Split(':',2)[1].Trim() }
-    }
-  } catch {}
-}
-
-# ── Active adapter name & link speed ──
-$adName = ''; $adLink = ''
-if ($netAdapter) { $adName = $netAdapter.Name; $adLink = $netAdapter.LinkSpeed }
-
-# ── Output: 3 sections separated by @@ ──
-Write-Output "$clock|$ramU|$ramT|$procs|$uptime|$lat@@$coreStr|$([math]::Round($dr))|$([math]::Round($dw))@@$netUp|$netDn|$ssid|$sig|$adName|$adLink"
-    `, 8000),
-
-    execFileAsync(
-      'nvidia-smi',
-      ['--query-gpu=utilization.gpu,temperature.gpu,memory.used,memory.total', '--format=csv,noheader,nounits'],
-      { timeout: 3000, windowsHide: true }
-    ).then(r => (r.stdout || '').trim()).catch(() => ''),
-  ]);
-
-  // ── Parse the merged result — split by @@ into 3 sections ──
-  const val = (r) => r.status === 'fulfilled' ? (r.value || '') : '';
-  const allRaw = val(allR);
-  const sections = allRaw.split('@@');
-  const fastRaw = (sections[0] || '').trim();
-  const counterRaw = (sections[1] || '').trim();
-  const netRaw = (sections[2] || '').trim();
-
-  // Fast CIM: clock|ramU|ramT|procs|uptime|latency
-  try {
-    const parts = fastRaw.split('|');
-    if (parts.length >= 6) {
-      ext.cpuClock = parseInt(parts[0]) || 0;
-      ext.ramUsedGB = parseFloat(parts[1]) || 0;
-      ext.ramTotalGB = parseFloat(parts[2]) || 0;
-      ext.processCount = parseInt(parts[3]) || 0;
-      ext.systemUptime = parts[4] || '';
-      ext.latencyMs = parseInt(parts[5]) || 0;
-    }
-  } catch { }
-
-  // Counter: coreCSV|diskRead|diskWrite
-  try {
-    if (counterRaw) {
-      const parts = counterRaw.split('|');
-      if (parts.length >= 3) {
-        if (parts[0]) {
-          ext.perCoreCpu = parts[0].split(',').map(v => parseFloat(v)).filter(v => !isNaN(v));
-        }
-        ext.diskReadSpeed = parseInt(parts[1]) || 0;
-        ext.diskWriteSpeed = parseInt(parts[2]) || 0;
-      }
-    }
-  } catch { }
-
-  // Network: up|down|ssid|signal|adapterName|linkSpeed
-  try {
-    const parts = netRaw.split('|');
-    if (parts.length >= 4) {
-      ext.networkUp = parseInt(parts[0]) || 0;
-      ext.networkDown = parseInt(parts[1]) || 0;
-      ext.ssid = parts[2] || '';
-      ext.wifiSignal = parts[3] ? parseInt(parts[3]) : -1;
-      if (parts[4]) ext.activeAdapterName = parts[4];
-      if (parts[5]) ext.activeLinkSpeed = parts[5];
-    }
-  } catch { }
-
-  // GPU: prefer LHM real-time data (1s), fall back to nvidia-smi (5s)
-  if (_lhmGpuTemp >= 0) ext.gpuTemp = _lhmGpuTemp;
-  if (_lhmGpuUsage >= 0) ext.gpuUsage = _lhmGpuUsage;
-  if (_lhmGpuVramUsed >= 0) ext.gpuVramUsed = _lhmGpuVramUsed;
-  if (_lhmGpuVramTotal > 0) ext.gpuVramTotal = _lhmGpuVramTotal;
-
-  // nvidia-smi fallback: only fill fields LHM didn't provide
-  try {
-    const raw = val(gpuR);
-    if (raw) {
-      const parts = raw.split(',').map(s => parseFloat(s.trim()));
-      if (parts.length >= 4) {
-        if (ext.gpuUsage < 0) ext.gpuUsage = isNaN(parts[0]) ? -1 : Math.round(parts[0]);
-        if (ext.gpuTemp < 0) ext.gpuTemp = isNaN(parts[1]) ? -1 : Math.round(parts[1]);
-        if (ext.gpuVramUsed < 0) ext.gpuVramUsed = isNaN(parts[2]) ? -1 : Math.round(parts[2]);
-        if (ext.gpuVramTotal < 0) ext.gpuVramTotal = isNaN(parts[3]) ? -1 : Math.round(parts[3]);
-      }
-    }
-  } catch { }
-
-  _lastExt = ext;
-  _extHasResult = true;
-  return ext;
-}
-
 // Cleaner IPC Handlers
 ipcMain.handle('cleaner:clear-nvidia-cache', async () => {
   try {
@@ -2768,7 +2476,7 @@ ipcMain.handle('cleaner:clear-valorant-shaders', async () => {
   }
 });
 
-// ── Individual Disk Cleanup Handlers ────────────────────────────────────
+// â”€â”€ Individual Disk Cleanup Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // Windows Temp (C:\Windows\Temp)
 ipcMain.handle('cleaner:clear-windows-temp', async () => {
@@ -3670,11 +3378,11 @@ ipcMain.handle('tweak:apply-win32-priority', async () => {
 });
 
 // Check Tweak Status IPC Handlers
-// ──────────────────────────────────────────────────────
-// Tweak Check Handlers — consolidated into a single PS call
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Tweak Check Handlers â€” consolidated into a single PS call
 // All 7 registry checks run in ONE PowerShell invocation,
 // then individual handlers pull from the cached result.
-// ──────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let _tweakCheckCache = null;
 let _tweakCheckAge = 0;
 
@@ -4145,9 +3853,9 @@ ipcMain.handle('obs:launch', async () => {
   }
 });
 
-// ══════════════════════════════════════════════════════════════════════════
-// SOFTWARE UPDATES — winget integration
-// ══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// SOFTWARE UPDATES â€” winget integration
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 // Check for outdated apps via winget
 ipcMain.handle('software:check-updates', async () => {
@@ -4228,7 +3936,7 @@ ipcMain.handle('software:check-updates', async () => {
           : '';
       const source = sourceStart >= 0 ? line.substring(sourceStart).trim() : 'winget';
 
-      // Skip packages with "<" version prefix — winget can't reliably upgrade these
+      // Skip packages with "<" version prefix â€” winget can't reliably upgrade these
       const isUnknownVersion = rawVersion.startsWith('<');
 
       if (name && id && id.includes('.') && !isUnknownVersion) {
@@ -4242,7 +3950,7 @@ ipcMain.handle('software:check-updates', async () => {
   }
 });
 
-// ── Helper: follow redirects and get Content-Length via HEAD request ──
+// â”€â”€ Helper: follow redirects and get Content-Length via HEAD request â”€â”€
 function headContentLength(url, redirects = 0) {
   if (redirects > 5) return Promise.resolve(0);
   const mod = url.startsWith('https') ? require('https') : require('http');
@@ -4351,7 +4059,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
     }
   };
 
-  /* ── Shared chunk parser for winget output ── */
+  /* â”€â”€ Shared chunk parser for winget output â”€â”€ */
   const createChunkParser = () => {
     const emit = sendProgress;
     let phase = 'preparing';
@@ -4360,13 +4068,13 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
       const segments = text.split('\r').map(s => s.trim()).filter(Boolean);
       for (const seg of segments) {
         if (/^[-\\|/]$/.test(seg)) {
-          if (phase === 'downloading') emit({ phase, status: 'Downloading…', percent: -1 });
-          else if (phase === 'installing') emit({ phase, status: 'Installing…', percent: -1 });
+          if (phase === 'downloading') emit({ phase, status: 'Downloadingâ€¦', percent: -1 });
+          else if (phase === 'installing') emit({ phase, status: 'Installingâ€¦', percent: -1 });
           continue;
         }
         if (/^Downloading\s+https?:\/\//i.test(seg)) {
           phase = 'downloading';
-          emit({ phase: 'downloading', status: 'Downloading…', percent: -1 });
+          emit({ phase: 'downloading', status: 'Downloadingâ€¦', percent: -1 });
         } else if (/^Found\s/i.test(seg)) {
           emit({ phase: 'preparing', status: seg.substring(0, 80), percent: 5 });
         } else if (/verified installer hash/i.test(seg)) {
@@ -4374,7 +4082,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
           emit({ phase: 'verifying', status: 'Installer verified', percent: 100 });
         } else if (/Starting package install/i.test(seg)) {
           phase = 'installing';
-          emit({ phase: 'installing', status: 'Installing…', percent: -1 });
+          emit({ phase: 'installing', status: 'Installingâ€¦', percent: -1 });
         } else if (/Successfully installed/i.test(seg)) {
           phase = 'done';
           emit({ phase: 'done', status: 'Successfully installed!', percent: 100 });
@@ -4386,10 +4094,10 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
     };
   };
 
-  /* ── Run a winget command with real-time streaming progress ── */
+  /* â”€â”€ Run a winget command with real-time streaming progress â”€â”€ */
   const runWinget = (cmd, statusLabel = 'Preparing update') => new Promise((resolve) => {
     let fullOutput = '';
-    sendProgress({ phase: 'preparing', status: `${statusLabel}…`, percent: 0 });
+    sendProgress({ phase: 'preparing', status: `${statusLabel}â€¦`, percent: 0 });
     const parseChunk = createChunkParser();
 
     const proc = spawn('cmd.exe', ['/c', `chcp 65001 >nul && ${cmd}`], { windowsHide: true });
@@ -4433,10 +4141,10 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
     });
   });
 
-  /* ── Friendly error messages ── */
+  /* â”€â”€ Friendly error messages â”€â”€ */
   const getFriendlyError = (output) => {
     if (!output) return null;
-    if (output.includes('no installed package found')) return 'Package not found — update manually or via its own updater';
+    if (output.includes('no installed package found')) return 'Package not found â€” update manually or via its own updater';
     if (output.includes('cannot be upgraded using winget') || output.includes('use the method provided by the publisher'))
       return 'This app must be updated through its own updater';
     if (output.includes('currently running') && output.includes('exit the application'))
@@ -4444,15 +4152,15 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
     if (output.includes('access is denied'))
       return isElevated ? null : 'Run the app as administrator to update this package';
     if (output.includes('installer failed'))
-      return 'Installer failed — the app may need to be closed first';
+      return 'Installer failed â€” the app may need to be closed first';
     if (output.includes('installer log is available'))
-      return 'Installer failed — try closing the app and updating again';
+      return 'Installer failed â€” try closing the app and updating again';
     if (output.includes('hash does not match') && output.includes('cannot be overridden'))
-      return 'Hash mismatch — retrying as standard user';
+      return 'Hash mismatch â€” retrying as standard user';
     return null;
   };
 
-  /* ── Extract meaningful error line from winget output ── */
+  /* â”€â”€ Extract meaningful error line from winget output â”€â”€ */
   const getMeaningfulLine = (text, fallback = 'Update failed') => {
     const lines = text.split(/[\r\n]/).map(s => s.trim()).filter(Boolean);
     // Walk backwards, skip noise lines
@@ -4469,13 +4177,13 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
     return fallback;
   };
 
-  /* ── De-elevate for installers that refuse admin context ──
+  /* â”€â”€ De-elevate for installers that refuse admin context â”€â”€
      Tries multiple methods to run winget under a non-elevated token:
      1. PowerShell Register-ScheduledTask (RunLevel Limited)
      2. runas /trustlevel:0x20000 (restricted token)
      3. schtasks CLI /rl limited (legacy fallback) */
   const runDeElevated = (cmd) => new Promise((resolve) => {
-    sendProgress({ phase: 'preparing', status: 'Updating…', percent: 0 });
+    sendProgress({ phase: 'preparing', status: 'Updatingâ€¦', percent: 0 });
 
     const tmpLog = path.join(os.tmpdir(), `gs_winget_${cleanId.replace(/[^a-zA-Z0-9]/g, '_')}.log`);
     const tmpBat = path.join(os.tmpdir(), `gs_winget_de_${process.pid}.bat`);
@@ -4495,7 +4203,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
 
     let launchOk = false;
 
-    // ── Method 1: PowerShell Register-ScheduledTask ──
+    // â”€â”€ Method 1: PowerShell Register-ScheduledTask â”€â”€
     if (!launchOk) {
       try {
         const userName = (process.env.USERDOMAIN && process.env.USERNAME)
@@ -4526,7 +4234,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
       }
     }
 
-    // ── Method 2: runas /trustlevel:0x20000 (restricted token) ──
+    // â”€â”€ Method 2: runas /trustlevel:0x20000 (restricted token) â”€â”€
     if (!launchOk) {
       try {
         const r = spawnSync('runas.exe', ['/trustlevel:0x20000', 'wscript.exe', tmpVbs],
@@ -4538,7 +4246,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
       }
     }
 
-    // ── Method 3: schtasks CLI /rl limited (legacy) ──
+    // â”€â”€ Method 3: schtasks CLI /rl limited (legacy) â”€â”€
     if (!launchOk) {
       try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch { }
       try {
@@ -4562,9 +4270,9 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
       return;
     }
 
-    sendProgress({ phase: 'installing', status: 'Updating…', percent: -1 });
+    sendProgress({ phase: 'installing', status: 'Updatingâ€¦', percent: -1 });
 
-    // ── Poll the log file for winget output ──
+    // â”€â”€ Poll the log file for winget output â”€â”€
     let elapsed = 0;
     const pollMs = 2000;
     const maxWait = 180000;
@@ -4572,7 +4280,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
     let staleSince = 0; // how long log has been unchanged (ms)
     const staleLimit = 30000; // consider done if log unchanged for 30s after install started
     let installStarted = false;
-    let pollPhase = 'preparing'; // only advance forward: preparing → downloading → verifying → installing → done
+    let pollPhase = 'preparing'; // only advance forward: preparing â†’ downloading â†’ verifying â†’ installing â†’ done
 
     // Register so cancel handler can stop us
     activeDeElevated = { taskName, pollInterval: null, tmpBat, tmpVbs, tmpLog, resolve };
@@ -4599,7 +4307,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
       // Only advance phase forward, never backward
       if (pollPhase === 'preparing' && lower.includes('downloading')) {
         pollPhase = 'downloading';
-        sendProgress({ phase: 'downloading', status: 'Downloading…', percent: -1 });
+        sendProgress({ phase: 'downloading', status: 'Downloadingâ€¦', percent: -1 });
       }
       if ((pollPhase === 'preparing' || pollPhase === 'downloading') && lower.includes('verified installer hash')) {
         pollPhase = 'verifying';
@@ -4607,7 +4315,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
       }
       if (pollPhase !== 'installing' && lower.includes('starting package install')) {
         pollPhase = 'installing';
-        sendProgress({ phase: 'installing', status: 'Installing…', percent: -1 });
+        sendProgress({ phase: 'installing', status: 'Installingâ€¦', percent: -1 });
         installStarted = true;
       }
 
@@ -4641,7 +4349,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
           sendProgress({ phase: 'done', status: 'Update complete!', percent: 100 });
           resolve({ success: true, message: `${packageId} updated successfully` });
         } else if (lower.includes('cannot be run from an administrator')) {
-          // De-elevation didn't actually work — task still ran elevated
+          // De-elevation didn't actually work â€” task still ran elevated
           sendProgress({ phase: 'error', status: 'This app must be updated outside GS Control Center', percent: 0 });
           resolve({ success: false, message: 'This app\'s installer refuses elevated context. Update it directly from its own updater.' });
         } else if (elapsed >= maxWait) {
@@ -4660,7 +4368,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
     activeDeElevated.pollInterval = poll;
   });
 
-  // ── Retry chain ──────────────────────────────────────────────────
+  // â”€â”€ Retry chain â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   // Step 1: Normal upgrade
   let result = await runWinget(
@@ -4669,7 +4377,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
   );
   if (result.success || result.cancelled) return result;
 
-  // Step 2: Install technology mismatch → force install
+  // Step 2: Install technology mismatch â†’ force install
   if (result.output && result.output.includes('install technology is different')) {
     result = await runWinget(
       `winget install --id ${cleanId} --accept-source-agreements --accept-package-agreements --force`,
@@ -4678,19 +4386,19 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
     if (result.success || result.cancelled) return result;
   }
 
-  // Step 3a: Hash override blocked when running as admin → de-elevate with hash skip + silent
+  // Step 3a: Hash override blocked when running as admin â†’ de-elevate with hash skip + silent
   if (isElevated && result.output &&
     result.output.includes('cannot be overridden when running as admin')) {
-    sendProgress({ phase: 'preparing', status: 'Preparing update…', percent: 0 });
+    sendProgress({ phase: 'preparing', status: 'Preparing updateâ€¦', percent: 0 });
     return await runDeElevated(
       `winget upgrade --id ${cleanId} --accept-source-agreements --accept-package-agreements --force --ignore-security-hash --silent`
     );
   }
 
-  // Step 3b: Installer refuses admin context (e.g. Spotify) → de-elevate without silent
+  // Step 3b: Installer refuses admin context (e.g. Spotify) â†’ de-elevate without silent
   if (isElevated && result.output &&
     result.output.includes('cannot be run from an administrator')) {
-    sendProgress({ phase: 'preparing', status: 'Preparing update…', percent: 0 });
+    sendProgress({ phase: 'preparing', status: 'Preparing updateâ€¦', percent: 0 });
     return await runDeElevated(
       `winget upgrade --id ${cleanId} --accept-source-agreements --accept-package-agreements --force`
     );
@@ -4703,33 +4411,17 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
   return { success: false, message: finalMsg };
 });
 
-// Update all apps
-ipcMain.handle('software:update-all', async () => {
-  try {
-    const { stdout, stderr } = await execAsync(
-      'winget upgrade --all --silent --accept-source-agreements --accept-package-agreements 2>nul',
-      { timeout: 300000, windowsHide: true, encoding: 'utf8', shell: true }
-    );
-    return { success: true, message: 'All packages updated' };
-  } catch (error) {
-    if (isPermissionError(error)) {
-      return { success: false, message: 'Run the app as administrator to update all packages.' };
-    }
-    return { success: false, message: `Update all failed: ${error.message}` };
-  }
-});
-
-// ══════════════════════════════════════════════════════════════════════════
-// APP INSTALLER — install apps via winget
-// ══════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// APP INSTALLER â€” install apps via winget
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 // Check which package IDs are already installed
-// ── Registry scan helper (uses native reg.exe — no PowerShell startup overhead) ──
+// â”€â”€ Registry scan helper (uses native reg.exe â€” no PowerShell startup overhead) â”€â”€
 let _regNamesCache = null;   // Set<string> | null
 let _regCacheTime = 0;       // timestamp
 const REG_CACHE_TTL = 60000; // 60 s
 
-// ── Winget list cache (avoids re-running expensive `winget list` on every Phase 2 call) ──
+// â”€â”€ Winget list cache (avoids re-running expensive `winget list` on every Phase 2 call) â”€â”€
 let _wingetListCache = null;  // { installedEntries: [{name,id}], installedIdSet: Set, installedNameSet: Set } | null
 let _wingetCacheTime = 0;
 const WINGET_CACHE_TTL = 60000; // 60 s
@@ -4738,7 +4430,7 @@ async function getRegistryDisplayNames() {
   const now = Date.now();
   if (_regNamesCache && (now - _regCacheTime) < REG_CACHE_TTL) return _regNamesCache;
 
-  // Run all three hives in a single cmd call — native reg.exe starts instantly
+  // Run all three hives in a single cmd call â€” native reg.exe starts instantly
   const { stdout } = await execAsync(
     'chcp 65001 >nul && ' +
     'reg query "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall" /s /v DisplayName 2>nul & ' +
@@ -4778,7 +4470,7 @@ function matchCatalogToRegistry(apps, regNames) {
   return installed;
 }
 
-// ── Get all available drive letters ──
+// â”€â”€ Get all available drive letters â”€â”€
 function getAvailableDrives() {
   const drives = [];
   for (let code = 65; code <= 90; code++) { // A-Z
@@ -4830,7 +4522,7 @@ const KNOWN_APP_DIRS = {
   'Spotify.Spotify': ['Spotify'],
 };
 
-// ── Filesystem-based detection for apps not found by registry/winget ──
+// â”€â”€ Filesystem-based detection for apps not found by registry/winget â”€â”€
 function scanFilesystemForApps(undetectedApps) {
   const drives = getAvailableDrives();
   const localAppData = process.env.LOCALAPPDATA || '';
@@ -4875,7 +4567,7 @@ function scanFilesystemForApps(undetectedApps) {
   return found;
 }
 
-// ── AppX / MSIX package detection (Microsoft Store apps) ──
+// â”€â”€ AppX / MSIX package detection (Microsoft Store apps) â”€â”€
 let _appxCache = null;    // Set<string> | null
 let _appxCacheTime = 0;
 const APPX_CACHE_TTL = 120000; // 2 min
@@ -4925,7 +4617,7 @@ function matchAppxPackages(undetectedApps, appxNames) {
 // Pre-warm registry cache on startup (non-blocking)
 getRegistryDisplayNames().catch(() => { });
 
-// ── Single-pass installed-app detection: registry + winget + filesystem + AppX in parallel ──
+// â”€â”€ Single-pass installed-app detection: registry + winget + filesystem + AppX in parallel â”€â”€
 ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
   const apps = Array.isArray(catalogApps)
     ? catalogApps.map(a => typeof a === 'string' ? { id: a, name: '' } : a)
@@ -4934,7 +4626,7 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
   try {
     const now = Date.now();
 
-    // ── Launch registry + winget scans in parallel ──
+    // â”€â”€ Launch registry + winget scans in parallel â”€â”€
     const [regNames, wingetResult] = await Promise.all([
       getRegistryDisplayNames().catch(() => new Set()),
       (async () => {
@@ -4996,7 +4688,7 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
 
     const { installedEntries, installedIdSet, installedNameSet } = wingetResult;
 
-    // ── Merge registry + winget matches ──
+    // â”€â”€ Merge registry + winget matches â”€â”€
     const regMatches = matchCatalogToRegistry(apps, regNames);
     const installed = {};
 
@@ -5010,7 +4702,7 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
       // Winget: Exact ID match
       if (installedIdSet.has(catalogIdLower)) { installed[app.id] = true; continue; }
 
-      // Winget: ID prefix match (e.g. Google.Chrome → Google.Chrome.EXE)
+      // Winget: ID prefix match (e.g. Google.Chrome â†’ Google.Chrome.EXE)
       let found = false;
       for (const entry of installedEntries) {
         if (entry.id.startsWith(catalogIdLower) && entry.id.length <= catalogIdLower.length + 10) {
@@ -5028,7 +4720,7 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
 
       // Strategy 4: For ARP entries, check if the last segment of the ARP path
       // matches the first part of the catalog ID (before the dot)
-      // e.g. ARP\Machine\X64\Git_is1 → "git" vs catalog "Git.Git" → "git"
+      // e.g. ARP\Machine\X64\Git_is1 â†’ "git" vs catalog "Git.Git" â†’ "git"
       const catalogIdPrefix = catalogIdLower.split('.')[0];
       if (catalogIdPrefix.length >= 3) {
         for (const entry of installedEntries) {
@@ -5046,7 +4738,7 @@ ipcMain.handle('appinstall:check-installed', async (_event, catalogApps) => {
       installed[app.id] = found;
     }
 
-    // ── Supplementary: Filesystem + AppX for still-undetected apps (in parallel) ──
+    // â”€â”€ Supplementary: Filesystem + AppX for still-undetected apps (in parallel) â”€â”€
     const undetected = apps.filter(a => !installed[a.id]);
     if (undetected.length > 0) {
       const [fsMatches, appxNames] = await Promise.all([
@@ -5113,8 +4805,8 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
     }
   };
 
-  /* ── Run a winget install command and collect output ── */
-  const runInstall = (cmd, label = 'Preparing installation…') => new Promise((resolve) => {
+  /* â”€â”€ Run a winget install command and collect output â”€â”€ */
+  const runInstall = (cmd, label = 'Preparing installationâ€¦') => new Promise((resolve) => {
     let fullOutput = '';
     let phase = 'preparing';
     let cancelled = false;
@@ -5142,9 +4834,9 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
       for (const seg of segments) {
         if (/^[-\\|/]$/.test(seg)) {
           if (phase === 'downloading') {
-            sendProgress({ phase, status: 'Downloading…', percent: -1 });
+            sendProgress({ phase, status: 'Downloadingâ€¦', percent: -1 });
           } else if (phase === 'installing') {
-            sendProgress({ phase, status: 'Installing…', percent: -1 });
+            sendProgress({ phase, status: 'Installingâ€¦', percent: -1 });
           }
           continue;
         }
@@ -5152,7 +4844,7 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
         const urlMatch = seg.match(/^Downloading\s+(https?:\/\/.+)/i);
         if (urlMatch) {
           phase = 'downloading';
-          sendProgress({ phase: 'downloading', status: 'Downloading…', percent: -1 });
+          sendProgress({ phase: 'downloading', status: 'Downloadingâ€¦', percent: -1 });
           continue;
         }
 
@@ -5163,7 +4855,7 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
           sendProgress({ phase: 'verifying', status: 'Installer verified', percent: 100 });
         } else if (/Starting package install/i.test(seg)) {
           phase = 'installing';
-          sendProgress({ phase: 'installing', status: 'Installing…', percent: -1 });
+          sendProgress({ phase: 'installing', status: 'Installingâ€¦', percent: -1 });
         } else if (/Successfully installed/i.test(seg)) {
           phase = 'done';
           sendProgress({ phase: 'done', status: 'Successfully installed!', percent: 100 });
@@ -5205,9 +4897,9 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
     });
   });
 
-  /* ── De-elevate install for apps that refuse admin context (e.g. Spotify) ── */
+  /* â”€â”€ De-elevate install for apps that refuse admin context (e.g. Spotify) â”€â”€ */
   const runDeElevatedInstall = (cmd) => new Promise((resolve) => {
-    sendProgress({ phase: 'preparing', status: 'Retrying as standard user…', percent: 0 });
+    sendProgress({ phase: 'preparing', status: 'Retrying as standard userâ€¦', percent: 0 });
 
     const tmpLog = path.join(os.tmpdir(), `gs_appinst_${cleanId.replace(/[^a-zA-Z0-9]/g, '_')}.log`);
     const tmpBat = path.join(os.tmpdir(), `gs_appinst_de_${process.pid}.bat`);
@@ -5269,12 +4961,12 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
       try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch { }
       try { fs.unlinkSync(tmpBat); } catch { }
       try { fs.unlinkSync(tmpVbs); } catch { }
-      sendProgress({ phase: 'error', status: 'Installation failed — cannot de-elevate', percent: 0 });
+      sendProgress({ phase: 'error', status: 'Installation failed â€” cannot de-elevate', percent: 0 });
       resolve({ success: false, message: 'This app\'s installer refuses elevated context. Install it directly outside GS Control Center.' });
       return;
     }
 
-    sendProgress({ phase: 'installing', status: 'Installing (standard user)…', percent: -1 });
+    sendProgress({ phase: 'installing', status: 'Installing (standard user)â€¦', percent: -1 });
 
     let elapsed = 0;
     const pollMs = 2000;
@@ -5294,10 +4986,10 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
       else { lastLogSize = log.length; staleSince = 0; }
 
       if (lower.includes('downloading')) {
-        sendProgress({ phase: 'downloading', status: 'Downloading…', percent: -1 });
+        sendProgress({ phase: 'downloading', status: 'Downloadingâ€¦', percent: -1 });
       }
       if (lower.includes('starting package install')) {
-        sendProgress({ phase: 'installing', status: 'Installing…', percent: -1 });
+        sendProgress({ phase: 'installing', status: 'Installingâ€¦', percent: -1 });
         installStarted = true;
       }
 
@@ -5339,42 +5031,42 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
     }, pollMs);
   });
 
-  // ── Step 1: Normal install ──
+  // â”€â”€ Step 1: Normal install â”€â”€
   let result = await runInstall(
     `winget install --id ${cleanId} --accept-source-agreements --accept-package-agreements`,
-    'Preparing installation…'
+    'Preparing installationâ€¦'
   );
   if (result.success || result.cancelled) return result;
 
   const output = (result.output || '').toLowerCase();
 
-  // ── Step 2: 404 / Not Found → update sources and retry ──
+  // â”€â”€ Step 2: 404 / Not Found â†’ update sources and retry â”€â”€
   if (output.includes('0x80190194') || output.includes('not found (404)') || output.includes('download failed')) {
-    sendProgress({ phase: 'preparing', status: 'Updating sources…', percent: 0 });
+    sendProgress({ phase: 'preparing', status: 'Updating sourcesâ€¦', percent: 0 });
     try { await execAsync('winget source update', { timeout: 30000, windowsHide: true }); } catch { }
     result = await runInstall(
       `winget install --id ${cleanId} --accept-source-agreements --accept-package-agreements --force`,
-      'Retrying installation…'
+      'Retrying installationâ€¦'
     );
     if (result.success || result.cancelled) return result;
   }
 
-  // ── Step 3: Hash mismatch → retry with --ignore-security-hash (requires admin) ──
+  // â”€â”€ Step 3: Hash mismatch â†’ retry with --ignore-security-hash (requires admin) â”€â”€
   if (output.includes('installer hash does not match') || output.includes('hash mismatch') ||
     (result.output || '').toLowerCase().includes('installer hash does not match')) {
     if (isElevated) {
       result = await runInstall(
         `winget install --id ${cleanId} --accept-source-agreements --accept-package-agreements --ignore-security-hash`,
-        'Retrying with hash override…'
+        'Retrying with hash overrideâ€¦'
       );
       if (result.success || result.cancelled) return result;
     } else {
-      sendProgress({ phase: 'error', status: 'Hash mismatch — run app as administrator to override', percent: 0 });
+      sendProgress({ phase: 'error', status: 'Hash mismatch â€” run app as administrator to override', percent: 0 });
       return { success: false, message: 'Installer hash mismatch. Run GS Control Center as administrator to bypass.' };
     }
   }
 
-  // ── Step 4: Installer refuses admin context → de-elevate (e.g. Spotify) ──
+  // â”€â”€ Step 4: Installer refuses admin context â†’ de-elevate (e.g. Spotify) â”€â”€
   if (isElevated && (output.includes('cannot be run from an administrator') ||
     (result.output || '').toLowerCase().includes('cannot be run from an administrator'))) {
     return await runDeElevatedInstall(
@@ -5382,7 +5074,7 @@ ipcMain.handle('appinstall:install-app', async (_event, packageId) => {
     );
   }
 
-  // ── Final: report error ──
+  // â”€â”€ Final: report error â”€â”€
   const finalMsg = (result.message || 'Installation failed').substring(0, 120);
   sendProgress({ phase: 'error', status: finalMsg, percent: 0 });
   return { success: false, message: finalMsg };

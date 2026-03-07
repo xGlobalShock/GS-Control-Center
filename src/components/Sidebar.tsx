@@ -18,7 +18,6 @@ import '../styles/Sidebar.css';
 interface SidebarProps {
   currentPage: string;
   setCurrentPage: (page: string) => void;
-  online?: boolean;
 }
 
 interface MenuItem {

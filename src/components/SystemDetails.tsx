@@ -342,7 +342,7 @@ const CoreHeatMap: React.FC<{ cores: number[]; threadCount?: number; coreCount?:
       <div className="hud-usage-rt-stat">
         <div className="hud-usage-rt-head">
           <span className="hud-usage-rt-dot" style={{ background: loading ? 'rgba(255,255,255,0.1)' : avgColor, boxShadow: loading ? 'none' : `0 0 5px ${avgColor}` }} />
-          <span className="hud-usage-rt-key">Per-Core</span>
+          <span className="hud-usage-rt-key">CPU Utilization</span>
         </div>
         <span className="hud-usage-rt-big" style={{ color: loading ? 'rgba(255,255,255,0.1)' : avgColor }}>
           {loading ? '—' : `${avg}%`}<small> avg</small>
@@ -543,16 +543,16 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
           pulse={gpuPulse}
         >
           {gpuVramTotal > 0 ? (
-            <Row label="VRAM" value={formatMiBtoGB(gpuVramTotal)} />
+            <Row label="GPU VRAM" value={formatMiBtoGB(gpuVramTotal)} />
           ) : hw?.gpuVramTotal ? (
-            <Row label="VRAM" value={hw.gpuVramTotal} />
+            <Row label="GPU VRAM" value={hw.gpuVramTotal} />
           ) : (
-            <Row label="VRAM" loading={gpuInitializing} />
+            <Row label="GPU VRAM" loading={gpuInitializing} />
           )}
           {hw?.gpuDriverVersion ? (
-            <Row label="Driver" value={hw.gpuDriverVersion} />
+            <Row label="Nvidia Driver Version" value={hw.gpuDriverVersion} />
           ) : (
-            <Row label="Driver" loading={hwLoading} />
+            <Row label="Nvidia Driver Version" loading={hwLoading} />
           )}
           {hasGpu ? (
             <>
@@ -601,30 +601,47 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
           delay={0.15}
           pulse={ramPulse}
         >
-          {hw?.ramInfo ? <Row label="Config" value={hw.ramInfo} /> : <Row label="Config" loading={hwLoading} />}
-          {hw?.ramPartNumber ? <Row label="Part Number" value={hw.ramPartNumber} /> : hwLoading && <Row label="Part Number" loading />}
-          {hw?.ramSticks ? <Row label="Sticks" value={hw.ramSticks} /> : hwLoading && <Row label="Sticks" loading />}
+          {hw?.ramInfo ? <Row label="RAM Configuration" value={hw.ramInfo} /> : <Row label="RAM Configuration" loading={hwLoading} />}
+          {hw?.ramPartNumber ? <Row label="RAM Part Number" value={hw.ramPartNumber} /> : hwLoading && <Row label="RAM Part Number" loading />}
+          {hw?.ramSticks ? <Row label="RAM Sticks" value={hw.ramSticks} /> : hwLoading && <Row label="RAM Sticks" loading />}
           {ext && ext.ramTotalGB > 0 ? (() => {
             const pct = (ext.ramUsedGB / ext.ramTotalGB) * 100;
             const c = pct > 90 ? '#FF2D55' : pct > 70 ? '#FFD600' : '#00F2FF';
             return (
-              <div className="hud-usage-rt">
-                <div className="hud-usage-rt-stat">
-                  <div className="hud-usage-rt-head">
-                    <span className="hud-usage-rt-dot" style={{ background: c, boxShadow: `0 0 5px ${c}` }} />
-                    <span className="hud-usage-rt-key">RAM Used</span>
+              <div className="hud-net-rt">
+                <div className="hud-net-rt-stat">
+                  <div className="hud-net-rt-head">
+                    <span className="hud-net-rt-dot" style={{ background: c, boxShadow: `0 0 5px ${c}` }} />
+                    <span className="hud-net-rt-key">In-Use</span>
                   </div>
-                  <span className="hud-usage-rt-big" style={{ color: c }}>
+                  <span className="hud-net-rt-big" style={{ color: c }}>
                     {ext.ramUsedGB.toFixed(1)}<small> / {ext.ramTotalGB.toFixed(1)} GB</small>
                   </span>
-                  <div className="hud-usage-rt-track">
-                    <div className="hud-usage-rt-fill" style={{ width: `${Math.min(pct, 100)}%`, background: `linear-gradient(90deg, ${c}00, ${c})`, boxShadow: `0 0 6px ${c}50` }} />
-                  </div>
                 </div>
+                <div className="hud-net-rt-stat">
+                  <div className="hud-net-rt-head">
+                    <span className="hud-net-rt-dot" style={{ background: '#00FF88', boxShadow: '0 0 5px #00FF88' }} />
+                    <span className="hud-net-rt-key">Available</span>
+                  </div>
+                  <span className="hud-net-rt-big" style={{ color: '#00FF88' }}>
+                    {ext.ramAvailableGB.toFixed(1)}<small> GB</small>
+                  </span>
+                </div>
+                {ext.ramCachedGB > 0 && (
+                  <div className="hud-net-rt-stat">
+                    <div className="hud-net-rt-head">
+                      <span className="hud-net-rt-dot" style={{ background: '#A78BFA', boxShadow: '0 0 5px #A78BFA' }} />
+                      <span className="hud-net-rt-key">Cached</span>
+                    </div>
+                    <span className="hud-net-rt-big" style={{ color: '#A78BFA' }}>
+                      {ext.ramCachedGB.toFixed(1)}<small> GB</small>
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })() : (
-            <Row label="Used" loading={extLoading} />
+            <Row label="In-Use" loading={extLoading} />
           )}
         </BentoCard>
 
