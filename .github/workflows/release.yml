@@ -93,12 +93,20 @@ jobs:
         run: npm ci
 
       - name: Build React app
+        env:
+          CI: false
+          GENERATE_SOURCEMAP: false
         run: npm run react-build
 
       - name: Build Electron installer
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npx electron-builder --win --x64 --publish never
+
+      - name: List dist output
+        run: Get-ChildItem -Recurse dist/ | Select-Object FullName
+        shell: pwsh
 
       - name: Upload installer to release
         uses: softprops/action-gh-release@v1
