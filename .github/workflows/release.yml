@@ -1,11 +1,8 @@
 name: Build & Release
 
+
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'package.json'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -39,14 +36,8 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create tag
-        id: create_tag
-        if: steps.check_tag.outputs.exists == 'false'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a ${{ steps.version.outputs.tag_name }} -m "Release ${{ steps.version.outputs.tag_name }}"
-          git push origin ${{ steps.version.outputs.tag_name }}
+
+      # Tag creation is now manual. Please create and push a tag yourself before running this workflow.
 
       - name: Generate release notes
         id: release_notes
@@ -63,6 +54,7 @@ jobs:
           echo "$COMMIT_LOG" >> $GITHUB_OUTPUT
           echo "$EOF" >> $GITHUB_OUTPUT
 
+
       - name: Create GitHub Release
         if: steps.check_tag.outputs.exists == 'false'
         uses: softprops/action-gh-release@v1
@@ -74,6 +66,7 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
 
   build:
     needs: release
