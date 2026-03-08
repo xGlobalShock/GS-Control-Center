@@ -337,8 +337,8 @@ ipcMain.handle('network:ping', async (event, host) => {
     // simple Windows ping; for cross-platform we could adjust but this app is Windows-focused
     const cmd = `ping -n 1 ${host}`;
     const { stdout } = await execAsync(cmd, { shell: true, timeout: 10000 });
-    // look for time=Xms or time<1ms style
-    const m = stdout.match(/time[=<]\s*(\d+)\s*ms/);
+    // look for time=Xms or time<1ms style (French: temps=Xms)
+    const m = stdout.match(/time[=<]\s*(\d+)\s*ms/) || stdout.match(/temps[=<]\s*(\d+)\s*ms/i);
     const time = m ? parseInt(m[1], 10) : null;
     return { success: time !== null, time };
   } catch (err) {
@@ -555,6 +555,7 @@ function startLHMService() {
     'try { $diskReadCounter = New-Object System.Diagnostics.PerformanceCounter("PhysicalDisk", "Disk Read Bytes/sec", "_Total") ; $diskReadCounter.NextValue() | Out-Null } catch { $diskReadCounter = $null }',
     'try { $diskWriteCounter = New-Object System.Diagnostics.PerformanceCounter("PhysicalDisk", "Disk Write Bytes/sec", "_Total") ; $diskWriteCounter.NextValue() | Out-Null } catch { $diskWriteCounter = $null }',
     'try { $procCounter = New-Object System.Diagnostics.PerformanceCounter("System", "Processes") } catch { $procCounter = $null }',
+    '$wddmGpuFailed = $false',
     '',
     '$iteration = 0',
     '',
@@ -646,6 +647,21 @@ function startLHMService() {
     '      }',
     '      [Console]::Error.WriteLine("LHMSENSORS:" + ($sensorInfo -join "|"))',
     '      [Console]::Error.WriteLine("LHMINFO:CPUTEMP=" + $(if ($cpuTemp -ne $null) { $cpuTemp } else { "NONE" }) + ",VISITOR=" + $(if ($visitor) { "YES" } else { "NO" }) + ",MBTEMP=" + $(if ($mbCpuTemp -ne $null) { $mbCpuTemp } else { "NONE" }))',
+    '    }',
+    '',
+    '',
+    '    # WDDM GPU fallback for AMD/Intel when LHM GPU sensors are unavailable',
+    '    if ($gpuLoad -eq $null -and $gpuVramUsed -eq $null -and -not $wddmGpuFailed -and ($iteration -lt 2 -or $iteration % 6 -eq 0)) {',
+    '      try {',
+    '        $wMem = Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUAdapterMemory -EA 0 | Where-Object { $_.Name -match "phys_0" } | Select-Object -First 1',
+    '        if ($wMem -and $wMem.DedicatedUsage -gt 0) {',
+    '          $gpuVramUsed = [math]::Round($wMem.DedicatedUsage / 1MB)',
+    '          if ($wMem.DedicatedBudget -and $wMem.DedicatedBudget -gt 0) { $gpuVramTotal = [math]::Round($wMem.DedicatedBudget / 1MB) }',
+    '        }',
+    '        $wEng = Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine -EA 0 | Where-Object { $_.Name -match "engtype_3D" }',
+    '        if ($wEng) { $gpuLoad = [math]::Min(($wEng | Measure-Object -Property UtilizationPercentage -Sum).Sum, 100) }',
+    '        if ($wMem -eq $null -and $wEng -eq $null -and $iteration -gt 2) { $wddmGpuFailed = $true }',
+    '      } catch { if ($iteration -gt 2) { $wddmGpuFailed = $true } }',
     '    }',
     '',
     '    $iteration++',
@@ -964,15 +980,28 @@ function _formatUptimeSeconds(seconds) {
 // Uses Windows ping -n 5 to get both latency and loss in one call
 function _startLatencyPoll() {
   if (_realtimeLatencyTimer) return;   // already running
+
+  // Quick single-ping first so data appears immediately (< 1s)
+  (async () => {
+    try {
+      const { stdout } = await execAsync('ping -n 1 -w 2000 8.8.8.8', { shell: true, timeout: 5000 });
+      const m = stdout.match(/time[=<]\s*(\d+)\s*ms/i);
+      if (m) _rtLastLatency = parseInt(m[1], 10);
+      _rtLastPacketLoss = 0;
+    } catch { /* full poll will fill it in */ }
+  })();
+
   const doPing = async () => {
     try {
       const { stdout } = await execAsync('ping -n 5 -w 2000 8.8.8.8', { shell: true, timeout: 20000 });
-      // Parse average latency: "Average = Xms"
+      // Parse average latency: "Average = Xms" (FR: Moyenne, ES: Media)
       const avgMatch = stdout.match(/Average\s*=\s*(\d+)\s*ms/i)
+        || stdout.match(/Moyenne\s*=\s*(\d+)\s*ms/i)
         || stdout.match(/Media\s*=\s*(\d+)\s*ms/i);
       _rtLastLatency = avgMatch ? parseInt(avgMatch[1], 10) : 0;
-      // Parse packet loss: "Lost = X (Y% loss)"
+      // Parse packet loss: "Lost = X (Y% loss)" (FR: Perdus, ES: Perdidos)
       const lossMatch = stdout.match(/Lost\s*=\s*\d+\s*\((\d+)%/i)
+        || stdout.match(/Perdus\s*=\s*\d+\s*\((\d+)%/i)
         || stdout.match(/Perdidos\s*=\s*\d+\s*\((\d+)%/i)
         || stdout.match(/=\s*\d+.*=\s*\d+.*=\s*\d+\s*\((\d+)%/);
       _rtLastPacketLoss = lossMatch ? parseInt(lossMatch[1], 10) : 0;
@@ -1039,14 +1068,15 @@ function _startWifiPoll() {
   _realtimeWifiTimer = setInterval(fetchAdapter, 5000);
 }
 
-// nvidia-smi GPU poll â€” runs every 3s, skips if LHM is already providing GPU data
-// Stops retrying after 3 consecutive failures (e.g. AMD GPU â€” no nvidia-smi available)
+// GPU fallback poll: tries nvidia-smi first (NVIDIA GPUs), then WDDM perf counters (AMD/Intel)
+// Runs every 3s. Skips entirely if LHM is already providing all GPU data.
 function _startNvGpuPoll() {
   let failCount = 0;
   const MAX_FAILS = 3;
-  const poll = async () => {
-    // Skip GPU poll if LHM is already providing all GPU data
-    if (_lhmGpuUsage >= 0 && _lhmGpuTemp >= 0 && _lhmGpuVramTotal > 0) return;
+  let useWddm = false;
+  let wddmFailed = false;
+
+  const pollNvidia = async () => {
     try {
       const { stdout } = await execFileAsync('nvidia-smi',
         ['--query-gpu=utilization.gpu,temperature.gpu,memory.used,memory.total',
@@ -1059,19 +1089,42 @@ function _startNvGpuPoll() {
         if (!isNaN(parts[2])) _nvGpuVramUsed = Math.round(parts[2]);
         if (!isNaN(parts[3])) _nvGpuVramTotal = Math.round(parts[3]);
       }
-      failCount = 0; // reset on success
+      failCount = 0;
     } catch {
       failCount++;
-      if (failCount >= MAX_FAILS && _realtimeNvGpuTimer) {
-        clearInterval(_realtimeNvGpuTimer);
-        _realtimeNvGpuTimer = null;
-        // nvidia-smi not available (AMD/Intel GPU) â€” stopped polling
-      }
+      if (failCount >= MAX_FAILS) { useWddm = true; }
     }
   };
-  poll(); // immediate first call
+
+  const pollWddm = async () => {
+    if (wddmFailed) return;
+    try {
+      const script = '$m = Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUAdapterMemory -EA 0 | Where-Object { $_.Name -match "phys_0" } | Select-Object -First 1; ' +
+        '$e = Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine -EA 0 | Where-Object { $_.Name -match "engtype_3D" }; ' +
+        '$u = 0; if ($e) { $u = [math]::Min(($e | Measure-Object -Property UtilizationPercentage -Sum).Sum, 100) }; ' +
+        'Write-Output "$u,$([math]::Round($m.DedicatedUsage / 1MB)),$([math]::Round($m.DedicatedBudget / 1MB))"';
+      const { stdout } = await execAsync(
+        `powershell -NoProfile -Command "${script.replace(/"/g, '\\"')}"`,
+        { timeout: 8000, windowsHide: true }
+      );
+      const parts = (stdout || '').trim().split(',').map(s => parseFloat(s.trim()));
+      if (parts.length >= 3) {
+        if (!isNaN(parts[0])) _nvGpuUsage = Math.round(parts[0]);
+        if (!isNaN(parts[1]) && parts[1] > 0) _nvGpuVramUsed = Math.round(parts[1]);
+        if (!isNaN(parts[2]) && parts[2] > 0) _nvGpuVramTotal = Math.round(parts[2]);
+      } else { wddmFailed = true; }
+    } catch { wddmFailed = true; }
+  };
+
+  const poll = async () => {
+    if (_lhmGpuUsage >= 0 && _lhmGpuTemp >= 0 && _lhmGpuVramTotal > 0) return;
+    if (useWddm) return pollWddm();
+    return pollNvidia();
+  };
+  poll();
   _realtimeNvGpuTimer = setInterval(poll, 3000);
 }
+
 
 function _startRealtimePush() {
   if (_realtimeTimer) return;
@@ -1361,7 +1414,16 @@ try {
         } catch {}
       }
     }
-    $s1 = "$($gpu.Name)|||$vramGB|||$($gpu.DriverVersion)"
+    $driverStr = $gpu.DriverVersion
+    # For AMD GPUs, resolve Adrenalin Software version from registry
+    if ($gpu.Name -match 'AMD|Radeon|ATI') {
+      try {
+        $amdVer = (Get-ItemProperty 'HKLM:\SOFTWARE\AMD\CN' -EA 0).DriverVersion
+        if (-not $amdVer) { $amdVer = (Get-ItemProperty 'HKLM:\SOFTWARE\ATI Technologies\CBT' -EA 0).ReleaseVersion }
+        if ($amdVer) { $driverStr = $amdVer }
+      } catch {}
+    }
+    $s1 = "$($gpu.Name)|||$vramGB|||$driverStr"
   }
 } catch {}
 
@@ -1533,11 +1595,11 @@ try {
   // Parse Windows License from slmgr output (ran in parallel)
   const slmgrOut = valOf(licenseR).toLowerCase();
   if (slmgrOut) {
-    if (slmgrOut.includes('licensed') || slmgrOut.includes('license status: licensed')) {
+    if (slmgrOut.includes('licensed') || slmgrOut.includes('license status: licensed') || slmgrOut.includes('sous licence')) {
       info.windowsActivation = 'Licensed';
-    } else if (slmgrOut.includes('notification') || slmgrOut.includes('grace')) {
+    } else if (slmgrOut.includes('notification') || slmgrOut.includes('grace') || slmgrOut.includes('riode de gr')) {
       info.windowsActivation = 'Not Activated';
-    } else if (slmgrOut.includes('initial grace') || slmgrOut.includes('oob grace')) {
+    } else if (slmgrOut.includes('initial grace') || slmgrOut.includes('oob grace') || slmgrOut.includes('initiale')) {
       info.windowsActivation = 'Trial';
     }
   }
@@ -4033,8 +4095,8 @@ async function _checkSoftwareUpdatesImpl() {
   return { success: true, packages, count: packages.length };
 }
 
-ipcMain.handle('software:check-updates', async () => {
-  if (_softwareUpdatesCache && (Date.now() - _softwareUpdatesCacheTime) < SOFTWARE_UPDATES_CACHE_TTL) {
+ipcMain.handle('software:check-updates', async (_event, forceRefresh) => {
+  if (!forceRefresh && _softwareUpdatesCache && (Date.now() - _softwareUpdatesCacheTime) < SOFTWARE_UPDATES_CACHE_TTL) {
     return _softwareUpdatesCache;
   }
   try {
@@ -4238,25 +4300,25 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
       const segments = text.split('\r').map(s => s.trim()).filter(Boolean);
       for (const seg of segments) {
         if (/^[-\\|/]$/.test(seg)) {
-          if (phase === 'downloading') emit({ phase, status: 'Downloadingâ€¦', percent: -1 });
-          else if (phase === 'installing') emit({ phase, status: 'Installingâ€¦', percent: -1 });
+          if (phase === 'downloading') emit({ phase, status: 'Downloading...', percent: -1 });
+          else if (phase === 'installing') emit({ phase, status: 'Installing...', percent: -1 });
           continue;
         }
-        if (/^Downloading\s+https?:\/\//i.test(seg)) {
+        if (/^(Downloading|T.l.chargement)\s/i.test(seg)) {
           phase = 'downloading';
-          emit({ phase: 'downloading', status: 'Downloadingâ€¦', percent: -1 });
-        } else if (/^Found\s/i.test(seg)) {
+          emit({ phase: 'downloading', status: 'Downloading...', percent: -1 });
+        } else if (/^(Found|Trouv)/i.test(seg)) {
           emit({ phase: 'preparing', status: seg.substring(0, 80), percent: 5 });
-        } else if (/verified installer hash/i.test(seg)) {
+        } else if (/verified installer hash|hachage.+v.rifi/i.test(seg)) {
           phase = 'verifying';
           emit({ phase: 'verifying', status: 'Installer verified', percent: 100 });
-        } else if (/Starting package install/i.test(seg)) {
+        } else if (/Starting package install|but de l.installation/i.test(seg)) {
           phase = 'installing';
-          emit({ phase: 'installing', status: 'Installingâ€¦', percent: -1 });
-        } else if (/Successfully installed/i.test(seg)) {
+          emit({ phase: 'installing', status: 'Installing...', percent: -1 });
+        } else if (/Successfully installed|install.+correctement|installation.+r.ussie/i.test(seg)) {
           phase = 'done';
           emit({ phase: 'done', status: 'Successfully installed!', percent: 100 });
-        } else if (/no applicable|no available upgrade/i.test(seg)) {
+        } else if (/no applicable|no available upgrade|aucune.+mise/i.test(seg)) {
           emit({ phase: 'done', status: 'Already up to date', percent: 100 });
         }
       }
@@ -4267,7 +4329,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
   /* â”€â”€ Run a winget command with real-time streaming progress â”€â”€ */
   const runWinget = (cmd, statusLabel = 'Preparing update') => new Promise((resolve) => {
     let fullOutput = '';
-    sendProgress({ phase: 'preparing', status: `${statusLabel}â€¦`, percent: 0 });
+    sendProgress({ phase: 'preparing', status: `${statusLabel}...`, percent: 0 });
     const parseChunk = createChunkParser();
 
     const proc = spawn('cmd.exe', ['/c', `chcp 65001 >nul && ${cmd}`], { windowsHide: true });
@@ -4292,7 +4354,10 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
       }
       const lower = fullOutput.toLowerCase();
       const success = lower.includes('successfully installed') ||
+        /install.+correctement/i.test(lower) ||
+        /installation.+r.ussie/i.test(lower) ||
         lower.includes('no available upgrade') ||
+        /aucune.+mise/i.test(lower) ||
         lower.includes('no applicable');
       if (success) {
         _wingetListCache = null; _wingetCacheTime = 0; _regNamesCache = null; _regCacheTime = 0;
@@ -4353,7 +4418,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
      2. runas /trustlevel:0x20000 (restricted token)
      3. schtasks CLI /rl limited (legacy fallback) */
   const runDeElevated = (cmd) => new Promise((resolve) => {
-    sendProgress({ phase: 'preparing', status: 'Updatingâ€¦', percent: 0 });
+    sendProgress({ phase: 'preparing', status: 'Updating...', percent: 0 });
 
     const tmpLog = path.join(os.tmpdir(), `gs_winget_${cleanId.replace(/[^a-zA-Z0-9]/g, '_')}.log`);
     const tmpBat = path.join(os.tmpdir(), `gs_winget_de_${process.pid}.bat`);
@@ -4440,7 +4505,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
       return;
     }
 
-    sendProgress({ phase: 'installing', status: 'Updatingâ€¦', percent: -1 });
+    sendProgress({ phase: 'installing', status: 'Updating...', percent: -1 });
 
     // â”€â”€ Poll the log file for winget output â”€â”€
     let elapsed = 0;
@@ -4474,24 +4539,27 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
         staleSince = 0;
       }
 
-      // Only advance phase forward, never backward
-      if (pollPhase === 'preparing' && lower.includes('downloading')) {
+      // Only advance phase forward, never backward (FR: téléchargement, hachage vérifié, début de l'installation)
+      if (pollPhase === 'preparing' && (lower.includes('downloading') || /t.l.chargement/i.test(lower))) {
         pollPhase = 'downloading';
-        sendProgress({ phase: 'downloading', status: 'Downloadingâ€¦', percent: -1 });
+        sendProgress({ phase: 'downloading', status: 'Downloading...', percent: -1 });
       }
-      if ((pollPhase === 'preparing' || pollPhase === 'downloading') && lower.includes('verified installer hash')) {
+      if ((pollPhase === 'preparing' || pollPhase === 'downloading') && (lower.includes('verified installer hash') || /hachage.+v.rifi/i.test(lower))) {
         pollPhase = 'verifying';
         sendProgress({ phase: 'verifying', status: 'Verified', percent: 100 });
       }
-      if (pollPhase !== 'installing' && lower.includes('starting package install')) {
+      if (pollPhase !== 'installing' && (lower.includes('starting package install') || /but de l.installation/i.test(lower))) {
         pollPhase = 'installing';
-        sendProgress({ phase: 'installing', status: 'Installingâ€¦', percent: -1 });
+        sendProgress({ phase: 'installing', status: 'Installing...', percent: -1 });
         installStarted = true;
       }
 
       const finished = lower.includes('successfully installed') ||
+        /install.+correctement/i.test(lower) ||
+        /installation.+r.ussie/i.test(lower) ||
         lower.includes('no available upgrade') ||
         lower.includes('no applicable') ||
+        /aucune.+mise/i.test(lower) ||
         lower.includes('installer failed') ||
         lower.includes('failed to install') ||
         lower.includes('cannot be upgraded') ||
@@ -4513,7 +4581,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
         try { fs.unlinkSync(tmpBat); } catch { }
         try { fs.unlinkSync(tmpVbs); } catch { }
 
-        const success = lower.includes('successfully installed');
+        const success = lower.includes('successfully installed') || /install.+correctement/i.test(lower) || /installation.+r.ussie/i.test(lower);
         if (success) {
           _wingetListCache = null; _wingetCacheTime = 0; _regNamesCache = null; _regCacheTime = 0;
           sendProgress({ phase: 'done', status: 'Update complete!', percent: 100 });
@@ -4559,7 +4627,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
   // Step 3a: Hash override blocked when running as admin â†’ de-elevate with hash skip + silent
   if (isElevated && result.output &&
     result.output.includes('cannot be overridden when running as admin')) {
-    sendProgress({ phase: 'preparing', status: 'Preparing updateâ€¦', percent: 0 });
+    sendProgress({ phase: 'preparing', status: 'Preparing update...', percent: 0 });
     return await runDeElevated(
       `winget upgrade --id ${cleanId} --accept-source-agreements --accept-package-agreements --force --ignore-security-hash --silent`
     );
@@ -4568,7 +4636,7 @@ ipcMain.handle('software:update-app', async (_event, packageId) => {
   // Step 3b: Installer refuses admin context (e.g. Spotify) â†’ de-elevate without silent
   if (isElevated && result.output &&
     result.output.includes('cannot be run from an administrator')) {
-    sendProgress({ phase: 'preparing', status: 'Preparing updateâ€¦', percent: 0 });
+    sendProgress({ phase: 'preparing', status: 'Preparing update...', percent: 0 });
     return await runDeElevated(
       `winget upgrade --id ${cleanId} --accept-source-agreements --accept-package-agreements --force`
     );
@@ -4642,6 +4710,7 @@ const _APP_CATALOG_APPS = [
   { id: 'RARLab.WinRAR', name: 'WinRAR' },
   { id: 'RevoUninstaller.RevoUninstaller', name: 'Revo Uninstaller' },
   { id: 'Bitwarden.Bitwarden', name: 'Bitwarden' },
+  { id: 'Spotify.Spotify', name: 'Spotify' },
 ];
 
 async function getRegistryDisplayNames() {
@@ -5191,18 +5260,21 @@ public class DeElev {
       if (log.length === lastLen) { staleSince += pollMs; }
       else { lastLen = log.length; staleSince = 0; }
 
-      // Progress updates
-      if (!downloadSeen && lower.includes('downloading')) {
+      // Progress updates (FR: téléchargement, début de l'installation)
+      if (!downloadSeen && (lower.includes('downloading') || /t.l.chargement/i.test(lower))) {
         downloadSeen = true;
         sendProgress({ phase: 'downloading', status: 'Downloading...', percent: -1 });
       }
-      if (!installSeen && lower.includes('starting package install')) {
+      if (!installSeen && (lower.includes('starting package install') || /but de l.installation/i.test(lower))) {
         installSeen = true;
         sendProgress({ phase: 'installing', status: 'Installing...', percent: -1 });
       }
 
       const done = lower.includes('successfully installed') ||
+        /install.+correctement/i.test(lower) ||
+        /installation.+r.ussie/i.test(lower) ||
         lower.includes('already installed') ||
+        /d.j.\s*install/i.test(lower) ||
         lower.includes('installer failed') ||
         lower.includes('failed to install') ||
         lower.includes('no applicable installer') ||
@@ -5215,7 +5287,7 @@ public class DeElev {
         clearInterval(poll);
         try { fs.unlinkSync(tmpBat); } catch {}
 
-        const success = lower.includes('successfully installed') || lower.includes('already installed');
+        const success = lower.includes('successfully installed') || lower.includes('already installed') || /install.+correctement/i.test(lower) || /installation.+r.ussie/i.test(lower) || /d.j.\s*install/i.test(lower);
         const wasCancelled = installCancelled || lower.includes('exit code: 2');
         if (success && !wasCancelled) {
           _wingetListCache = null; _wingetCacheTime = 0; _regNamesCache = null; _regCacheTime = 0;
@@ -5260,18 +5332,18 @@ public class DeElev {
       const segments = text.split('\r').map(s => s.trim()).filter(s => s.length > 0);
       for (const seg of segments) {
         if (/^[-\\|/]$/.test(seg)) continue;
-        if (/^Downloading\s+(https?:\/\/.+)/i.test(seg)) {
+        if (/^(Downloading|T.l.chargement)\s/i.test(seg)) {
           phase = 'downloading';
           sendProgress({ phase: 'downloading', status: 'Downloading...', percent: -1 });
-        } else if (/verified installer hash/i.test(seg)) {
+        } else if (/verified installer hash|hachage.+v.rifi/i.test(seg)) {
           sendProgress({ phase: 'verifying', status: 'Installer verified', percent: 100 });
-        } else if (/Starting package install/i.test(seg)) {
+        } else if (/Starting package install|but de l.installation/i.test(seg)) {
           phase = 'installing';
           sendProgress({ phase: 'installing', status: 'Installing...', percent: -1 });
-        } else if (/Successfully installed/i.test(seg)) {
+        } else if (/Successfully installed|install.+correctement|installation.+r.ussie/i.test(seg)) {
           phase = 'done';
           sendProgress({ phase: 'done', status: 'Installed!', percent: 100 });
-        } else if (/already installed/i.test(seg)) {
+        } else if (/already installed|d.j.\s*install/i.test(seg)) {
           phase = 'done';
           sendProgress({ phase: 'done', status: 'Already installed', percent: 100 });
         }
@@ -5290,7 +5362,7 @@ public class DeElev {
         return;
       }
       const out = fullOutput.toLowerCase();
-      const success = out.includes('successfully installed') || out.includes('already installed');
+      const success = out.includes('successfully installed') || out.includes('already installed') || /install.+correctement/i.test(out) || /installation.+r.ussie/i.test(out) || /d.j.\s*install/i.test(out);
       if (success) {
         _wingetListCache = null; _wingetCacheTime = 0; _regNamesCache = null; _regCacheTime = 0;
         sendProgress({ phase: 'done', status: 'Installed!', percent: 100 });
@@ -5345,4 +5417,781 @@ public class DeElev {
   const finalMsg = (result.message || 'Installation failed').substring(0, 120);
   sendProgress({ phase: 'error', status: finalMsg, percent: 0 });
   return { success: false, message: finalMsg };
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// ── Proxy icon/favicon fetches through main process (avoids CSP/CORS on file://) ──
+const _icoFetchCache = new Map(); // url → dataUrl
+ipcMain.handle('appicon:fetch', async (_event, url) => {
+  if (_icoFetchCache.has(url)) return { success: true, dataUrl: _icoFetchCache.get(url) };
+  try {
+    const { net } = require('electron');
+    const resp = await net.fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+    });
+    if (!resp.ok) return { success: false };
+    const mime = (resp.headers.get('content-type') || 'image/png').split(';')[0].trim();
+    if (!mime.startsWith('image/')) return { success: false };
+    const buf = Buffer.from(await resp.arrayBuffer());
+    if (buf.length < 100) return { success: false }; // reject empty/error images
+    const dataUrl = `data:${mime};base64,${buf.toString('base64')}`;
+    _icoFetchCache.set(url, dataUrl);
+    return { success: true, dataUrl };
+  } catch {
+    return { success: false };
+  }
+});
+
+// APP UNINSTALLER  —  Revo-style uninstall + leftover scanner
+// ═══════════════════════════════════════════════════════════════════════
+
+/* ---- Extract real exe icon from installed app ---- */
+ipcMain.handle('appuninstall:get-icon', async (_event, installLocation, uninstallString) => {
+  let exePath = null;
+
+  // 1. Try the installLocation directory — find the main .exe
+  if (installLocation) {
+    try {
+      if (/\.exe$/i.test(installLocation) && fs.existsSync(installLocation)) {
+        exePath = installLocation;
+      } else if (fs.existsSync(installLocation)) {
+        const stat = fs.statSync(installLocation);
+        if (stat.isDirectory()) {
+          const files = fs.readdirSync(installLocation);
+          // Prefer an exe that isn't an uninstaller/setup/updater
+          const preferred = files.find(f => {
+            const l = f.toLowerCase();
+            return l.endsWith('.exe') &&
+              !l.includes('uninstall') && !l.includes('setup') &&
+              !l.includes('update') && !l.includes('installer');
+          });
+          const fallback = files.find(f => f.toLowerCase().endsWith('.exe'));
+          const chosen = preferred || fallback;
+          if (chosen) exePath = path.join(installLocation, chosen);
+        }
+      }
+    } catch { /* ignore fs errors */ }
+  }
+
+  // 2. Extract exe path from the uninstall string
+  if (!exePath && uninstallString) {
+    const m = uninstallString.match(/"([^"]+\.exe)"/i) ||
+              uninstallString.match(/^(\S+\.exe)/i);
+    if (m) {
+      const candidate = m[1] || m[0];
+      try { if (fs.existsSync(candidate)) exePath = candidate; } catch { }
+    }
+  }
+
+  if (!exePath) return { success: false };
+
+  try {
+    const img = await app.getFileIcon(exePath, { size: 'normal' });
+    return { success: true, dataUrl: img.toDataURL() };
+  } catch {
+    return { success: false };
+  }
+});
+
+/* ---- List all installed programs (registry + winget + AppX) ---- */
+ipcMain.handle('appuninstall:list-apps', async () => {
+  const TAG = '[AppUninstall]';
+  try {
+    // Query all 3 registry uninstall hives via temp .ps1 file
+    const regScript = [
+      '$paths = @(',
+      "  'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',",
+      "  'HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',",
+      "  'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'",
+      ')',
+      '$apps = @()',
+      'foreach ($p in $paths) {',
+      '  Get-ItemProperty $p | Where-Object { $_.DisplayName -and $_.DisplayName.Trim() -ne "" } | ForEach-Object {',
+      '    $un = if ($_.QuietUninstallString) { $_.QuietUninstallString } elseif ($_.UninstallString) { $_.UninstallString } else { "" }',
+      '    $apps += [PSCustomObject]@{',
+      '      name = $_.DisplayName',
+      '      publisher = if ($_.Publisher) { $_.Publisher } else { "" }',
+      '      version = if ($_.DisplayVersion) { $_.DisplayVersion } else { "" }',
+      '      size = if ($_.EstimatedSize) { [math]::Round($_.EstimatedSize / 1024, 1) } else { 0 }',
+      '      installDate = if ($_.InstallDate) { $_.InstallDate } else { "" }',
+      '      installLocation = if ($_.InstallLocation) { $_.InstallLocation } else { "" }',
+      '      uninstallString = $un',
+      '      registryKey = ($_.PSPath -replace "Microsoft.PowerShell.Core\\\\Registry::", "")',
+      '      source = "registry"',
+      '    }',
+      '  }',
+      '}',
+      '$apps | ConvertTo-Json -Depth 3 -Compress',
+    ].join('\n');
+    const regOut = await runPSScript(regScript, 20000);
+
+    let regApps = [];
+    try {
+      const parsed = JSON.parse(regOut.trim());
+      regApps = Array.isArray(parsed) ? parsed : [parsed];
+    } catch { regApps = []; }
+
+    // Deduplicate by name (case-insensitive)
+    const seen = new Set();
+    const dedupedApps = [];
+    for (const app of regApps) {
+      const key = (app.name || '').toLowerCase().trim();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      dedupedApps.push(app);
+    }
+
+    // Sort alphabetically
+    dedupedApps.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    console.log(TAG, `Found ${dedupedApps.length} installed programs`);
+    return { success: true, apps: dedupedApps };
+  } catch (err) {
+    console.error(TAG, 'Failed to list apps:', err.message);
+    return { success: false, apps: [], error: err.message };
+  }
+});
+
+/* ---- Uninstall an app ---- */
+let activeUninstallProc = null;
+let uninstallCancelled = false;
+let _preUninstallSnapshot = []; // Registry entries captured before uninstall (Revo-style)
+
+ipcMain.handle('appuninstall:uninstall-app', async (_event, appInfo) => {
+  const TAG = '[AppUninstall]';
+  const win = BrowserWindow.getAllWindows()[0];
+  uninstallCancelled = false;
+
+  const sendProgress = (data) => {
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('appuninstall:progress', data);
+    }
+  };
+
+  const { name, uninstallString, registryKey, source } = appInfo;
+  console.log(TAG, `Uninstalling: ${name}`);
+
+  // Helper: check if app is still registered (registry key still exists)
+  const isStillInstalled = () => {
+    if (!registryKey) return false;
+    try {
+      const regKeyClean = registryKey.replace(/^HKEY_LOCAL_MACHINE/, 'HKLM').replace(/^HKEY_CURRENT_USER/, 'HKCU');
+      execSync(`reg query "${regKeyClean}" /v DisplayName`, { timeout: 3000, windowsHide: true, stdio: 'pipe' });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  // Helper: poll registry key until gone or timeout
+  const waitForRemoval = (maxWaitMs = 120000) => new Promise((resolve) => {
+    if (!registryKey || !isStillInstalled()) { resolve(true); return; }
+    sendProgress({ phase: 'uninstalling', status: `Waiting for ${name} to finish uninstalling...`, percent: -1 });
+    let elapsed = 0;
+    const pollMs = 2000;
+    const interval = setInterval(() => {
+      elapsed += pollMs;
+      if (uninstallCancelled) { clearInterval(interval); resolve(false); return; }
+      if (!isStillInstalled()) { clearInterval(interval); resolve(true); return; }
+      if (elapsed >= maxWaitMs) { clearInterval(interval); resolve(false); }
+    }, pollMs);
+  });
+
+  // ── Pre-snapshot: record registry BEFORE uninstall (Revo-style diff approach) ──
+  _preUninstallSnapshot = [];
+  try {
+    const nameEscSnap = name.replace(/'/g, "''").replace(/[/"\\]/g, '').trim();
+    const pubEscSnap  = (appInfo.publisher || '').replace(/'/g, "''").replace(/[/"\\]/g, '').trim();
+
+    // Use PowerShell to search HKCU+HKLM SOFTWARE trees for any key whose name
+    // or full path contains the app name — this catches protocol handlers, App Paths, etc.
+    const psSnap = `
+$appName = '${nameEscSnap}'
+$pubName  = '${pubEscSnap}'
+$tokens   = @($appName)
+if ($pubName -and $pubName -ne $appName) { $tokens += $pubName }
+$roots = @('HKCU:\\SOFTWARE','HKLM:\\SOFTWARE')
+$found = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+foreach ($root in $roots) {
+  try {
+    Get-ChildItem -Path $root -Recurse -Depth 6 -ErrorAction SilentlyContinue | ForEach-Object {
+      $leaf = $_.PSChildName
+      foreach ($tok in $tokens) {
+        if ($leaf -like "*$tok*") { [void]$found.Add($_.Name); break }
+      }
+    }
+  } catch {}
+}
+# Also check Run keys for matching values
+$runKeys = @(
+  'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run',
+  'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run'
+)
+$runMatches = @()
+foreach ($rk in $runKeys) {
+  try {
+    $vals = Get-ItemProperty -Path $rk -ErrorAction SilentlyContinue
+    if ($vals) {
+      $vals.PSObject.Properties | Where-Object { $_.MemberType -eq 'NoteProperty' -and $_.Name -notlike 'PS*' } | ForEach-Object {
+        foreach ($tok in $tokens) {
+          if ($_.Name -like "*$tok*" -or ($_.Value -and $_.Value.ToString() -like "*$tok*")) {
+            $regPath = $rk.Replace('HKCU:\\','HKEY_CURRENT_USER\\').Replace('HKLM:\\','HKEY_LOCAL_MACHINE\\')
+            $runMatches += "$regPath|$($_.Name)"
+            break
+          }
+        }
+      }
+    }
+  } catch {}
+}
+$out = @{ keys = @($found); runValues = $runMatches }
+$out | ConvertTo-Json -Compress -Depth 2
+`;
+    const snapRaw = await runPSScript(psSnap, 15000);
+    try {
+      const snapData = JSON.parse(snapRaw || '{}');
+      const keys = Array.isArray(snapData.keys) ? snapData.keys : [];
+      for (const kp of keys) {
+        const norm = kp.replace(/^HKEY_LOCAL_MACHINE/i, 'HKLM').replace(/^HKEY_CURRENT_USER/i, 'HKCU');
+        _preUninstallSnapshot.push({ path: norm, type: 'key' });
+      }
+      const runVals = Array.isArray(snapData.runValues) ? snapData.runValues : [];
+      for (const rv of runVals) {
+        const [parentKey, valueName] = rv.split('|');
+        const norm = parentKey.replace(/^HKEY_LOCAL_MACHINE/i, 'HKLM').replace(/^HKEY_CURRENT_USER/i, 'HKCU');
+        _preUninstallSnapshot.push({ path: `${norm}\\${valueName}`, type: 'value', parentKey: norm, valueName });
+      }
+    } catch { /* malformed JSON – snapshot stays empty */ }
+
+    // Always also include the uninstall key itself if present
+    if (registryKey) {
+      const cleanKey = registryKey.replace(/^HKEY_LOCAL_MACHINE/i, 'HKLM').replace(/^HKEY_CURRENT_USER/i, 'HKCU');
+      if (!_preUninstallSnapshot.some(e => e.path.toLowerCase() === cleanKey.toLowerCase())) {
+        try {
+          execSync(`reg query "${cleanKey}"`, { timeout: 3000, windowsHide: true, stdio: 'pipe' });
+          _preUninstallSnapshot.push({ path: cleanKey, type: 'key' });
+        } catch {}
+      }
+    }
+    console.log(TAG, `Pre-snapshot: ${_preUninstallSnapshot.length} registry entries captured`);
+  } catch (snapErr) {
+    console.log(TAG, 'Pre-snapshot failed (non-fatal):', snapErr.message);
+  }
+
+  sendProgress({ phase: 'uninstalling', status: `Uninstalling ${name}...`, percent: -1 });
+
+  try {
+    // ── Strategy 1: winget uninstall (handles de-elevation + per-user apps) ──
+    let wingetSuccess = false;
+    const escapedName = name.replace(/"/g, '');
+    const wingetCmd = `chcp 65001 >nul && winget uninstall --name "${escapedName}" --accept-source-agreements --disable-interactivity`;
+    console.log(TAG, 'Trying winget uninstall...');
+
+    try {
+      const { stdout } = await execAsync(wingetCmd, {
+        timeout: 180000, windowsHide: true, encoding: 'utf8',
+        shell: 'cmd.exe', maxBuffer: 1024 * 1024 * 5,
+        env: process.env, cwd: process.env.SYSTEMROOT || 'C:\\Windows',
+      });
+      const lower = stdout.toLowerCase();
+      wingetSuccess = lower.includes('successfully uninstalled') ||
+        /d.sinstall.+correctement/i.test(lower) || /d.sinstallation.+r.ussie/i.test(lower) ||
+        lower.includes('no installed package found'); // already gone
+      console.log(TAG, `winget result: ${wingetSuccess ? 'success' : 'check output'}`, stdout.substring(0, 200));
+    } catch (e) {
+      console.log(TAG, 'winget uninstall failed:', (e.message || '').substring(0, 150));
+    }
+
+    if (uninstallCancelled) return { success: false, cancelled: true, message: 'Uninstall cancelled' };
+
+    if (wingetSuccess) {
+      // Wait for registry key to disappear (winget may have triggered a background process)
+      await waitForRemoval(30000);
+      _wingetListCache = null; _wingetCacheTime = 0;
+      _regNamesCache = null; _regCacheTime = 0;
+      sendProgress({ phase: 'done', status: `${name} uninstalled`, percent: 100 });
+      return { success: true, message: `${name} uninstalled` };
+    }
+
+    // ── Strategy 2: native uninstall string ──
+    if (!uninstallString) {
+      sendProgress({ phase: 'error', status: 'No uninstall method available', percent: 0 });
+      return { success: false, message: 'winget failed and no native uninstall command found.' };
+    }
+
+    console.log(TAG, 'Falling back to native uninstaller...');
+    sendProgress({ phase: 'uninstalling', status: `Uninstalling ${name} — complete the uninstaller if it appears...`, percent: -1 });
+
+    let cmd = uninstallString.trim();
+    if (/msiexec/i.test(cmd)) {
+      cmd = cmd.replace(/\/I/i, '/X');
+    }
+
+    // If elevated, de-elevate per-user uninstallers (HKCU apps)
+    const isHKCU = registryKey && /HKEY_CURRENT_USER|HKCU/i.test(registryKey);
+    if (isElevated && isHKCU) {
+      console.log(TAG, 'De-elevating per-user uninstaller...');
+      // Write a bat file and launch de-elevated (reuse app-installer's pattern)
+      const tmpBat = path.join(os.tmpdir(), `gs_uninstall_de_${Date.now()}.bat`);
+      const tmpLog = path.join(os.tmpdir(), `gs_uninstall_${Date.now()}.log`);
+      fs.writeFileSync(tmpBat,
+        `@echo off\r\nchcp 65001 >nul\r\n${cmd} > "${tmpLog}" 2>&1\r\necho __GS_DONE__ >> "${tmpLog}"\r\n`, 'utf8');
+
+      // De-elevate using Explorer token (same method as app installer)
+      const tmpVbs = path.join(os.tmpdir(), `gs_uninst_vbs_${Date.now()}.vbs`);
+      fs.writeFileSync(tmpVbs,
+        `CreateObject("WScript.Shell").Run "cmd.exe /c """"` + tmpBat + `""""", 0, True\r\n`, 'utf8');
+
+      let launched = false;
+      // Explorer-token method
+      try {
+        const cs = `
+Add-Type @'
+using System; using System.Runtime.InteropServices; using System.Diagnostics;
+public class DeElev2 {
+  [DllImport("advapi32.dll", SetLastError=true)]
+  static extern bool OpenProcessToken(IntPtr h, uint a, out IntPtr t);
+  [DllImport("advapi32.dll", SetLastError=true)]
+  static extern bool DuplicateTokenEx(IntPtr t, uint a, IntPtr l, int il, int tt, out IntPtr n);
+  [DllImport("advapi32.dll", SetLastError=true, CharSet=CharSet.Unicode)]
+  static extern bool CreateProcessWithTokenW(IntPtr t, int f, string a, string c, uint cf, IntPtr e, string d, ref STARTUPINFO si, out PROCESS_INFORMATION pi);
+  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)] public struct STARTUPINFO {
+    public int cb; public string lpReserved; public string lpDesktop; public string lpTitle;
+    public int dwX, dwY, dwXSize, dwYSize, dwXCountChars, dwYCountChars, dwFillAttribute, dwFlags;
+    public short wShowWindow, cbReserved2; public IntPtr lpReserved2, hStdInput, hStdOutput, hStdError; }
+  [StructLayout(LayoutKind.Sequential)] public struct PROCESS_INFORMATION {
+    public IntPtr hProcess, hThread; public int dwProcessId, dwThreadId; }
+  public static bool Run(string cmd) {
+    var exp = Process.GetProcessesByName("explorer");
+    if(exp.Length==0) return false;
+    IntPtr tok, dup;
+    if(!OpenProcessToken(exp[0].Handle, 0x0002, out tok)) return false;
+    if(!DuplicateTokenEx(tok, 0x02000000, IntPtr.Zero, 2, 1, out dup)) return false;
+    var si = new STARTUPINFO { cb = Marshal.SizeOf(typeof(STARTUPINFO)), dwFlags = 1, wShowWindow = 0 };
+    PROCESS_INFORMATION pi;
+    return CreateProcessWithTokenW(dup, 0, null, "wscript.exe \\"" + cmd + "\\"", 0x08000000, IntPtr.Zero, null, ref si, out pi);
+  }
+}
+'@ -ErrorAction Stop
+[DeElev2]::Run('${tmpVbs.replace(/\\/g, '\\\\').replace(/'/g, "''")}')`;
+        const res = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cs.replace(/"/g, '\\"')}"`,
+          { encoding: 'utf8', windowsHide: true, timeout: 15000 }).trim();
+        if (res === 'True') { launched = true; console.log(TAG, 'De-elevated via Explorer token'); }
+      } catch {}
+
+      if (!launched) {
+        // Fallback: schtasks
+        const taskName = `GSAppUninst_${process.pid}`;
+        try {
+          execSync(`schtasks /create /tn "${taskName}" /tr "wscript.exe \\"${tmpVbs}\\"" /sc once /st 00:00 /rl LIMITED /f`,
+            { stdio: 'ignore', windowsHide: true, timeout: 10000 });
+          execSync(`schtasks /run /tn "${taskName}"`, { stdio: 'ignore', windowsHide: true, timeout: 10000 });
+          launched = true;
+          setTimeout(() => { try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch {} }, 5000);
+        } catch {}
+      }
+
+      if (launched) {
+        const removed = await waitForRemoval(300000);
+        try { fs.unlinkSync(tmpBat); } catch {}
+        try { fs.unlinkSync(tmpLog); } catch {}
+        try { fs.unlinkSync(tmpVbs); } catch {}
+
+        _wingetListCache = null; _wingetCacheTime = 0;
+        _regNamesCache = null; _regCacheTime = 0;
+
+        if (removed) {
+          sendProgress({ phase: 'done', status: `${name} uninstalled`, percent: 100 });
+          return { success: true, message: `${name} uninstalled` };
+        }
+        sendProgress({ phase: 'error', status: `${name} may not have been fully uninstalled`, percent: 0 });
+        return { success: false, message: `${name} may not have been fully uninstalled` };
+      }
+      // If de-elevation failed, fall through to direct launch
+    }
+
+    // Direct launch (non-elevated apps or de-elevation failed)
+    await new Promise((resolve) => {
+      const proc = spawn('cmd.exe', ['/c', cmd], {
+        windowsHide: false,
+        env: process.env,
+        cwd: process.env.SYSTEMROOT || 'C:\\Windows',
+        stdio: 'pipe',
+      });
+      activeUninstallProc = proc;
+      const timeout = setTimeout(() => { proc.kill(); resolve(); }, 600000);
+      proc.on('close', () => { clearTimeout(timeout); activeUninstallProc = null; resolve(); });
+      proc.on('error', () => { clearTimeout(timeout); resolve(); });
+    });
+
+    if (uninstallCancelled) return { success: false, cancelled: true, message: 'Uninstall cancelled' };
+
+    const removed = await waitForRemoval(300000);
+    _wingetListCache = null; _wingetCacheTime = 0;
+    _regNamesCache = null; _regCacheTime = 0;
+
+    if (removed || !isStillInstalled()) {
+      sendProgress({ phase: 'done', status: `${name} uninstalled`, percent: 100 });
+      return { success: true, message: `${name} uninstalled` };
+    }
+
+    sendProgress({ phase: 'error', status: `${name} may not have been fully uninstalled`, percent: 0 });
+    return { success: false, message: `${name} may not have been fully uninstalled` };
+  } catch (err) {
+    console.error(TAG, 'Uninstall error:', err.message);
+    sendProgress({ phase: 'error', status: err.message, percent: 0 });
+    return { success: false, message: err.message };
+  }
+});
+
+ipcMain.handle('appuninstall:cancel', async () => {
+  uninstallCancelled = true;
+  if (activeUninstallProc && !activeUninstallProc.killed) {
+    try { spawn('taskkill', ['/F', '/T', '/PID', String(activeUninstallProc.pid)], { windowsHide: true }); } catch {}
+    activeUninstallProc = null;
+  }
+  return { success: true };
+});
+
+/* ---- Scan for leftovers after uninstall ---- */
+ipcMain.handle('appuninstall:scan-leftovers', async (_event, appInfo, scanMode, usePreSnapshot) => {
+  const TAG = '[AppUninstall:Scan]';
+  const { name, publisher, installLocation, registryKey } = appInfo;
+  const mode = scanMode || 'moderate'; // safe | moderate | advanced
+  console.log(TAG, `Scanning leftovers for "${name}" (mode: ${mode})`);
+
+  const leftovers = [];
+  const appNameLower = (name || '').toLowerCase().trim();
+  const publisherLower = (publisher || '').toLowerCase().trim();
+
+  // Build search tokens from app name — split on common separators
+  const tokens = appNameLower.split(/[\s\-_().]+/).filter(t => t.length >= 3);
+  // Also add the full name as a single token
+  tokens.push(appNameLower);
+  // Add publisher name words
+  if (publisherLower && publisherLower.length >= 3) {
+    tokens.push(publisherLower);
+  }
+  // Deduplicate tokens
+  const searchTokens = [...new Set(tokens)];
+
+  // Helper: check if a string matches the app
+  const matchesApp = (str) => {
+    const lower = str.toLowerCase();
+    // Must match the full app name or at least 2 tokens
+    if (lower.includes(appNameLower)) return true;
+    if (tokens.length > 1) {
+      let matchCount = 0;
+      for (const t of searchTokens) {
+        if (lower.includes(t)) matchCount++;
+      }
+      return matchCount >= 2;
+    }
+    return false;
+  };
+
+  // ── 1. FILESYSTEM LEFTOVERS ──
+  const localAppData = process.env.LOCALAPPDATA || '';
+  const appData = process.env.APPDATA || '';
+  const programData = process.env.PROGRAMDATA || '';
+
+  // If install location folder still exists post-uninstall, add it directly
+  if (mode !== 'safe' && installLocation && installLocation.trim()) {
+    try {
+      const loc = installLocation.trim();
+      if (fs.existsSync(loc)) {
+        let sizeBytes = 0;
+        try {
+          const children = fs.readdirSync(loc);
+          for (const child of children) {
+            try { sizeBytes += fs.statSync(path.join(loc, child)).size; } catch {}
+          }
+        } catch {}
+        leftovers.push({ type: 'folder', path: loc, size: sizeBytes, selected: true });
+      }
+    } catch {}
+  }
+
+  // Standard locations to scan
+  const searchBases = [
+    localAppData,
+    appData,
+    programData,
+  ];
+
+  if (mode !== 'safe') {
+    // Moderate: add Start Menu, Desktop, and Program Files
+    const startMenu = path.join(appData, 'Microsoft', 'Windows', 'Start Menu', 'Programs');
+    const desktop = path.join(os.homedir(), 'Desktop');
+    searchBases.push(startMenu, desktop);
+    // Always scan Program Files for leftover install dirs
+    searchBases.push('C:\\Program Files', 'C:\\Program Files (x86)');
+    // Also scan parent of install location if available
+    if (installLocation && installLocation.trim()) {
+      const parent = path.dirname(installLocation.trim());
+      if (parent && !searchBases.includes(parent)) searchBases.push(parent);
+    }
+  }
+
+  if (mode === 'advanced') {
+    // Advanced: add Temp, Program Files on all drives
+    const tempDir = process.env.TEMP || os.tmpdir();
+    searchBases.push(tempDir);
+    try {
+      for (let code = 65; code <= 90; code++) {
+        const letter = String.fromCharCode(code);
+        if (fs.existsSync(`${letter}:\\`)) {
+          searchBases.push(`${letter}:\\Program Files`);
+          searchBases.push(`${letter}:\\Program Files (x86)`);
+        }
+      }
+    } catch {}
+  }
+
+  for (const base of searchBases) {
+    if (!base) continue;
+    try {
+      const entries = fs.readdirSync(base, { withFileTypes: true });
+      for (const entry of entries) {
+        if (matchesApp(entry.name)) {
+          const fullPath = path.join(base, entry.name);
+          // Don't include running app's own folders or system folders
+          if (fullPath.toLowerCase().includes('gs control center')) continue;
+          if (fullPath.toLowerCase().includes('windows\\system32')) continue;
+
+          let sizeBytes = 0;
+          try {
+            if (entry.isDirectory()) {
+              // Quick size estimate — sum immediate children only for speed
+              const children = fs.readdirSync(fullPath);
+              for (const child of children) {
+                try { sizeBytes += fs.statSync(path.join(fullPath, child)).size; } catch {}
+              }
+            } else {
+              sizeBytes = fs.statSync(fullPath).size;
+            }
+          } catch {}
+
+          leftovers.push({
+            type: entry.isDirectory() ? 'folder' : 'file',
+            path: fullPath,
+            size: sizeBytes,
+            selected: true,
+          });
+        }
+      }
+    } catch {}
+  }
+
+  // ── 2. REGISTRY LEFTOVERS ──
+  if (mode !== 'safe') {
+    if (usePreSnapshot && _preUninstallSnapshot.length > 0) {
+      // ── Revo-style: check which pre-uninstall registry entries still exist ──
+      console.log(TAG, `Using pre-snapshot (${_preUninstallSnapshot.length} entries) for registry diff`);
+      for (const entry of _preUninstallSnapshot) {
+        try {
+          if (entry.type === 'value') {
+            execSync(`reg query "${entry.parentKey}" /v "${entry.valueName}"`, { timeout: 3000, windowsHide: true, stdio: 'pipe' });
+            leftovers.push({
+              type: 'registry',
+              path: entry.path,
+              size: 0,
+              selected: true,
+              detail: 'Startup entry',
+            });
+          } else {
+            execSync(`reg query "${entry.path}"`, { timeout: 3000, windowsHide: true, stdio: 'pipe' });
+            leftovers.push({
+              type: 'registry',
+              path: entry.path,
+              size: 0,
+              selected: true,
+            });
+          }
+        } catch {}
+      }
+      // Clear snapshot after use
+      _preUninstallSnapshot = [];
+    } else {
+      // ── Fallback name-matching (used for Scan Only when app is still installed) ──
+      const regPaths = [
+        `HKCU\\SOFTWARE\\${name}`,
+        `HKLM\\SOFTWARE\\${name}`,
+        `HKLM\\SOFTWARE\\WOW6432Node\\${name}`,
+      ];
+      if (publisher) {
+        regPaths.push(`HKCU\\SOFTWARE\\${publisher}`);
+        regPaths.push(`HKLM\\SOFTWARE\\${publisher}`);
+        regPaths.push(`HKLM\\SOFTWARE\\WOW6432Node\\${publisher}`);
+      }
+      for (const regPath of regPaths) {
+        try {
+          execSync(`reg query "${regPath}"`, { timeout: 3000, windowsHide: true, stdio: 'pipe' });
+          leftovers.push({
+            type: 'registry',
+            path: regPath,
+            size: 0,
+            selected: true,
+          });
+        } catch {}
+      }
+
+      // Search Run keys for app-specific VALUE entries
+      const runKeys = [
+        'HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run',
+        'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run',
+      ];
+      for (const runKey of runKeys) {
+        try {
+          const out = execSync(`reg query "${runKey}"`, { timeout: 3000, windowsHide: true, encoding: 'utf8' });
+          for (const line of out.split('\n')) {
+            if (matchesApp(line)) {
+              const match = line.match(/^\s+(\S+)\s+REG_\w+\s+/i);
+              if (match) {
+                leftovers.push({
+                  type: 'registry',
+                  path: `${runKey}\\${match[1]}`,
+                  size: 0,
+                  selected: true,
+                  detail: 'Startup entry',
+                });
+              }
+            }
+          }
+        } catch {}
+      }
+
+      // Check if the original uninstall registry key still exists
+      if (registryKey) {
+        try {
+          const regKeyClean = registryKey.replace(/^HKEY_LOCAL_MACHINE/, 'HKLM').replace(/^HKEY_CURRENT_USER/, 'HKCU');
+          execSync(`reg query "${regKeyClean}"`, { timeout: 3000, windowsHide: true, stdio: 'pipe' });
+          leftovers.push({
+            type: 'registry',
+            path: regKeyClean,
+            size: 0,
+            selected: true,
+            detail: 'Uninstall entry',
+          });
+        } catch {}
+      }
+    }
+  }
+
+  // ── 3. SERVICES (advanced only) ──
+  if (mode === 'advanced') {
+    try {
+      const { stdout: svcOut } = await execAsync(
+        `powershell -NoProfile -Command "Get-Service | Select-Object Name,DisplayName | ConvertTo-Json -Compress"`,
+        { timeout: 10000, windowsHide: true, encoding: 'utf8' }
+      );
+      const services = JSON.parse(svcOut);
+      for (const svc of (Array.isArray(services) ? services : [services])) {
+        if (matchesApp(svc.Name) || matchesApp(svc.DisplayName || '')) {
+          leftovers.push({
+            type: 'service',
+            path: svc.Name,
+            size: 0,
+            selected: false, // Off by default for safety
+            detail: svc.DisplayName,
+          });
+        }
+      }
+    } catch {}
+
+    // Scheduled tasks
+    try {
+      const { stdout: taskOut } = await execAsync(
+        'schtasks /query /fo CSV /nh',
+        { timeout: 10000, windowsHide: true, encoding: 'utf8' }
+      );
+      for (const line of taskOut.split('\n')) {
+        const parts = line.split(',').map(p => p.replace(/"/g, '').trim());
+        if (parts[0] && matchesApp(parts[0])) {
+          leftovers.push({
+            type: 'task',
+            path: parts[0],
+            size: 0,
+            selected: false,
+            detail: 'Scheduled task',
+          });
+        }
+      }
+    } catch {}
+  }
+
+  // Deduplicate leftovers by path
+  const seenPaths = new Set();
+  const uniqueLeftovers = [];
+  for (const item of leftovers) {
+    const key = item.path.toLowerCase();
+    if (!seenPaths.has(key)) {
+      seenPaths.add(key);
+      uniqueLeftovers.push(item);
+    }
+  }
+
+  const totalSize = uniqueLeftovers.reduce((sum, l) => sum + (l.size || 0), 0);
+  console.log(TAG, `Found ${uniqueLeftovers.length} leftovers (${Math.round(totalSize / 1024)} KB)`);
+  return { success: true, leftovers: uniqueLeftovers, totalSize };
+});
+
+/* ---- Delete selected leftovers ---- */
+ipcMain.handle('appuninstall:delete-leftovers', async (_event, items) => {
+  const TAG = '[AppUninstall:Delete]';
+  const results = [];
+  let deletedCount = 0;
+  let freedBytes = 0;
+
+  for (const item of items) {
+    try {
+      switch (item.type) {
+        case 'file':
+          fs.unlinkSync(item.path);
+          deletedCount++;
+          freedBytes += item.size || 0;
+          results.push({ path: item.path, success: true });
+          break;
+        case 'folder':
+          fs.rmSync(item.path, { recursive: true, force: true });
+          deletedCount++;
+          freedBytes += item.size || 0;
+          results.push({ path: item.path, success: true });
+          break;
+        case 'registry': {
+          const regPath = item.path;
+          // Check if this is a value under a key (contains value name after last backslash in Run keys)
+          if (/\\Run\\/i.test(regPath)) {
+            const lastSlash = regPath.lastIndexOf('\\');
+            const parentKey = regPath.substring(0, lastSlash);
+            const valueName = regPath.substring(lastSlash + 1);
+            execSync(`reg delete "${parentKey}" /v "${valueName}" /f`, { timeout: 5000, windowsHide: true, stdio: 'pipe' });
+          } else {
+            execSync(`reg delete "${regPath}" /f`, { timeout: 5000, windowsHide: true, stdio: 'pipe' });
+          }
+          deletedCount++;
+          results.push({ path: item.path, success: true });
+          break;
+        }
+        case 'service':
+          execSync(`sc delete "${item.path}"`, { timeout: 5000, windowsHide: true, stdio: 'pipe' });
+          deletedCount++;
+          results.push({ path: item.path, success: true });
+          break;
+        case 'task':
+          execSync(`schtasks /delete /tn "${item.path}" /f`, { timeout: 5000, windowsHide: true, stdio: 'pipe' });
+          deletedCount++;
+          results.push({ path: item.path, success: true });
+          break;
+        default:
+          results.push({ path: item.path, success: false, error: 'Unknown type' });
+      }
+    } catch (err) {
+      results.push({ path: item.path, success: false, error: err.message });
+      console.error(TAG, `Failed to delete ${item.type} "${item.path}":`, err.message);
+    }
+  }
+
+  console.log(TAG, `Deleted ${deletedCount}/${items.length} items, freed ~${Math.round(freedBytes / 1024)} KB`);
+  return { success: true, deletedCount, freedBytes, results };
 });

@@ -9,9 +9,11 @@ export interface PageHeaderProps {
   stat?: React.ReactNode;
   /** Optional action buttons rendered on the far right */
   actions?: React.ReactNode;
+  /** Optional element rendered INSIDE the header line — line pierces through it */
+  lineContent?: React.ReactNode;
 }
 
-const PageHeader: React.FC<PageHeaderProps> = ({ icon, title, stat, actions }) => (
+const PageHeader: React.FC<PageHeaderProps> = ({ icon, title, stat, actions, lineContent }) => (
   <motion.div
     className="page-header"
     initial={{ opacity: 0, y: -10 }}
@@ -21,7 +23,15 @@ const PageHeader: React.FC<PageHeaderProps> = ({ icon, title, stat, actions }) =
     <div className="hud-section-header">
       <div className="hud-section-icon">{icon}</div>
       <h3 className="hud-section-title">{title}</h3>
-      <div className="hud-section-line" />
+      {lineContent ? (
+        <div className="hud-section-line-wrap">
+          <div className="hud-section-line hud-section-line--approach" />
+          {lineContent}
+          <div className="hud-section-line hud-section-line--tail" />
+        </div>
+      ) : (
+        <div className="hud-section-line" />
+      )}
       {stat && <div className="page-header-stat">{stat}</div>}
       {actions && <div className="page-header-actions">{actions}</div>}
     </div>

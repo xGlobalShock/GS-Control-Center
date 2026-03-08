@@ -9,7 +9,7 @@ import {
   Video,
   Wifi,
   RefreshCw,
-  Download,
+  Layers,
 } from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 import '../styles/Sidebar.css';
@@ -36,7 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
     { id: 'gameLibrary', label: 'Games', icon: Gamepad2 },
     { id: 'obsPresets', label: 'Stream', icon: Video },
     { id: 'softwareUpdates', label: 'Updates', icon: RefreshCw },
-    { id: 'appInstaller', label: 'Apps', icon: Download },
+    { id: 'apps', label: 'Apps', icon: Layers },
     { id: 'cleaner', label: 'Cleanup', icon: Trash2 },
     { id: 'settings', label: 'Settings', icon: Settings },
   ], []);

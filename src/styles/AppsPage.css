@@ -1,0 +1,130 @@
+/* =================================================================
+   APPS PAGE — tab hosting + shared in-toolbar switcher
+================================================================= */
+
+.apps-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ════════════════════════════════
+   IN-TOOLBAR MODE SWITCHER
+   Shared by AppInstaller + AppUninstaller toolbars
+════════════════════════════════ */
+.apps-hdr-sw {
+  display: flex;
+  align-items: stretch;
+  border-radius: 0;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.018);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.apps-hdr-sw-sep {
+  width: 1px;
+  flex-shrink: 0;
+  align-self: stretch;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.apps-hdr-sw-btn {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 22px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.apps-hdr-sw-btn-icon {
+  flex-shrink: 0;
+  opacity: 0.35;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.apps-hdr-sw-btn-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.apps-hdr-sw-btn-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(145, 168, 195, 0.45);
+  transition: color 0.15s;
+}
+
+.apps-hdr-sw-btn-sub {
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(145, 168, 195, 0.25);
+  transition: color 0.15s;
+}
+
+/* Bottom accent bar */
+.apps-hdr-sw-btn::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+/* Hover */
+.apps-hdr-sw-btn:hover:not(.apps-hdr-sw-btn--on) {
+  background: rgba(255, 255, 255, 0.028);
+}
+.apps-hdr-sw-btn:hover:not(.apps-hdr-sw-btn--on) .apps-hdr-sw-btn-title {
+  color: rgba(195, 215, 235, 0.65);
+}
+
+/* Active: Install — emerald */
+.apps-hdr-sw-btn--install.apps-hdr-sw-btn--on {
+  background: rgba(16, 185, 129, 0.08);
+}
+.apps-hdr-sw-btn--install.apps-hdr-sw-btn--on .apps-hdr-sw-btn-icon { opacity: 1; color: #34d399; }
+.apps-hdr-sw-btn--install.apps-hdr-sw-btn--on .apps-hdr-sw-btn-title { color: #34d399; }
+.apps-hdr-sw-btn--install.apps-hdr-sw-btn--on .apps-hdr-sw-btn-sub { color: rgba(52, 211, 153, 0.5); }
+.apps-hdr-sw-btn--install.apps-hdr-sw-btn--on::after { background: #10b981; }
+
+/* Active: Uninstall — rose */
+.apps-hdr-sw-btn--uninstall.apps-hdr-sw-btn--on {
+  background: rgba(239, 68, 68, 0.08);
+}
+.apps-hdr-sw-btn--uninstall.apps-hdr-sw-btn--on .apps-hdr-sw-btn-icon { opacity: 1; color: #f87171; }
+.apps-hdr-sw-btn--uninstall.apps-hdr-sw-btn--on .apps-hdr-sw-btn-title { color: #f87171; }
+.apps-hdr-sw-btn--uninstall.apps-hdr-sw-btn--on .apps-hdr-sw-btn-sub { color: rgba(248, 113, 113, 0.5); }
+.apps-hdr-sw-btn--uninstall.apps-hdr-sw-btn--on::after { background: #ef4444; }
+
+/* ════════════════════════════════
+   TAB CONTENT
+════════════════════════════════ */
+.apps-tab-content {
+  display: none;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+.apps-tab-content--visible {
+  display: flex;
+  flex-direction: column;
+}
+.apps-tab-content--visible > * {
+  flex: 1;
+  min-height: 0;
+}

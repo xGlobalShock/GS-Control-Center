@@ -10,7 +10,7 @@ import GameLibrary from './pages/GameLibrary';
 import OBSPresets from './pages/OBSPresets';
 import Network from './pages/Network';
 import SoftwareUpdates from './pages/SoftwareUpdates';
-import AppInstaller from './pages/AppInstaller';
+import AppsPage from './pages/AppsPage';
 import { ToastProvider } from './contexts/ToastContext';
 import { ToastContainer } from './components/ToastContainer';
 import { useRealtimeHardware } from './hooks/useRealtimeHardware';
@@ -180,8 +180,8 @@ function App() {
         <div style={pageStyle('softwareUpdates')}>
           <SoftwareUpdates isActive={currentPage === 'softwareUpdates'} />
         </div>
-        <div style={pageStyle('appInstaller')}>
-          <AppInstaller isActive={currentPage === 'appInstaller'} />
+        <div style={pageStyle('apps')}>
+          <AppsPage isActive={currentPage === 'apps'} />
         </div>
       </>
     );

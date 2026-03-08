@@ -59,7 +59,7 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
     setLoading(true);
     setUpdatedIds(new Set());
     try {
-      const result = await window.electron.ipcRenderer.invoke('software:check-updates');
+      const result = await window.electron.ipcRenderer.invoke('software:check-updates', true);
       if (result.success) {
         setPackages(result.packages);
         setPackageSizes({});

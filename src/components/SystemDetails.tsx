@@ -550,9 +550,9 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
             <Row label="GPU VRAM" loading={gpuInitializing} />
           )}
           {hw?.gpuDriverVersion ? (
-            <Row label="Nvidia Driver Version" value={hw.gpuDriverVersion} />
+            <Row label={hw?.gpuName && !/nvidia/i.test(hw.gpuName) ? 'Driver Version' : 'Nvidia Driver Version'} value={hw.gpuDriverVersion} />
           ) : (
-            <Row label="Nvidia Driver Version" loading={hwLoading} />
+            <Row label="Driver Version" loading={hwLoading} />
           )}
           {hasGpu ? (
             <>
@@ -586,7 +586,7 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
               <Row label="VRAM Used" loading />
             </>
           ) : (
-            <div className="hud-note">Live stats require NVIDIA drivers</div>
+            <div className="hud-note">Live GPU stats unavailable</div>
           )}
         </BentoCard>
 

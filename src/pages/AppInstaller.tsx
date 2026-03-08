@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Download,
+  Trash2,
   CheckCircle,
   Search,
-  Package,
   Loader2,
   X,
   RefreshCw,
@@ -20,7 +20,7 @@ import {
   LayoutGrid,
   Sparkles,
 } from 'lucide-react';
-import PageHeader from '../components/PageHeader';
+
 import { useToast } from '../contexts/ToastContext';
 import { APP_CATALOG, APP_CATEGORIES, CatalogApp } from '../data/appCatalog';
 import '../styles/AppInstaller.css';
@@ -32,8 +32,12 @@ interface InstallProgress {
   percent: number;
 }
 
+type AppTab = 'install' | 'uninstall';
+
 interface AppInstallerProps {
   isActive?: boolean;
+  activeTab?: AppTab;
+  onTabChange?: (tab: AppTab) => void;
 }
 
 /* Category → icon */
@@ -48,7 +52,56 @@ const CAT_ICONS: Record<string, React.ReactNode> = {
   'Media': <Music size={14} />,
 };
 
-const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
+/* App favicon — fetched via main process (avoids renderer CSP/CORS) */
+const _aiIconCache = new Map<string, string>();
+
+const AppIcon: React.FC<{ domain?: string; name: string; size?: number }> = ({ domain, name, size = 16 }) => {
+  const [iconUrl, setIconUrl] = React.useState<string | null>(
+    () => domain ? (_aiIconCache.get(domain) ?? null) : null
+  );
+
+  React.useEffect(() => {
+    if (!domain) { setIconUrl(null); return; }
+    if (_aiIconCache.has(domain)) { setIconUrl(_aiIconCache.get(domain)!); return; }
+    if (!window.electron?.ipcRenderer) return;
+    let cancelled = false;
+    const urls = [
+      `https://logo.clearbit.com/${domain}`,
+      `https://www.google.com/s2/favicons?domain=${domain}&sz=64`,
+    ];
+    (async () => {
+      for (const url of urls) {
+        const r = await window.electron.ipcRenderer.invoke('appicon:fetch', url).catch(() => null);
+        if (cancelled) return;
+        if (r?.success && r.dataUrl) {
+          _aiIconCache.set(domain, r.dataUrl);
+          setIconUrl(r.dataUrl);
+          return;
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [domain]);
+
+  if (iconUrl) {
+    return (
+      <img src={iconUrl} width={size} height={size} alt="" draggable={false}
+        style={{ borderRadius: 4, objectFit: 'contain', flexShrink: 0 }} />
+    );
+  }
+  const hue = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      width: size, height: size, borderRadius: 4, flexShrink: 0,
+      background: `hsla(${hue},55%,45%,0.25)`,
+      color: `hsla(${hue},75%,70%,0.9)`,
+      fontSize: Math.round(size * 0.65), fontWeight: 700, lineHeight: 1,
+    }}>{name.charAt(0).toUpperCase()}</span>
+  );
+};
+
+const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false, activeTab = 'install', onTabChange }) => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [installed, setInstalled] = useState<Set<string>>(new Set());
   const [installingId, setInstallingId] = useState<string | null>(null);
@@ -72,9 +125,11 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
     if (!window.electron?.ipcRenderer) return;
     const unsub = window.electron.ipcRenderer.on('appinstall:preloaded', (data: any) => {
       if (data?.success && data.installed) {
-        const set = new Set<string>();
-        for (const [id, ok] of Object.entries(data.installed)) { if (ok) set.add(id); }
-        setInstalled(set);
+        setInstalled(prev => {
+          const merged = new Set<string>(prev);
+          for (const [id, ok] of Object.entries(data.installed)) { if (ok) merged.add(id); }
+          return merged;
+        });
         hasChecked.current = true;
       }
     });
@@ -106,9 +161,11 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
           const allApps = APP_CATALOG.map(a => ({ id: a.id, name: a.name }));
           const result = await window.electron.ipcRenderer.invoke('appinstall:check-installed', allApps, false);
           if (result.success) {
-            const set = new Set<string>();
-            for (const [id, ok] of Object.entries(result.installed)) { if (ok) set.add(id); }
-            setInstalled(set);
+            setInstalled(prev => {
+              const merged = new Set<string>(prev);
+              for (const [id, ok] of Object.entries(result.installed)) { if (ok) merged.add(id); }
+              return merged;
+            });
           }
         } catch {}
       })();
@@ -200,52 +257,71 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
 
   return (
     <motion.div className="ai" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>
-      <PageHeader
-        icon={<Package size={16} />}
-        title="App Installer"
-        stat={
-          <div className="ai-header-row">
-            <div className="ai-search-wrap ai-search-wrap--header">
-              <Search size={13} className="ai-search-icon" />
-              <input
-                className="ai-search"
-                placeholder="Search apps…"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <button className="ai-search-x" onClick={() => setSearchQuery('')}><X size={13} /></button>
-              )}
-            </div>
-            {checkingInstalled
-              ? <span className="ai-stat"><Loader2 size={12} className="ai-spin" /> Scanning…</span>
-              : installed.size > 0
-                ? <span className="ai-stat"><CheckCircle size={12} /> {installed.size}/{APP_CATALOG.length} installed</span>
-                : null
-            }
+      {/* ── Toolbar ── */}
+      <div className="ai-toolbar">
+        <div className="ai-toolbar-l">
+          <div className="ai-search-wrap">
+            <Search size={12} className="ai-search-icon" />
+            <input
+              className="ai-search"
+              placeholder="Search apps…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button className="ai-search-x" onClick={() => setSearchQuery('')}><X size={11} /></button>
+            )}
           </div>
-        }
-        actions={
-          <div className="ai-actions">
-            <button className="ai-icon-btn" onClick={refreshInstalled} disabled={checkingInstalled} title="Re-scan">
-              <RefreshCw size={14} className={checkingInstalled ? 'ai-spin' : ''} />
+        </div>
+        <div className="ai-toolbar-c">
+          <div className="apps-hdr-sw">
+            <button
+              className={`apps-hdr-sw-btn apps-hdr-sw-btn--install${activeTab === 'install' ? ' apps-hdr-sw-btn--on' : ''}`}
+              onClick={() => onTabChange?.('install')}
+            >
+              <span className="apps-hdr-sw-btn-icon"><Download size={15} strokeWidth={2} /></span>
+              <span className="apps-hdr-sw-btn-body">
+                <span className="apps-hdr-sw-btn-title">Install Apps</span>
+                <span className="apps-hdr-sw-btn-sub">Deploy software</span>
+              </span>
+            </button>
+            <div className="apps-hdr-sw-sep" />
+            <button
+              className={`apps-hdr-sw-btn apps-hdr-sw-btn--uninstall${activeTab === 'uninstall' ? ' apps-hdr-sw-btn--on' : ''}`}
+              onClick={() => onTabChange?.('uninstall')}
+            >
+              <span className="apps-hdr-sw-btn-icon"><Trash2 size={15} strokeWidth={2} /></span>
+              <span className="apps-hdr-sw-btn-body">
+                <span className="apps-hdr-sw-btn-title">Uninstall Apps</span>
+                <span className="apps-hdr-sw-btn-sub">Remove &amp; clean up</span>
+              </span>
             </button>
           </div>
-        }
-      />
+        </div>
+        <div className="ai-toolbar-r">
+          {checkingInstalled
+            ? <span className="ai-stat"><Loader2 size={10} className="ai-spin" /> Scanning…</span>
+            : installed.size > 0
+              ? <span className="ai-stat"><CheckCircle size={10} /> {installed.size}/{APP_CATALOG.length} Apps Installed</span>
+              : null
+          }
+          <button className="ai-icon-btn" onClick={refreshInstalled} disabled={checkingInstalled} title="Re-scan">
+            <RefreshCw size={13} className={checkingInstalled ? 'ai-spin' : ''} />
+          </button>
+        </div>
+      </div>
 
-      {/* ── Category tabs ── */}
-      <div className="ai-tabs">
+      {/* ── Category pills ── */}
+      <div className="ai-cats">
         {(['All', ...APP_CATEGORIES] as string[]).map(cat => (
           <button
             key={cat}
-            className={`ai-tab ${activeCat === cat ? 'ai-tab--active' : ''}`}
+            className={`ai-cat${activeCat === cat ? ' ai-cat--on' : ''}`}
             onClick={() => setActiveCat(cat)}
           >
-            {cat !== 'All' && <span className="ai-tab-icon">{CAT_ICONS[cat]}</span>}
-            {cat === 'All' && <LayoutGrid size={13} />}
+            {cat === 'All' ? <LayoutGrid size={12} /> : <span className="ai-cat-ico">{CAT_ICONS[cat]}</span>}
             <span>{cat}</span>
-            <span className="ai-tab-count">{catCounts[cat]}</span>
+            <span className="ai-cat-n">{catCounts[cat]}</span>
           </button>
         ))}
       </div>
@@ -266,10 +342,19 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false }) => {
               >
                 {/* Status icon */}
                 <div className="ai-card-icon">
-                  {done ? <CheckCircle size={15} />
-                    : busy ? <Loader2 size={15} className="ai-spin" />
-                    : sel ? <div className="ai-card-check"><Check size={10} /></div>
-                    : <div className="ai-card-dot" />}
+                  {done ? (
+                    <span className="ai-card-sel-icon">
+                      <AppIcon domain={app.domain} name={app.name} size={16} />
+                      <span className="ai-card-check-badge ai-card-check-badge--done"><Check size={8} /></span>
+                    </span>
+                  ) : busy ? <Loader2 size={15} className="ai-spin" />
+                    : sel ? (
+                      <span className="ai-card-sel-icon">
+                        <AppIcon domain={app.domain} name={app.name} size={16} />
+                        <span className="ai-card-check-badge"><Check size={8} /></span>
+                      </span>
+                    )
+                    : <AppIcon domain={app.domain} name={app.name} size={16} />}
                 </div>
 
                 <div className="ai-card-info">

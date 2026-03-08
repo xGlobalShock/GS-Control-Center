@@ -1,0 +1,651 @@
+/* =================================================================
+   APP UNINSTALLER — Command Center
+   Toolbar · App grid · Uninstall overlay
+================================================================= */
+
+.au {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  padding-bottom: 8px;
+  overflow: hidden;
+  isolation: isolate;
+  will-change: transform;
+}
+
+/* ════════════════════════════════
+   TOOLBAR
+════════════════════════════════ */
+.au-toolbar {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.016);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.au-toolbar-l,
+.au-toolbar-r { padding: 9px 0; }
+
+.au-toolbar-l {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.au-toolbar-c {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.au-toolbar-r {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Context label (app name shown during overlay phases) */
+.au-toolbar-ctx {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: rgba(185, 205, 225, 0.58);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.au-toolbar-r { display: flex; align-items: center; gap: 8px; }
+
+/* Stat badge */
+.au-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: rgba(170, 192, 212, 0.48);
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.045);
+}
+.au-stat svg { color: #10b981; }
+
+.au-stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(170, 192, 212, 0.38);
+  text-transform: uppercase;
+}
+
+/* ── Search ── */
+.au-search-wrap { position: relative; width: 185px; }
+.au-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(170, 192, 212, 0.22);
+  pointer-events: none;
+}
+.au-search {
+  width: 100%;
+  padding: 6px 28px 6px 30px;
+  border: 1px solid rgba(255, 255, 255, 0.048);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  color: rgba(218, 233, 248, 0.88);
+  font-size: 11.5px;
+  outline: none;
+  transition: border-color 0.18s;
+}
+.au-search::placeholder { color: rgba(155, 178, 200, 0.22); }
+.au-search:focus { border-color: rgba(239, 68, 68, 0.2); background: rgba(0, 0, 0, 0.26); }
+
+.au-search-x {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: rgba(155, 178, 200, 0.28);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  transition: color 0.14s;
+}
+.au-search-x:hover { color: rgba(210, 228, 245, 0.65); }
+
+.au-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.056);
+  background: rgba(255, 255, 255, 0.022);
+  color: rgba(170, 192, 212, 0.42);
+  cursor: pointer;
+  transition: background 0.16s, color 0.16s;
+}
+.au-icon-btn:hover { background: rgba(255, 255, 255, 0.06); color: rgba(218, 233, 248, 0.8); }
+.au-icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ════════════════════════════════
+   BODY (scrollable app list)
+════════════════════════════════ */
+.au-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: opacity 0.18s, filter 0.18s;
+}
+.au-body--dim { pointer-events: none; filter: blur(1px); opacity: 0.28; }
+.au-body:hover { scrollbar-color: rgba(255, 255, 255, 0.07) transparent; }
+.au-body::-webkit-scrollbar { width: 4px; }
+.au-body::-webkit-scrollbar-thumb { background: transparent; border-radius: 4px; }
+.au-body:hover::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.07); }
+
+.au-loading, .au-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 100%;
+  min-height: calc(100vh - 200px);
+  color: rgba(170, 192, 212, 0.38);
+  font-size: 12px;
+}
+
+/* ════════════════════════════════
+   APP GRID
+════════════════════════════════ */
+.au-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+  grid-auto-rows: 50px;
+  gap: 5px;
+  padding-bottom: 20px;
+}
+
+/* ── Card ── */
+.au-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px 0 10px;
+  height: 50px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.035);
+  cursor: default;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.14s, border-color 0.14s;
+  user-select: none;
+}
+
+.au-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: transparent;
+  transition: background 0.14s;
+}
+
+.au-card:hover { background: rgba(255, 255, 255, 0.038); border-color: rgba(255, 255, 255, 0.058); }
+.au-card:hover::before { background: rgba(239, 68, 68, 0.45); }
+
+.au-card-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.028);
+  color: rgba(170, 192, 212, 0.3);
+  transition: background 0.14s;
+}
+.au-card:hover .au-card-icon { background: rgba(239, 68, 68, 0.07); }
+
+.au-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.au-card-name {
+  font-size: 11px;
+  font-weight: 550;
+  color: rgba(218, 233, 248, 0.88);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.au-card-meta {
+  font-size: 9px;
+  color: rgba(150, 172, 195, 0.24);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.au-card-del {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(239, 68, 68, 0.1);
+  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.04);
+  color: rgba(239, 68, 68, 0.36);
+  cursor: pointer;
+  transition: all 0.13s;
+  opacity: 0;
+}
+.au-card:hover .au-card-del { opacity: 1; }
+.au-card-del:hover {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+
+/* ════════════════════════════════
+   OVERLAY
+════════════════════════════════ */
+.au-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.au-ovl-card {
+  width: 480px;
+  max-width: calc(100% - 32px);
+  background: rgba(4, 10, 14, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow:
+    0 28px 72px rgba(0, 0, 0, 0.68),
+    0 0 0 1px rgba(239, 68, 68, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.au-ovl-card--lg { width: 740px; max-width: calc(100% - 32px); }
+
+/* ── App identity header ── */
+.au-ovl-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+}
+.au-ovl-app-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.au-ovl-app-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(225, 238, 252, 0.94);
+  margin: 0;
+  line-height: 1.3;
+}
+.au-ovl-app-pub {
+  font-size: 10px;
+  color: rgba(185, 205, 225, 0.36);
+  margin: 3px 0 0;
+}
+
+.au-ovl-prompt {
+  font-size: 11px;
+  color: rgba(185, 205, 225, 0.46);
+  margin: 0;
+}
+
+/* ── Option cards ── */
+.au-ovl-body { display: flex; flex-direction: column; gap: 14px; }
+.au-ovl-body--center {
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  text-align: center;
+  gap: 12px;
+}
+
+.au-ovl-opts { display: flex; flex-direction: column; gap: 8px; }
+
+.au-ovl-opt {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px 14px 18px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.022);
+  border: 1px solid rgba(255, 255, 255, 0.058);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.16s, border-color 0.16s;
+  text-align: left;
+  width: 100%;
+  overflow: hidden;
+}
+/* Left accent bar */
+.au-ovl-opt::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  transition: background 0.15s;
+}
+
+/* Safe option — emerald */
+.au-ovl-opt:not(.au-ovl-opt--deep)::before { background: rgba(16, 185, 129, 0.45); }
+.au-ovl-opt:not(.au-ovl-opt--deep):hover {
+  background: rgba(16, 185, 129, 0.046);
+  border-color: rgba(16, 185, 129, 0.18);
+}
+.au-ovl-opt:not(.au-ovl-opt--deep):hover::before { background: #10b981; }
+
+/* Deep option — amber */
+.au-ovl-opt--deep::before { background: rgba(245, 158, 11, 0.4); }
+.au-ovl-opt--deep:hover {
+  background: rgba(245, 158, 11, 0.048);
+  border-color: rgba(245, 158, 11, 0.2);
+}
+.au-ovl-opt--deep:hover::before { background: #f59e0b; }
+
+.au-ovl-opt-ico {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+}
+.au-ovl-opt-ico--safe {
+  background: rgba(16, 185, 129, 0.09);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.16);
+}
+.au-ovl-opt-ico--deep {
+  background: rgba(245, 158, 11, 0.09);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.16);
+}
+
+.au-ovl-opt-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.au-ovl-opt-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(225, 238, 252, 0.90);
+  display: block;
+}
+.au-ovl-opt-desc {
+  font-size: 10px;
+  color: rgba(185, 205, 225, 0.38);
+  display: block;
+  line-height: 1.4;
+}
+
+.au-ovl-opt-arrow {
+  flex-shrink: 0;
+  color: rgba(185, 205, 225, 0.2);
+  transition: color 0.14s, transform 0.14s;
+}
+.au-ovl-opt:hover .au-ovl-opt-arrow { color: rgba(185, 205, 225, 0.6); transform: translateX(3px); }
+
+/* ── Cancel link ── */
+.au-ovl-cancel {
+  background: none;
+  border: none;
+  font-size: 11px;
+  color: rgba(185, 205, 225, 0.32);
+  cursor: pointer;
+  padding: 4px 0;
+  text-align: center;
+  transition: color 0.14s;
+  align-self: center;
+}
+.au-ovl-cancel:hover { color: rgba(185, 205, 225, 0.68); }
+
+/* ── Spinner / progress ── */
+.au-ovl-spinner { color: rgba(239, 68, 68, 0.75); }
+.au-ovl-progress-msg {
+  font-size: 11.5px;
+  color: rgba(185, 205, 225, 0.5);
+  margin: 0;
+  max-width: 300px;
+  line-height: 1.5;
+}
+
+/* ── Leftover meta ── */
+.au-ovl-leftover-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(185, 205, 225, 0.52);
+}
+.au-warn-icon { color: #f59e0b; flex-shrink: 0; }
+
+.au-leftover-summary {
+  font-size: 10.5px;
+  color: rgba(185, 205, 225, 0.35);
+  margin-left: auto;
+}
+
+.au-ovl-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 340px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.05) transparent;
+}
+.au-ovl-groups::-webkit-scrollbar { width: 4px; }
+.au-ovl-groups::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.06); border-radius: 4px; }
+
+/* ── Leftover groups ── */
+.au-leftover-groups { display: flex; flex-direction: column; gap: 5px; }
+.au-group {
+  border: 1px solid rgba(255, 255, 255, 0.038);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.au-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.022);
+}
+.au-group-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: rgba(218, 233, 248, 0.68);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+}
+.au-group-icon { color: rgba(185, 205, 225, 0.38); display: flex; }
+.au-group-label { margin-left: 1px; }
+.au-group-count {
+  font-size: 9.5px;
+  color: rgba(185, 205, 225, 0.32);
+  background: rgba(255, 255, 255, 0.038);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.au-group-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  color: transparent;
+  transition: all 0.14s;
+}
+.au-group-check--all { background: rgba(6, 182, 212, 0.14); border-color: rgba(6, 182, 212, 0.28); color: #06b6d4; }
+.au-group-check--some { background: rgba(6, 182, 212, 0.07); border-color: rgba(6, 182, 212, 0.14); color: rgba(6, 182, 212, 0.5); }
+
+/* Leftover items */
+.au-group-items { display: flex; flex-direction: column; }
+.au-leftover-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px 5px 28px;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-top: 1px solid rgba(255, 255, 255, 0.018);
+}
+.au-leftover-item:hover { background: rgba(255, 255, 255, 0.025); }
+.au-leftover-item--sel { background: rgba(6, 182, 212, 0.02); }
+
+.au-item-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  flex-shrink: 0;
+  color: transparent;
+  transition: all 0.13s;
+}
+.au-item-check--on { background: rgba(6, 182, 212, 0.14); border-color: rgba(6, 182, 212, 0.28); color: #06b6d4; }
+
+.au-item-path {
+  font-size: 10px;
+  color: rgba(185, 205, 225, 0.52);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+.au-item-detail { font-size: 9px; color: rgba(185, 205, 225, 0.28); white-space: nowrap; }
+.au-item-size { font-size: 9.5px; color: rgba(185, 205, 225, 0.28); white-space: nowrap; flex-shrink: 0; }
+
+/* ── Leftover footer ── */
+.au-ovl-leftover-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.045);
+}
+.au-leftover-sel { font-size: 10.5px; color: rgba(185, 205, 225, 0.38); }
+.au-leftover-footer { display: flex; align-items: center; justify-content: space-between; }
+
+/* ── Shared buttons ── */
+.au-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 13px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.14s, color 0.14s, border-color 0.14s;
+}
+.au-btn:disabled { opacity: 0.32; cursor: not-allowed; }
+
+.au-btn--primary {
+  background: rgba(6, 182, 212, 0.09);
+  border-color: rgba(6, 182, 212, 0.2);
+  color: #22d3ee;
+}
+.au-btn--primary:hover { background: rgba(6, 182, 212, 0.16); }
+
+.au-btn--secondary {
+  background: rgba(255, 255, 255, 0.038);
+  border-color: rgba(255, 255, 255, 0.07);
+  color: rgba(185, 205, 225, 0.58);
+}
+.au-btn--secondary:hover { background: rgba(255, 255, 255, 0.07); color: rgba(218, 233, 248, 0.82); }
+
+.au-btn--danger {
+  background: rgba(239, 68, 68, 0.09);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+.au-btn--danger:hover { background: rgba(239, 68, 68, 0.17); }
+
+.au-panel-actions { display: flex; gap: 7px; }
+
+/* ── Done screen ── */
+.au-done-icon { color: #10b981; }
+.au-ovl-done-title { font-size: 15px; font-weight: 600; color: rgba(225, 238, 252, 0.9); margin: 0; }
+.au-done-detail { font-size: 11.5px; color: rgba(185, 205, 225, 0.48); margin: 0; }
+
+/* ── Spinner ── */
+@keyframes au-spin { to { transform: rotate(360deg); } }
+.au-spin { animation: au-spin 0.85s linear infinite; }

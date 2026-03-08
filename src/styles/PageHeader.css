@@ -43,3 +43,21 @@
   gap: 8px;
   margin-left: 12px;
 }
+
+/* ── Line-intercept layout (line pierces through lineContent) ── */
+.hud-section-line-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.hud-section-line--approach {
+  flex: 1;
+  background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.26)) !important;
+}
+
+.hud-section-line--tail {
+  flex: 1;
+  background: linear-gradient(90deg, rgba(0, 242, 255, 0.26), transparent) !important;
+}
