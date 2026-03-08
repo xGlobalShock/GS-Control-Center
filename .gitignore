@@ -16,7 +16,7 @@ scripts/
 lib/
 
 # ── Private / sensitive ──
-.github/
+.github/copilot-instructions.md
 .env
 .env.local
 .env.*.local
