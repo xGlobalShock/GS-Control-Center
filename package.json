@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "electron-is-dev": "^3.0.1",
+    "electron-updater": "^6.8.3",
     "framer-motion": "^10.16.4",
     "is-admin": "^4.0.0",
     "lucide-react": "^0.292.0",
@@ -85,9 +86,14 @@
       "buildResources": "public"
     },
     "extends": null,
+    "publish": {
+      "provider": "github",
+      "owner": "xGlobalShock",
+      "repo": "GSClient"
+    },
     "win": {
       "target": [
-        "dir"
+        "nsis"
       ],
       "executableName": "GS Control Center",
       "requestedExecutionLevel": "requireAdministrator"

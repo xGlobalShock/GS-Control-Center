@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 const { exec, execFile, spawn, execSync, spawnSync } = require('child_process');
@@ -313,6 +314,122 @@ app.on('ready', async () => {
   if (splashWindow && !splashWindow.isDestroyed()) {
     splashWindow.close();
   }
+
+  // ── Auto-Update: check for updates after app is fully loaded ──
+  initAutoUpdater();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUTO-UPDATE SYSTEM
+// Uses electron-updater to check GitHub Releases for new versions.
+// Sends events to the renderer so the UI can show update notifications.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function sendUpdateStatus(data) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('updater:status', data);
+  }
+}
+
+function initAutoUpdater() {
+  // Don't auto-update in dev mode
+  if (!app.isPackaged) {
+    console.log('[AutoUpdater] Skipping — running in dev mode');
+    return;
+  }
+
+  // Configure auto-updater
+  autoUpdater.autoDownload = false;       // Let user decide when to download
+  autoUpdater.autoInstallOnAppQuit = true; // Install on next quit after download
+  autoUpdater.allowDowngrade = false;
+
+  autoUpdater.on('checking-for-update', () => {
+    sendUpdateStatus({ event: 'checking' });
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    sendUpdateStatus({
+      event: 'available',
+      version: info.version,
+      releaseDate: info.releaseDate,
+      releaseNotes: typeof info.releaseNotes === 'string'
+        ? info.releaseNotes
+        : Array.isArray(info.releaseNotes)
+          ? info.releaseNotes.map(n => n.note || n).join('\n')
+          : '',
+    });
+  });
+
+  autoUpdater.on('update-not-available', (info) => {
+    sendUpdateStatus({ event: 'not-available', version: info.version });
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    sendUpdateStatus({
+      event: 'download-progress',
+      percent: Math.round(progress.percent),
+      bytesPerSecond: progress.bytesPerSecond,
+      transferred: progress.transferred,
+      total: progress.total,
+    });
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    sendUpdateStatus({
+      event: 'downloaded',
+      version: info.version,
+    });
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('[AutoUpdater] Error:', err?.message || err);
+    sendUpdateStatus({ event: 'error', message: err?.message || 'Unknown update error' });
+  });
+
+  // Check for updates after a short delay (let the app settle)
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch(err => {
+      console.warn('[AutoUpdater] Check failed:', err?.message);
+    });
+  }, 10000);
+
+  // Re-check every 4 hours
+  setInterval(() => {
+    autoUpdater.checkForUpdates().catch(() => {});
+  }, 4 * 60 * 60 * 1000);
+}
+
+// IPC: manually trigger update check
+ipcMain.handle('updater:check', async () => {
+  if (!app.isPackaged) {
+    return { event: 'not-available', version: app.getVersion(), dev: true };
+  }
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return { event: 'checked', version: result?.updateInfo?.version || app.getVersion() };
+  } catch (err) {
+    return { event: 'error', message: err?.message || 'Check failed' };
+  }
+});
+
+// IPC: start downloading the update
+ipcMain.handle('updater:download', async () => {
+  try {
+    await autoUpdater.downloadUpdate();
+    return { success: true };
+  } catch (err) {
+    return { success: false, message: err?.message || 'Download failed' };
+  }
+});
+
+// IPC: install update and restart
+ipcMain.handle('updater:install', () => {
+  autoUpdater.quitAndInstall(false, true);
+});
+
+// IPC: get current app version
+ipcMain.handle('updater:get-version', () => {
+  return app.getVersion();
 });
 
 app.on('window-all-closed', () => {

@@ -10,9 +10,17 @@ const Settings: React.FC = () => {
     autoClean: true,
     notifications: true,
     autoOptimize: false,
+    autoUpdate: true,
     theme: 'dark',
     startupLaunch: true,
   }));
+  const [appVersion, setAppVersion] = useState('1.0.0');
+
+  useEffect(() => {
+    window.electron?.updater?.getVersion().then((v: string) => {
+      if (v) setAppVersion(v);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const s = loadSettings();
@@ -109,6 +117,21 @@ const Settings: React.FC = () => {
             </label>
           </div>
 
+          <div className="setting-item">
+            <div className="setting-label">
+              <span className="label-title">Auto Update</span>
+              <span className="label-description">Automatically check for new versions</span>
+            </div>
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={settings.autoUpdate}
+                onChange={() => handleToggle('autoUpdate')}
+              />
+              <span className="slider"></span>
+            </label>
+          </div>
+
 
         </div>
 
@@ -134,7 +157,7 @@ const Settings: React.FC = () => {
           <h3 className="section-header">About</h3>
           <div className="about-info">
             <p><strong>GS Control Center</strong></p>
-            <p>Version 1.0.0</p>
+            <p>Version {appVersion}</p>
             <p>Advanced system optimization tool with gaming focus</p>
           </div>
         </div>

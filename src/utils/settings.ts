@@ -4,6 +4,7 @@ interface AppSettings {
   autoClean: boolean;
   notifications: boolean;
   autoOptimize: boolean;
+  autoUpdate: boolean;
   theme: 'dark' | 'light';
   startupLaunch: boolean;
   cleanupSchedule?: 'daily' | 'weekly' | 'monthly';
@@ -15,6 +16,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   autoClean: true,
   notifications: true,
   autoOptimize: false,
+  autoUpdate: true,
   theme: 'dark',
   startupLaunch: true,
   cleanupSchedule: 'weekly',

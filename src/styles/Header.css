@@ -141,3 +141,163 @@
   background: #e81123;
   color: #fff;
 }
+
+/* ── Update Indicator (next to window controls) ── */
+
+.update-indicator-wrapper {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+.update-btn {
+  position: relative;
+  color: #22c55e;
+}
+
+.update-btn:hover {
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+}
+
+.update-btn--downloaded {
+  color: #22c55e;
+}
+
+.update-btn--downloading {
+  color: #38bdf8;
+}
+
+.update-dot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.7);
+  animation: update-dot-pulse 2s ease-in-out infinite;
+}
+
+.update-btn--downloading .update-dot {
+  background: #38bdf8;
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.7);
+}
+
+@keyframes update-dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+@keyframes update-icon-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.update-spin {
+  animation: update-icon-spin 1.5s linear infinite;
+}
+
+/* ── Update Popup / Dropdown ── */
+
+.update-popup {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 260px;
+  background: #1a1d23;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 10px;
+  padding: 16px;
+  z-index: 9999;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 12px rgba(34, 197, 94, 0.1);
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+  animation: update-popup-in 0.15s ease-out;
+}
+
+@keyframes update-popup-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.update-popup-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 8px;
+}
+
+.update-popup-icon {
+  color: #22c55e;
+  flex-shrink: 0;
+}
+
+.update-popup-icon--ready {
+  color: #22c55e;
+}
+
+.update-popup-version {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 0 0 12px;
+}
+
+.update-popup-percent {
+  font-size: 11px;
+  color: #94a3b8;
+  text-align: center;
+  margin: 6px 0 0;
+}
+
+.update-popup-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 0;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+.update-popup-btn:hover {
+  background: rgba(34, 197, 94, 0.25);
+}
+
+.update-popup-btn--install {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+
+.update-popup-btn--install:hover {
+  background: rgba(34, 197, 94, 0.35);
+}
+
+/* Progress bar inside popup */
+.update-progress-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.update-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #4ade80);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
