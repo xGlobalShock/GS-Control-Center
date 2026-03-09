@@ -1,0 +1,59 @@
+# ── Dependencies ──
+node_modules/
+package-lock.json
+
+# ── Build output ──
+build/
+dist/
+out/
+release/
+
+# ── Source code (keep README only on main branch) ──
+src/
+public/
+components/
+pages/
+styles/
+utils/
+context/
+hooks/
+services/
+assets/
+
+# ── Internal scripts & binaries ──
+admin-check.js
+dev-launcher.js
+launcher.js
+scripts/
+lib/
+
+# ── Config & entry point files ──
+main.js
+package.json
+postcss.config.js
+tailwind.config.js
+tsconfig.json
+tsconfig.node.json
+
+# ── Private / sensitive ──
+.github/copilot-instructions.md
+.env
+.env.local
+.env.*.local
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+
+# ── Misc ──
+ToDoList.md
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
