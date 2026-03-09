@@ -1,0 +1,121 @@
+{
+  "name": "gs-control-center",
+  "version": "1.2.0",
+  "description": "GS Control Center - Advanced System Optimization Tool",
+  "author": "GS Control Center Team",
+  "main": "main.js",
+  "homepage": "./",
+  "private": true,
+  "scripts": {
+    "react-start": "cross-env NODE_OPTIONS=--no-deprecation NODE_MAX_OLD_SPACE_SIZE=4096 GENERATE_SOURCEMAP=false EXTEND_ESLINT=true SKIP_PREFLIGHT_CHECK=true react-scripts start",
+    "react-build": "cross-env NODE_MAX_OLD_SPACE_SIZE=4096 SKIP_PREFLIGHT_CHECK=true react-scripts build",
+    "react-test": "react-scripts test",
+    "electron-dev": "cross-env NODE_OPTIONS=--no-deprecation NODE_MAX_OLD_SPACE_SIZE=4096 concurrently --names \"REACT,ELECTRON\" --prefix-colors \"cyan.bold,magenta.bold\" --kill-others-on-fail --hide-from-output REACT \"npm --silent run react-start\" \"wait-on http://localhost:3000 --timeout 120000 && electron .\"",
+    "electron-only": "cross-env NODE_OPTIONS=--no-deprecation NODE_MAX_OLD_SPACE_SIZE=4096 concurrently --silent --names \"REACT,ELECTRON\" --prefix-colors \"cyan.bold,magenta.bold\" --kill-others-on-fail --hide-from-output REACT \"cross-env BROWSER=none npm --silent run react-start\" \"wait-on http://localhost:3000 --timeout 120000 && electron .\"",
+    "electron-build": "npm --silent run react-build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --x64 --publish never",
+    "postelectron-build": "node scripts/rename-output.js",
+    "start": "npm run electron-dev",
+    "build": "npm run electron-build",
+    "dev": "npm run electron-dev",
+    "client": "node dev-launcher.js"
+  },
+  "dependencies": {
+    "electron-is-dev": "^3.0.1",
+    "electron-updater": "^6.8.3",
+    "framer-motion": "^10.16.4",
+    "is-admin": "^4.0.0",
+    "lucide-react": "^0.292.0",
+    "phosphor-react": "^1.4.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "^2.10.3",
+    "systeminformation": "^5.31.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "autoprefixer": "^10.4.16",
+    "concurrently": "^8.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^27.0.0",
+    "electron-builder": "^23.6.0",
+    "postcss": "^8.4.31",
+    "react-scripts": "5.0.1",
+    "tailwindcss": "^3.3.5",
+    "typescript": "^4.9.5",
+    "wait-on": "^7.0.1"
+  },
+  "build": {
+    "appId": "com.gscontrolcenter.app",
+    "productName": "GS Control Center",
+    "asar": true,
+    "files": [
+      "build/**/*",
+      "main.js",
+      "lib/**/*",
+      "node_modules/**/*"
+    ],
+    "asarUnpack": [
+      "node_modules/**/*.node",
+      "node_modules/**/*.dll"
+    ],
+    "extraFiles": [
+      {
+        "from": "public/app.manifest",
+        "to": "app.manifest"
+      }
+    ],
+    "extraResources": [
+      {
+        "from": "src/assets",
+        "to": "assets",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "src/data/obsPresetConfigs",
+        "to": "data/obsPresetConfigs",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "directories": {
+      "buildResources": "public"
+    },
+    "extends": null,
+    "publish": {
+      "provider": "github",
+      "owner": "xGlobalShock",
+      "repo": "GSClient"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "executableName": "GS Control Center",
+      "requestedExecutionLevel": "requireAdministrator"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GS Control Center",
+      "artifactName": "GS-Control-Center-Setup-${version}.${ext}"
+    }
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
