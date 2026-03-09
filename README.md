@@ -3,7 +3,7 @@
 An all-in-one Windows desktop utility for PC optimization, real-time hardware monitoring, game tuning, system cleanup, software management, and streaming setup — built with Electron, React, and TypeScript.
 
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
-![Version](https://img.shields.io/badge/Version-2.0.0-blue)
+![Version](https://img.shields.io/badge/Version-1.0.0-blue)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-blue)
 ![Electron](https://img.shields.io/badge/Electron-27-blueviolet)
 ![React](https://img.shields.io/badge/React-18-61dafb)
