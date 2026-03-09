@@ -27,6 +27,14 @@ launcher.js
 scripts/
 lib/
 
+# ── Config & entry point files ──
+main.js
+package.json
+postcss.config.js
+tailwind.config.js
+tsconfig.json
+tsconfig.node.json
+
 # ── Private / sensitive ──
 .github/copilot-instructions.md
 .env
