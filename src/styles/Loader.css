@@ -1,0 +1,199 @@
+/* ═══════════════════════════════════════════
+   Skeleton Loader  — shown during app init
+   while hardware monitors are starting up
+═══════════════════════════════════════════ */
+
+.loader-skeleton-wrapper {
+  padding: 24px 28px;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* ── Status bar ── */
+.loader-skel-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+
+.loader-skel-status-icon {
+  opacity: 0.5;
+  animation: loader-skel-pulse 1.5s ease-in-out infinite;
+}
+
+.loader-skel-dots::after {
+  content: '';
+  animation: loader-skel-dots-anim 1.5s steps(3) infinite;
+}
+
+@keyframes loader-skel-dots-anim {
+  0%   { content: ''; }
+  33%  { content: '.'; }
+  66%  { content: '..'; }
+  100% { content: '...'; }
+}
+
+@keyframes loader-skel-pulse {
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 0.8; }
+}
+
+/* ── Bento grid ── */
+.loader-skel-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+/* ── Card ── */
+.loader-skel-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 18px 16px;
+  min-height: 140px;
+  overflow: hidden;
+}
+
+/* Corner accents */
+.loader-skel-card::before,
+.loader-skel-card::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-color: rgba(0, 163, 255, 0.15);
+  border-style: solid;
+}
+.loader-skel-card::before {
+  top: 6px; left: 6px;
+  border-width: 1px 0 0 1px;
+}
+.loader-skel-card::after {
+  bottom: 6px; right: 6px;
+  border-width: 0 1px 1px 0;
+}
+
+/* Scanning line */
+.loader-skel-scan-line {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 163, 255, 0.3), transparent);
+  animation: loader-skel-scan 2.5s ease-in-out infinite;
+}
+
+@keyframes loader-skel-scan {
+  0%   { transform: translateY(0); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(140px); opacity: 0; }
+}
+
+/* ── Inner content ── */
+.loader-skel-inner {
+  position: relative;
+  z-index: 1;
+}
+
+.loader-skel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.loader-skel-icon {
+  color: rgba(0, 163, 255, 0.3);
+  flex-shrink: 0;
+}
+
+.loader-skel-title-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.loader-skel-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.loader-skel-subtitle-bar {
+  margin-top: 5px;
+  height: 8px;
+  width: 60%;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  animation: loader-skel-shimmer 1.8s ease-in-out infinite;
+}
+
+.loader-skel-gauge {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.04);
+  border-top-color: rgba(0, 163, 255, 0.12);
+  flex-shrink: 0;
+  animation: loader-skel-gauge-spin 3s linear infinite;
+}
+
+@keyframes loader-skel-gauge-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Row skeletons ── */
+.loader-skel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.loader-skel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.loader-skel-row-label {
+  height: 8px;
+  width: 40%;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  animation: loader-skel-shimmer 1.8s ease-in-out infinite;
+}
+
+.loader-skel-row-value {
+  height: 8px;
+  width: 25%;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  animation: loader-skel-shimmer 1.8s ease-in-out infinite 0.3s;
+}
+
+@keyframes loader-skel-shimmer {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 1; }
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .loader-skel-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .loader-skel-grid {
+    grid-template-columns: 1fr;
+  }
+}

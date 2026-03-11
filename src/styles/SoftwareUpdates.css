@@ -1,0 +1,412 @@
+/* ═══════════════════════════════════════════════════════════════
+   SOFTWARE UPDATES — winget Package Manager UI
+   Void Black · Electric Cyan #00F2FF · Neon Emerald
+═══════════════════════════════════════════════════════════════ */
+
+.su {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  transform: translateZ(0);
+  contain: layout style;
+}
+
+/* ── Last-checked label ── */
+.su-last-checked {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+/* ── Header action buttons ── */
+.su-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ── Generic button ── */
+.su-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.su-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.su-btn--scan {
+  background: rgba(0, 242, 255, 0.06);
+  border-color: rgba(0, 242, 255, 0.15);
+  color: #00F2FF;
+}
+.su-btn--scan:hover:not(:disabled) {
+  background: rgba(0, 242, 255, 0.12);
+  border-color: rgba(0, 242, 255, 0.35);
+}
+
+.su-btn--update-all {
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.12), rgba(0, 242, 255, 0.08));
+  border-color: rgba(0, 255, 136, 0.25);
+  color: #00FF88;
+}
+.su-btn--update-all:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 242, 255, 0.14));
+  border-color: rgba(0, 255, 136, 0.45);
+}
+.su-btn--cancel {
+  background: rgba(255, 60, 60, 0.1);
+  border-color: rgba(255, 60, 60, 0.25);
+  color: #ff5c5c;
+}
+.su-btn--cancel:hover:not(:disabled) {
+  background: rgba(255, 60, 60, 0.18);
+  border-color: rgba(255, 60, 60, 0.45);
+}
+.su-btn--cancel:disabled {
+  opacity: 0.5;
+}
+
+/* ── Spinner animation ── */
+.su-spin {
+  animation: su-rotate 1s linear infinite;
+}
+@keyframes su-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── Loading state ── */
+.su-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+.su-loading p {
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+
+/* ── Empty state ── */
+.su-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 60px 20px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.su-empty svg {
+  color: #00FF88;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.3));
+}
+.su-empty h3 {
+  font-size: 18px;
+  color: var(--text-primary);
+  font-weight: 700;
+  margin: 0;
+}
+.su-empty p {
+  font-size: 13px;
+  margin: 0;
+}
+
+/* ── Table wrapper ── */
+.su-table-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+}
+.su-table-wrap::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.2), transparent);
+}
+
+/* ── Row layout ── */
+.su-row {
+  display: grid;
+  grid-template-columns: 1.8fr 2fr 1.2fr 1.2fr 0.7fr 0.7fr 1fr;
+  align-items: center;
+  padding: 0 20px;
+  min-height: 48px;
+  border-bottom: 1px solid rgba(0, 242, 255, 0.04);
+  transition: background 0.15s ease;
+}
+
+.su-row:last-child {
+  border-bottom: none;
+}
+
+.su-row:not(.su-row--header):hover {
+  background: rgba(0, 242, 255, 0.03);
+}
+
+.su-row--header {
+  background: rgba(0, 242, 255, 0.03);
+  min-height: 42px;
+  border-bottom: 1px solid rgba(0, 242, 255, 0.08);
+}
+.su-row--header .su-cell {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+}
+
+.su-row--updated {
+  opacity: 0.5;
+}
+
+/* ── Cells ── */
+.su-cell {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 10px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.su-pkg-name {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.su-pkg-id {
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.su-new-version {
+  color: #00FF88;
+  font-weight: 600;
+}
+
+.su-pkg-size {
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.su-pkg-size--loading {
+  opacity: 0.3;
+}
+
+/* ── Row update button ── */
+.su-btn--row-update {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 14px;
+  border: 1px solid rgba(0, 242, 255, 0.15);
+  border-radius: 8px;
+  background: rgba(0, 242, 255, 0.06);
+  color: #00F2FF;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.su-btn--row-update:hover:not(:disabled) {
+  background: rgba(0, 242, 255, 0.14);
+  border-color: rgba(0, 242, 255, 0.35);
+  box-shadow: 0 0 12px rgba(0, 242, 255, 0.1);
+}
+.su-btn--row-update:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Updated badge ── */
+.su-updated-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #00FF88;
+}
+
+/* ── Info banner ── */
+.su-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: rgba(0, 242, 255, 0.03);
+  border: 1px solid rgba(0, 242, 255, 0.06);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.su-info svg {
+  flex-shrink: 0;
+  color: #00F2FF;
+  opacity: 0.6;
+}
+.su-info strong {
+  color: var(--text-secondary);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PROGRESS BAR — Real-time download/install progress
+═══════════════════════════════════════════════════════════════ */
+
+.su-row--has-progress {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.8fr 2fr 1.2fr 1.2fr 0.7fr 0.7fr 1fr;
+  grid-template-rows: auto auto;
+}
+
+.su-progress-row {
+  grid-column: 1 / -1;
+  padding: 8px 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid rgba(0, 242, 255, 0.06);
+}
+
+/* Track */
+.su-progress-bar-wrap {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Fill bar */
+.su-progress-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  position: relative;
+}
+
+.su-progress-bar--preparing {
+  background: linear-gradient(90deg, rgba(0, 242, 255, 0.3), rgba(0, 242, 255, 0.5));
+  animation: su-pulse 1.5s ease-in-out infinite;
+}
+
+.su-progress-bar--downloading {
+  background: linear-gradient(90deg, #00F2FF, #00D4AA);
+  box-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
+}
+
+.su-progress-bar--indeterminate.su-progress-bar--downloading {
+  background: linear-gradient(90deg, transparent, #00F2FF, #00D4AA, #00F2FF, transparent);
+  background-size: 200% 100%;
+  animation: su-shimmer 1.8s ease-in-out infinite;
+}
+
+.su-progress-bar--verifying {
+  background: linear-gradient(90deg, #00D4AA, #00FF88);
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+.su-progress-bar--installing {
+  background: linear-gradient(90deg, #00D4AA, #00FF88, #00D4AA);
+  background-size: 200% 100%;
+  animation: su-shimmer 1.5s ease-in-out infinite;
+}
+
+.su-progress-bar--done {
+  background: linear-gradient(90deg, #00FF88, #00FF88);
+  box-shadow: 0 0 12px rgba(0, 255, 136, 0.4);
+}
+
+.su-progress-bar--error {
+  background: linear-gradient(90deg, #FF4D6A, #FF6B81);
+  box-shadow: 0 0 10px rgba(255, 77, 106, 0.3);
+  width: 100% !important;
+}
+
+/* Info row under progress bar */
+.su-progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 16px;
+}
+
+.su-progress-status {
+  font-size: 11px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.su-progress-status--preparing { color: rgba(0, 242, 255, 0.7); }
+.su-progress-status--downloading { color: #00F2FF; }
+.su-progress-status--verifying { color: #00D4AA; }
+.su-progress-status--installing { color: #00FF88; }
+.su-progress-status--done { color: #00FF88; }
+.su-progress-status--error { color: #FF4D6A; }
+
+.su-progress-percent {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 32px;
+}
+
+.su-progress-details {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.su-progress-speed {
+  color: #00F2FF;
+  font-weight: 600;
+}
+
+.su-progress-size {
+  color: var(--text-secondary);
+  letter-spacing: 0.3px;
+}
+
+.su-progress-installing {
+  color: rgba(0, 255, 136, 0.6);
+  font-style: italic;
+}
+
+/* Animations */
+@keyframes su-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+@keyframes su-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}

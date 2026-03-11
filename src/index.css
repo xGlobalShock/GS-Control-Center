@@ -1,0 +1,131 @@
+:root {
+  --color-primary: #00F2FF;
+  --color-secondary: #00D4AA;
+  --color-accent: #FF2D55;
+  --color-good: #00FF88;
+  --color-warning: #FFD600;
+  --color-critical: #FF2D55;
+  --bg-dark: #020606;
+  --bg-darker: #010404;
+  --bg-card: rgba(6, 14, 14, 0.55);
+  --border-color: rgba(0, 242, 255, 0.06);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-muted: rgba(255, 255, 255, 0.35);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #020606;
+  color: var(--text-primary);
+  /* Promote the entire page to a GPU-composited layer */
+  transform: translateZ(0);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.app-container {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  /* Ensure the entire app shell is GPU composited */
+  transform: translateZ(0);
+  will-change: contents;
+  /* ─── Unified Global Canvas ─── */
+  background:
+    radial-gradient(ellipse 70% 60% at 55% 45%, #081a1a 0%, transparent 100%),
+    radial-gradient(ellipse 40% 35% at 30% 30%, rgba(0, 242, 255, 0.025) 0%, transparent 100%),
+    #020606;
+}
+
+/* ── Film-Grain Overlay — prevents banding, adds cinematic depth ── */
+.app-container::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.018;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 180px 180px;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+
+.page-content {
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 30px;
+  padding-bottom: 84px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 242, 255, 0.15) transparent;
+  contain: layout style;
+  transform: translateZ(0);
+  will-change: scroll-position;
+}
+
+.page-content::-webkit-scrollbar {
+  width: 8px;
+  height: 0;
+}
+
+.page-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.page-content::-webkit-scrollbar-thumb {
+  background: rgba(0, 242, 255, 0.15);
+  border-radius: 4px;
+}
+
+.page-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 242, 255, 0.3);
+}
+
+.loading-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 24px;
+  font-weight: 300;
+  letter-spacing: 2px;
+  color: var(--color-primary);
+  background: transparent;
+}
+
+.loader-text {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

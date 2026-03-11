@@ -1,0 +1,63 @@
+/* ═══════════════════════════════════════════════════════════════
+   Page Header — Unified top bar for every page
+═══════════════════════════════════════════════════════════════ */
+
+.page-header {
+  margin-bottom: -16px;
+}
+
+/* ── Stat pill (e.g. "3/7 Active") ── */
+.page-header-stat {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+}
+
+/* When the perf ring gauge is inside the header stat slot */
+.page-header-stat .perf-hero-stat {
+  flex-direction: row;
+  gap: 6px;
+  align-items: center;
+}
+
+.page-header-stat .perf-hero-stat-ring {
+  width: 36px;
+  height: 36px;
+}
+
+.page-header-stat .perf-ring-label {
+  font-size: 10px;
+}
+
+.page-header-stat .perf-hero-stat-text {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+}
+
+/* ── Action buttons row ── */
+.page-header-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 12px;
+}
+
+/* ── Line-intercept layout (line pierces through lineContent) ── */
+.hud-section-line-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.hud-section-line--approach {
+  flex: 1;
+  background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.26)) !important;
+}
+
+.hud-section-line--tail {
+  flex: 1;
+  background: linear-gradient(90deg, rgba(0, 242, 255, 0.26), transparent) !important;
+}

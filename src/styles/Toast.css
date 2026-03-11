@@ -1,0 +1,139 @@
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  background: rgba(20, 25, 50, 0.95);
+  border: 2px solid;
+  border-radius: 8px;
+  padding: 12px 16px;
+  min-width: 300px;
+  max-width: 450px;
+  backdrop-filter: blur(10px);
+  animation: slideInRight 0.3s ease-out forwards;
+  pointer-events: all;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.toast.toast-success {
+  border-color: #4CAF50;
+  background: linear-gradient(135deg, rgba(20, 25, 50, 0.95) 0%, rgba(30, 50, 40, 0.4) 100%);
+}
+
+.toast.toast-error {
+  border-color: #FF6B35;
+  background: linear-gradient(135deg, rgba(20, 25, 50, 0.95) 0%, rgba(50, 30, 25, 0.4) 100%);
+}
+
+.toast.toast-info {
+  border-color: #00A3FF;
+  background: linear-gradient(135deg, rgba(20, 25, 50, 0.95) 0%, rgba(25, 40, 60, 0.4) 100%);
+}
+
+.toast-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
+}
+
+.toast-icon {
+  font-size: 16px;
+  font-weight: 700;
+  min-width: 20px;
+  text-align: center;
+  margin-top: 2px;
+}
+
+.toast-success .toast-icon {
+  color: #4CAF50;
+}
+
+.toast-error .toast-icon {
+  color: #FF6B35;
+}
+
+.toast-info .toast-icon {
+  color: #00A3FF;
+}
+
+.toast-message {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+  line-height: 1.5;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 12px;
+  min-width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.toast-close:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(420px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(420px);
+    opacity: 0;
+  }
+}
+
+.toast.removing {
+  animation: slideOutRight 0.3s ease-out forwards;
+}
+
+@media (max-width: 768px) {
+  .toast-container {
+    bottom: 16px;
+    right: 16px;
+  }
+
+  .toast {
+    min-width: 280px;
+    max-width: 90vw;
+    padding: 10px 12px;
+  }
+
+  .toast-message {
+    font-size: 12px;
+  }
+}

@@ -1,0 +1,200 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Bottom Navigation Bar  —  Glassmorphic HUD Dock
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Fixed bottom wrapper ────────────────────────────────────────────── */
+.ks-bottom-nav {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  pointer-events: none;
+  width: fit-content;
+  max-width: calc(100% - 24px);
+}
+
+/* ── Glass bar ───────────────────────────────────────────────────────── */
+.ks-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding: 0 10px;
+  pointer-events: auto;
+  position: relative;
+  overflow: hidden;
+
+  border: 1px solid rgba(0, 242, 255, 0.06);
+  border-radius: 14px;
+  background: transparent;
+
+  box-shadow:
+    0 -2px 30px rgba(0, 0, 0, 0.25),
+    0 0 24px rgba(0, 242, 255, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+
+  transform: translateZ(0);
+}
+
+/* Blur + tinted background */
+.ks-bottom-bar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 10, 16, 0.78);
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+  border-radius: inherit;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Top accent glow line */
+.ks-bottom-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 32px;
+  right: 32px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 242, 255, 0.15) 15%,
+    rgba(0, 242, 255, 0.3) 50%,
+    rgba(0, 242, 255, 0.15) 85%,
+    transparent
+  );
+  z-index: 1;
+}
+
+/* ── Items container ─────────────────────────────────────────────────── */
+.ks-bottom-items {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+}
+
+/* ── Individual nav item ─────────────────────────────────────────────── */
+.ks-bottom-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 54px;
+  outline: none;
+  z-index: 1;
+  /* No CSS transition on transform — framer-motion handles y + scale */
+}
+
+/* ── Hover glow underlay ─────────────────────────────────────────────── */
+.ks-bottom-item::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 8px;
+  background: radial-gradient(
+    ellipse 80% 70% at 50% 40%,
+    rgba(0, 242, 255, 0.08) 0%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.ks-bottom-item:hover::before {
+  opacity: 1;
+}
+
+/* ── Active pill background (animated via framer layoutId) ───────────── */
+.ks-bottom-active-bg {
+  position: absolute;
+  inset: 3px;
+  border-radius: 8px;
+  background: rgba(0, 242, 255, 0.06);
+  border: 1px solid rgba(0, 242, 255, 0.08);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* ── Active indicator — sliding top accent line ──────────────────────── */
+.ks-bottom-indicator {
+  position: absolute;
+  top: -1px;
+  left: 16%;
+  right: 16%;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: #00F2FF;
+  box-shadow:
+    0 0 8px rgba(0, 242, 255, 0.6),
+    0 0 24px rgba(0, 242, 255, 0.15),
+    0 2px 12px rgba(0, 242, 255, 0.1);
+  z-index: 2;
+}
+
+/* ── Icon wrapper ────────────────────────────────────────────────────── */
+.ks-bottom-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  position: relative;
+}
+
+/* ── Icon color states ───────────────────────────────────────────────── */
+.ks-bottom-icon {
+  color: rgba(255, 255, 255, 0.22);
+  transition: color 0.2s ease, filter 0.2s ease, transform 0.2s ease;
+}
+
+.ks-bottom-item:hover .ks-bottom-icon {
+  color: rgba(0, 242, 255, 0.75);
+  filter: drop-shadow(0 0 5px rgba(0, 242, 255, 0.25));
+  transform: scale(1.1);
+}
+
+.ks-bottom-item.ks-active .ks-bottom-icon {
+  color: #00F2FF;
+  filter: drop-shadow(0 0 6px rgba(0, 242, 255, 0.5));
+}
+
+.ks-bottom-item.ks-active:hover .ks-bottom-icon {
+  transform: scale(1.05);
+}
+
+/* ── Label ───────────────────────────────────────────────────────────── */
+.ks-bottom-label {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.15px;
+  color: rgba(255, 255, 255, 0.18);
+  transition: color 0.2s ease, opacity 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.ks-bottom-item:hover .ks-bottom-label {
+  color: rgba(0, 242, 255, 0.6);
+}
+
+.ks-bottom-item.ks-active .ks-bottom-label {
+  color: rgba(0, 242, 255, 0.9);
+  font-weight: 600;
+}

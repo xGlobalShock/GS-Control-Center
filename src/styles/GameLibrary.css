@@ -1,0 +1,3614 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap');
+
+/* 
+   GAME PRESETS  FUTURISTIC HUD DESIGN
+    */
+
+/*  Container  */
+.gl-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  transform: translateZ(0);
+  contain: layout style;
+}
+
+.gl-view,
+.gl-dash {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1.25rem 1.75rem;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/*  Corner bracket mixin (reused)  */
+.gl-hero__corner,
+.gl-card__corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  z-index: 4;
+  pointer-events: none;
+}
+.gl-hero__corner--tl,
+.gl-card__corner--tl { top: 0; left: 0; border-top: 2px solid rgba(0,255,255,0.5); border-left: 2px solid rgba(0,255,255,0.5); }
+.gl-hero__corner--tr,
+.gl-card__corner--tr { top: 0; right: 0; border-top: 2px solid rgba(0,255,255,0.5); border-right: 2px solid rgba(0,255,255,0.5); }
+.gl-hero__corner--bl,
+.gl-card__corner--bl { bottom: 0; left: 0; border-bottom: 2px solid rgba(0,255,255,0.5); border-left: 2px solid rgba(0,255,255,0.5); }
+.gl-hero__corner--br,
+.gl-card__corner--br { bottom: 0; right: 0; border-bottom: 2px solid rgba(0,255,255,0.5); border-right: 2px solid rgba(0,255,255,0.5); }
+
+/* 
+   HERO SECTION
+    */
+.gl-hero {
+  position: relative;
+  padding: 1.5rem 1.75rem 1.25rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid rgba(0, 242, 255, 0.1);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(8, 10, 18, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.gl-hero__scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0,255,255,0.015) 3px,
+    rgba(0,255,255,0.015) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+.gl-hero__body {
+  position: relative;
+  z-index: 2;
+}
+
+.gl-hero__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: #00ffff;
+  margin-bottom: 0.5rem;
+  opacity: 0.8;
+}
+
+.gl-hero__title {
+  font-size: 2rem;
+  font-weight: 900;
+  margin: 0 0 0.35rem;
+  letter-spacing: 1.5px;
+  background: linear-gradient(135deg, #ffffff 0%, #00F2FF 60%, #00FF88 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gl-hero__desc {
+  color: rgba(255,255,255,0.5);
+  font-size: 0.82rem;
+  margin: 0 0 1rem;
+  letter-spacing: 0.4px;
+}
+
+/*  Hero Metrics  */
+.gl-hero__metrics {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.gl-metric {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid rgba(0,255,255,0.15);
+  border-radius: 8px;
+  background: rgba(0,255,255,0.04);
+  color: rgba(255,255,255,0.7);
+  font-size: 0.75rem;
+}
+
+.gl-metric svg {
+  color: #00ffff;
+  opacity: 0.7;
+}
+
+.gl-metric__val {
+  font-weight: 800;
+  color: #00ffff;
+  font-size: 0.85rem;
+}
+
+.gl-metric__label {
+  opacity: 0.6;
+  font-weight: 500;
+}
+
+/* 
+   CONTROLS
+    */
+.gl-controls {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.gl-search {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+}
+
+.gl-search__icon {
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(0,255,255,0.5);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.gl-search__input {
+  width: 100%;
+  padding: 0.7rem 2.2rem 0.7rem 2.5rem;
+  background: rgba(0,20,40,0.5);
+  border: 1px solid rgba(0,255,255,0.15);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 0.82rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.gl-search__input::placeholder { color: rgba(255,255,255,0.25); }
+.gl-search__input:focus {
+  outline: none;
+  border-color: rgba(0,255,255,0.5);
+  box-shadow: 0 0 20px rgba(0,255,255,0.08);
+}
+
+.gl-search__clear {
+  position: absolute;
+  right: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,0.06);
+  border: none;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.gl-search__clear:hover { background: rgba(255,69,69,0.2); color: #ff5555; }
+
+.gl-filters {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.gl-filter {
+  padding: 0.55rem 1.1rem;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  color: rgba(255,255,255,0.45);
+  font-weight: 600;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.gl-filter:hover {
+  border-color: rgba(0,255,255,0.3);
+  color: rgba(0,255,255,0.7);
+}
+
+.gl-filter--active {
+  border-color: rgba(0,255,255,0.5);
+  color: #00ffff;
+  background: rgba(0,255,255,0.06);
+  box-shadow: 0 0 12px rgba(0,255,255,0.1);
+}
+
+/* 
+   GAME GRID
+    */
+.gl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 1.1rem;
+  contain: layout style paint;
+}
+
+/*  Card  */
+.gl-card {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid rgba(0, 242, 255, 0.08);
+  transition: border-color 0.25s, box-shadow 0.25s, transform 0.25s;
+  transform: translate3d(0,0,0);
+  background: rgba(8, 10, 18, 0.92);
+  contain: layout style paint;
+  animation: gl-card-in 0.25s ease both;
+  animation-delay: calc(var(--card-i, 0) * 40ms);
+}
+
+@keyframes gl-card-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.gl-card:hover {
+  border-color: rgba(0,255,255,0.4);
+  box-shadow:
+    0 0 24px rgba(0,255,255,0.08),
+    inset 0 0 40px rgba(0,255,255,0.02);
+  transform: translate3d(0,-4px,0);
+}
+
+/* Locked card */
+.gl-card--locked {
+  cursor: default;
+  opacity: 0.5;
+  filter: grayscale(0.4);
+}
+
+.gl-card--locked:hover {
+  border-color: rgba(0, 242, 255, 0.08);
+  box-shadow: none;
+  transform: translate3d(0,0,0);
+}
+
+.gl-card__lock-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(0,0,0,.55);
+  z-index: 5;
+  color: rgba(255,255,255,.6);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.gl-card--locked .gl-card__lock-overlay svg {
+  opacity: 0.7;
+}
+
+/* Card Image */
+.gl-card__img-wrap {
+  position: relative;
+  width: 100%;
+  height: 130px;
+  overflow: hidden;
+}
+
+.gl-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+  transform: translate3d(0,0,0);
+  filter: brightness(0.85);
+}
+
+.gl-card:hover .gl-card__img {
+  will-change: transform;
+  transform: scale3d(1.08,1.08,1);
+  filter: brightness(1);
+}
+
+/* Hover Overlay */
+.gl-card__hover-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  background: rgba(0,20,40,0.75);
+  opacity: 0;
+  transition: opacity 0.25s;
+  z-index: 3;
+}
+
+.gl-card__hover-overlay svg {
+  color: #00ffff;
+  filter: drop-shadow(0 0 6px rgba(0,255,255,0.5));
+}
+
+.gl-card__hover-overlay span {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: #00ffff;
+}
+
+.gl-card:hover .gl-card__hover-overlay {
+  opacity: 1;
+}
+
+/* Card corners (inside image) */
+.gl-card__corner {
+  z-index: 4;
+}
+
+/* Card Body */
+.gl-card__body {
+  padding: 0.85rem 0.9rem 0.75rem;
+}
+
+.gl-card__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 0.25rem;
+}
+
+.gl-card__desc {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.45);
+  margin: 0 0 0.6rem;
+  line-height: 1.4;
+}
+
+.gl-card__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gl-card__badge {
+  padding: 0.2rem 0.55rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-radius: 4px;
+  color: #00ffff;
+  border: 1px solid rgba(0,255,255,0.25);
+  background: rgba(0,255,255,0.06);
+}
+
+.gl-card__count {
+  font-size: 0.62rem;
+  color: rgba(255,255,255,0.3);
+  font-weight: 600;
+}
+
+/* Bottom glow bar */
+.gl-card__glow {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00ffff, transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.gl-card:hover .gl-card__glow {
+  opacity: 0.7;
+}
+
+/* Empty State */
+.gl-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 4rem 2rem;
+  color: rgba(255,255,255,0.2);
+}
+
+.gl-empty svg { opacity: 0.3; }
+.gl-empty p { font-size: 0.9rem; }
+
+/* 
+   GAME DETAIL DASHBOARD
+    */
+
+/* ─── Hero Banner Header ─── */
+.gl-dash__header {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.gl-dash__header-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.gl-dash__header-bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.3) saturate(1.1) contrast(1.1);
+}
+
+.gl-dash__header-gradient {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(6,8,18,0.92) 0%, rgba(6,8,18,0.55) 45%, rgba(6,8,18,0.2) 100%),
+    linear-gradient(180deg, rgba(6,8,18,0.3) 0%, rgba(10,14,26,0.95) 100%);
+  z-index: 1;
+}
+
+/* ─── Main row — single horizontal layout ─── */
+.gl-dash__main-row {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 12px;
+  gap: 20px;
+}
+
+.gl-dash__left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.gl-dash__right {
+  flex-shrink: 0;
+}
+
+/* ─── Back button — text link style ─── */
+.gl-dash__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px 5px 10px;
+  border: 1px solid rgba(0,255,255,.25);
+  border-radius: 4px;
+  background: linear-gradient(135deg, rgba(0,255,255,.06) 0%, rgba(0,0,0,.3) 100%);
+  color: rgba(0,255,255,.75);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  width: fit-content;
+  position: relative;
+  overflow: hidden;
+}
+
+.gl-dash__back::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(0,255,255,.12) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.gl-dash__back:hover {
+  color: #00ffff;
+  border-color: rgba(0,255,255,.55);
+  background: linear-gradient(135deg, rgba(0,255,255,.12) 0%, rgba(0,0,0,.4) 100%);
+  box-shadow: 0 0 12px rgba(0,255,255,.15), inset 0 0 12px rgba(0,255,255,.05);
+}
+
+.gl-dash__back:hover::before {
+  opacity: 1;
+}
+
+.gl-dash__back svg {
+  transition: transform 0.25s ease;
+  filter: drop-shadow(0 0 2px rgba(0,255,255,.3));
+}
+
+.gl-dash__back:hover svg {
+  transform: translateX(-3px);
+  filter: drop-shadow(0 0 4px rgba(0,255,255,.6));
+}
+
+/* ─── Identity block — accent bar + meta ─── */
+.gl-dash__identity {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.gl-dash__accent {
+  width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #00ffff, rgba(0,255,255,0.15));
+  flex-shrink: 0;
+}
+
+.gl-dash__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* ─── Title line — title + category inline ─── */
+.gl-dash__title-line {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.gl-dash__title {
+  font-size: 1.6rem;
+  font-weight: 900;
+  margin: 0;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+.gl-dash__category {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(0,255,255,0.6);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ─── Sub line — desc + inline stats ─── */
+.gl-dash__sub-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gl-dash__desc {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.3);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.gl-dash__sub-divider {
+  width: 1px;
+  height: 10px;
+  background: rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+
+.gl-dash__inline-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gl-inline-stat {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.25);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.gl-inline-stat em {
+  font-style: normal;
+  font-weight: 800;
+  color: #00ffff;
+  font-size: 11px;
+  margin-right: 2px;
+}
+
+/* ─── Tab strip — separate zone below banner ─── */
+.gl-dash__tab-strip {
+  position: relative;
+  z-index: 5;
+  padding: 0 16px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+
+/* ═══════════════════════════════════════════
+   TAB NAVIGATION — UNDERLINE
+   ═══════════════════════════════════════════ */
+
+/* ── Tabs container ── */
+.gl-tabs {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  background: transparent;
+  z-index: 5;
+}
+
+/* Bottom border line across all tabs */
+.gl-tabs::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+  z-index: 0;
+}
+
+/* ── Sliding active indicator ── */
+.gl-tab-slider {
+  position: absolute;
+  bottom: 0;
+  height: 2px;
+  background: #00ffff;
+  border-radius: 2px 2px 0 0;
+  box-shadow: 0 0 10px rgba(0,255,255,0.5), 0 -2px 16px rgba(0,255,255,0.12);
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* ── Individual tab ── */
+.gl-tab {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  color: rgba(255,255,255,0.3);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.25s ease, background 0.25s ease;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+
+.gl-tab__text {
+  position: relative;
+}
+
+/* ── Hover ── */
+.gl-tab:hover {
+  color: rgba(255,255,255,0.55);
+  background: rgba(255,255,255,0.03);
+}
+
+/* ── Active tab ── */
+.gl-tab--active {
+  color: #00ffff;
+}
+
+.gl-tab--active svg {
+  filter: drop-shadow(0 0 4px rgba(0,255,255,0.5));
+}
+
+/* (page stats moved into toolbar) */
+
+/*  Tab Content  */
+.gl-tab-content {
+  min-height: 200px;
+  padding-top: 1.25rem;
+}
+
+/* ─── Profile Toolbar ─── */
+.gl-profile__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: rgba(0,10,20,0.5);
+  border: 1px solid rgba(0,255,255,0.08);
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+
+.gl-profile__toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gl-profile__toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ─── Profile Divider ─── */
+.gl-profile__apex-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 6px;
+  padding: 0 14px;
+}
+
+.gl-profile__apex-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255,255,255,.12), transparent);
+}
+
+.gl-profile__apex-divider-label {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.45);
+}
+
+/*  Presets Bar (Apex)  */
+.gl-presets-bar {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.1rem;
+  padding: 0.7rem 1.1rem;
+  border: 1px solid rgba(0,255,255,0.1);
+  border-radius: 10px;
+  background: rgba(0,8,18,0.4);
+  flex-wrap: wrap;
+}
+
+.gl-preset-group {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.gl-preset-label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.45);
+  margin-right: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.gl-preset-btn {
+  padding: 0.32rem 0.7rem;
+  border: 1px solid rgba(0,255,255,0.18);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(0,255,255,0.5);
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+.gl-preset-btn:hover {
+  border-color: rgba(0,255,255,0.45);
+  color: #00ffff;
+  background: rgba(0,255,255,0.04);
+}
+
+.gl-preset-btn--active {
+  border-color: rgba(0,255,255,0.55);
+  background: rgba(0,255,255,0.12);
+  color: #00ffff;
+  box-shadow: 0 0 12px rgba(0,255,255,0.12);
+  text-shadow: 0 0 6px rgba(0,255,255,0.3);
+}
+
+/*  Graphics Settings Grid — HUD-style Cards  */
+.gl-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
+  gap: 0.55rem;
+  contain: layout style paint;
+}
+
+.gl-setting {
+  position: relative;
+  padding: 0.7rem 0.8rem 0.65rem 1rem;
+  border: 1px solid rgba(0,255,255,0.06);
+  border-radius: 8px;
+  background: rgba(6,10,22,0.5);
+  transition: border-color 0.25s, background 0.25s, transform 0.25s;
+  overflow: hidden;
+}
+
+.gl-setting::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, #00ffff, rgba(0,255,255,0.15));
+  opacity: 0.4;
+  transition: opacity 0.25s;
+}
+
+.gl-setting:hover {
+  border-color: rgba(0,255,255,0.22);
+  background: rgba(0,255,255,0.03);
+  transform: translateY(-1px);
+}
+
+.gl-setting:hover::before {
+  opacity: 1;
+}
+
+.gl-setting__idx {
+  position: absolute;
+  top: 5px;
+  right: 7px;
+  font-size: 0.52rem;
+  font-weight: 800;
+  color: rgba(0,255,255,0.18);
+  font-family: 'Courier New', monospace;
+  letter-spacing: 1px;
+  pointer-events: none;
+}
+
+.gl-setting__top {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.gl-setting__name {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.75);
+}
+
+.gl-setting__val {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  background: linear-gradient(135deg, rgba(0,255,255,0.1), rgba(0,255,255,0.04));
+  border: 1px solid rgba(0,255,255,0.22);
+  border-radius: 5px;
+  color: #00ffff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  width: fit-content;
+  text-shadow: 0 0 6px rgba(0,255,255,0.2);
+}
+
+.gl-setting__desc {
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.3);
+  line-height: 1.35;
+  margin: 0;
+}
+
+/* Bottom accent rail */
+.gl-setting__rail {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, #00ffff, rgba(0,255,255,0.1), transparent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.35s ease;
+}
+
+.gl-setting:hover .gl-setting__rail {
+  transform: scaleX(1);
+}
+
+/* 
+   LAUNCH OPTIONS TAB — Terminal Aesthetic
+    */
+.gl-launch-combined {
+  position: relative;
+  padding: 0.85rem 1.1rem;
+  border: 1px solid rgba(0, 242, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(0, 8, 18, 0.6);
+  margin-bottom: 1.1rem;
+  overflow: hidden;
+}
+
+.gl-launch-combined::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, #00ffff, rgba(0,255,100,0.3));
+  border-radius: 2px 0 0 2px;
+}
+
+.gl-launch-combined__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.gl-launch-combined__header span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #00F2FF;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.gl-launch-combined__actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.gl-launch-combined__code {
+  display: block;
+  padding: 0.7rem 0.85rem;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(0, 242, 255, 0.1);
+  border-radius: 8px;
+  color: #3bff90;
+  font-family: 'Courier New', monospace;
+  font-size: 0.72rem;
+  word-break: break-all;
+  white-space: pre-wrap;
+  line-height: 1.6;
+  text-shadow: 0 0 8px rgba(59,255,144,0.15);
+}
+
+/* Command buttons */
+.gl-cmd-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.38rem 0.85rem;
+  border-radius: 7px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s;
+  border: 1px solid;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.gl-cmd-btn--copy {
+  background: rgba(0,255,255,0.06);
+  border-color: rgba(0,255,255,0.25);
+  color: #00ffff;
+}
+
+.gl-cmd-btn--copy:hover {
+  background: rgba(0,255,255,0.14);
+  border-color: rgba(0,255,255,0.5);
+  box-shadow: 0 0 14px rgba(0,255,255,0.12);
+}
+
+.gl-cmd-btn--info {
+  background: rgba(0, 242, 255, 0.06);
+  border-color: rgba(0, 242, 255, 0.25);
+  color: #00F2FF;
+}
+
+.gl-cmd-btn--info:hover {
+  background: rgba(0, 242, 255, 0.14);
+  border-color: rgba(0, 242, 255, 0.5);
+  box-shadow: 0 0 14px rgba(0,242,255,0.12);
+}
+
+/* Launch items list */
+.gl-launch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.gl-launch-item {
+  position: relative;
+  padding: 0.75rem 0.9rem 0.75rem 1.1rem;
+  border: 1px solid rgba(0,255,255,0.06);
+  border-radius: 8px;
+  background: rgba(6,10,22,0.5);
+  transition: border-color 0.25s, transform 0.25s, background 0.25s;
+  overflow: hidden;
+}
+
+.gl-launch-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: rgba(0,255,255,0.2);
+  transition: background 0.25s;
+}
+
+.gl-launch-item:hover {
+  border-color: rgba(0,255,255,0.2);
+  background: rgba(0,255,255,0.02);
+  transform: translateX(4px);
+}
+
+.gl-launch-item:hover::before {
+  background: #00ffff;
+}
+
+.gl-launch-item__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.gl-launch-item__flag {
+  padding: 0.25rem 0.6rem;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(0,255,255,0.15);
+  border-radius: 5px;
+  color: #00ffff;
+  font-family: 'Courier New', monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.gl-launch-item__copy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  border: 1px solid rgba(0,255,255,0.15);
+  background: rgba(0,255,255,0.04);
+  color: #00ffff;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: auto;
+}
+
+.gl-launch-item__copy:hover {
+  background: rgba(0,255,255,0.12);
+  border-color: rgba(0,255,255,0.5);
+}
+
+.gl-launch-item__desc {
+  font-size: 0.68rem;
+  color: rgba(255,255,255,0.4);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Impact badges */
+.gl-impact {
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.gl-impact--high {
+  background: rgba(0,255,100,0.1);
+  border: 1px solid rgba(0,255,100,0.3);
+  color: #00ff88;
+}
+
+.gl-impact--medium {
+  background: rgba(255,200,0,0.1);
+  border: 1px solid rgba(255,200,0,0.25);
+  color: #ffc800;
+}
+
+.gl-impact--low {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.45);
+}
+
+/* 
+   SYSTEM TAB
+    */
+.gl-sys-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.6rem;
+}
+
+.gl-sys-card {
+  position: relative;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(0, 242, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(8, 10, 18, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.gl-sys-card:hover {
+  border-color: rgba(0, 242, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+.gl-sys-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+  gap: 0.5rem;
+}
+
+.gl-sys-card__name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.7);
+}
+
+.gl-sys-card__val {
+  padding: 0.15rem 0.5rem;
+  background: rgba(0, 242, 255, 0.08);
+  border: 1px solid rgba(0, 242, 255, 0.15);
+  border-radius: 4px;
+  color: #00F2FF;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.gl-sys-card__benefit {
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.4);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.gl-sys-card__bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 1.5px;
+  background: linear-gradient(90deg, #00F2FF, transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.gl-sys-card:hover .gl-sys-card__bar {
+  opacity: 0.6;
+}
+
+/* 
+   VIDEO SETTINGS PRESETS — Enhanced Cards
+    */
+.gl-presets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.gl-preset-card {
+  position: relative;
+  background: rgba(6,8,16,0.85);
+  border: 1px solid rgba(0,242,255,0.1);
+  border-radius: 12px;
+  padding: 1.05rem 1.15rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+  overflow: hidden;
+}
+
+.gl-preset-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, #00f2ff, rgba(0,242,255,0.1));
+  opacity: 0.3;
+  transition: opacity 0.3s;
+}
+
+.gl-preset-card:hover {
+  border-color: rgba(0,242,255,0.35);
+  box-shadow: 0 0 24px rgba(0,242,255,0.08);
+  transform: translateY(-2px);
+}
+
+.gl-preset-card:hover::before {
+  opacity: 1;
+}
+
+.gl-preset-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.gl-preset-card__icon { color: #00f2ff; flex-shrink: 0; }
+
+.gl-preset-card__info {
+  display: flex;
+  flex-direction: column;
+}
+.gl-preset-card__label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e4e6ea;
+  letter-spacing: 0.02em;
+}
+.gl-preset-card__file {
+  font-size: 0.68rem;
+  color: rgba(0,242,255,0.55);
+  font-family: 'Courier New', monospace;
+}
+
+.gl-preset-card__desc {
+  font-size: 0.75rem;
+  color: rgba(200,210,225,0.65);
+  line-height: 1.35;
+  margin: 0;
+}
+
+.gl-preset-card__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid rgba(0,242,255,0.3);
+  border-radius: 8px;
+  color: #00f2ff;
+  background: rgba(0,242,255,0.06);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  width: fit-content;
+}
+.gl-preset-card__btn:hover {
+  background: rgba(0,242,255,0.14);
+  border-color: rgba(0,242,255,0.5);
+}
+.gl-preset-card__btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.gl-preset-card__btn--done {
+  color: #3bff90;
+  border-color: rgba(59,255,144,0.35);
+  background: rgba(59,255,144,0.06);
+}
+.gl-preset-card__btn--done:hover {
+  background: rgba(59,255,144,0.12);
+  border-color: rgba(59,255,144,0.5);
+}
+
+.gl-preset-card__rail {
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0,242,255,0.25), transparent);
+  border-radius: 2px;
+  transition: opacity 0.3s;
+  opacity: 0;
+}
+.gl-preset-card:hover .gl-preset-card__rail { opacity: 1; }
+
+.gl-empty--sm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 2rem;
+  color: rgba(200,210,225,0.4);
+  text-align: center;
+}
+.gl-empty--sm p { margin: 0; font-size: 0.82rem; }
+
+/* 
+   MODAL
+    */
+.gl-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 2rem;
+}
+
+.gl-modal {
+  background: rgba(8, 10, 18, 0.97);
+  border: 1px solid rgba(0, 242, 255, 0.2);
+  border-radius: 14px;
+  max-width: 660px;
+  width: 100%;
+  max-height: 82vh;
+  overflow: hidden;
+  box-shadow: 0 0 60px rgba(0, 242, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+}
+
+.gl-modal--bench {
+  max-width: 780px;
+}
+
+/* ── Bench top bar ── */
+.gl-bench__topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.1rem;
+  border-bottom: 1px solid rgba(0,255,255,0.08);
+  background: rgba(0,0,0,0.15);
+}
+
+.gl-bench__topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gl-bench__topbar-left svg {
+  color: #00ffff;
+  filter: drop-shadow(0 0 4px rgba(0,255,255,0.4));
+}
+
+.gl-bench__topbar-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: rgba(255,255,255,0.9);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.gl-bench__topbar-sep {
+  color: rgba(255,255,255,0.15);
+  font-weight: 300;
+}
+
+.gl-bench__topbar-game {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.45);
+}
+
+.gl-bench__body {
+  padding: 1.1rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* ── Hero: ring + FPS ── */
+.gl-bench__hero {
+  display: flex;
+  gap: 1.25rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+/* Score ring */
+.gl-bench__ring {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  flex-shrink: 0;
+}
+
+.gl-bench__ring-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.gl-bench__ring-track {
+  fill: none;
+  stroke: rgba(255,255,255,0.04);
+  stroke-width: 6;
+}
+
+.gl-bench__ring-fill {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dasharray 1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gl-bench__ring--exceeds .gl-bench__ring-fill,
+.gl-bench__ring--meets-recommended .gl-bench__ring-fill {
+  stroke: #00ff88;
+}
+
+.gl-bench__ring--meets-minimum .gl-bench__ring-fill {
+  stroke: #ffaa00;
+}
+
+.gl-bench__ring--below .gl-bench__ring-fill {
+  stroke: #ff4444;
+}
+
+.gl-bench__ring-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.gl-bench__ring-pct {
+  font-size: 1.45rem;
+  font-weight: 900;
+  font-family: 'Courier New', monospace;
+  color: #fff;
+  line-height: 1;
+}
+
+.gl-bench__ring-label {
+  font-size: 0.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: rgba(255,255,255,0.35);
+}
+
+/* FPS column */
+.gl-bench__fps-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.gl-bench__fps-heading {
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: rgba(255,255,255,0.3);
+}
+
+.gl-bench__fps-res {
+  color: rgba(0,255,255,0.35);
+  margin-left: 4px;
+}
+
+.gl-bench__verdict-sub {
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.25);
+  font-style: italic;
+}
+
+/* ── Hardware rows ── */
+.gl-bench__hw {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 0.65rem;
+}
+
+.gl-bench__hw-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0.65rem 0.85rem;
+  background: rgba(0, 10, 20, 0.4);
+  border: 1px solid rgba(0, 255, 255, 0.06);
+  border-radius: 8px;
+  transition: border-color 0.25s, background 0.25s;
+}
+
+.gl-bench__hw-row:hover {
+  border-color: rgba(0, 255, 255, 0.18);
+  background: rgba(0, 15, 25, 0.5);
+}
+
+/* Top line: label left, badge right */
+.gl-bench__hw-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gl-bench__hw-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #00ffff;
+}
+
+.gl-bench__hw-label svg {
+  opacity: 0.55;
+}
+
+/* Pass / Fail badge */
+.gl-bench__hw-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.gl-bench__hw-badge--pass {
+  color: #00ff88;
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+}
+
+.gl-bench__hw-badge--fail {
+  color: #ff5555;
+  background: rgba(255, 85, 85, 0.08);
+  border: 1px solid rgba(255, 85, 85, 0.15);
+}
+
+/* Your hardware value */
+.gl-bench__hw-val {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1;
+}
+
+/* Progress bar */
+.gl-bench__hw-bar-wrap {
+  width: 100%;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.gl-bench__hw-bar {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gl-bench__hw-bar--exceeds {
+  background: linear-gradient(90deg, rgba(0, 255, 136, 0.25), #00ff88);
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.25);
+}
+
+.gl-bench__hw-bar--meets {
+  background: linear-gradient(90deg, rgba(0, 255, 136, 0.25), #00ff88);
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.25);
+}
+
+.gl-bench__hw-bar--below {
+  background: linear-gradient(90deg, rgba(255, 68, 68, 0.25), #ff4444);
+  box-shadow: 0 0 8px rgba(255, 68, 68, 0.2);
+}
+
+/* Min / Rec specs */
+.gl-bench__hw-specs {
+  display: flex;
+  gap: 1.25rem;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.35);
+  line-height: 1;
+}
+
+.gl-bench__hw-specs span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gl-bench__hw-specs em {
+  font-style: normal;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.gl-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(0,255,255,0.1);
+}
+
+.gl-modal__title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.gl-modal__title-wrap svg {
+  color: #00ffff;
+}
+
+.gl-modal__header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.gl-modal__close {
+  background: rgba(255,60,60,0.08);
+  border: 1px solid rgba(255,60,60,0.2);
+  border-radius: 7px;
+  padding: 0.4rem;
+  color: #ff5555;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.gl-modal__close:hover {
+  background: rgba(255,60,60,0.18);
+  border-color: #ff5555;
+  transform: rotate(90deg);
+}
+
+.gl-modal__body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.gl-modal__desc {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.45);
+  margin: 0 0 1rem;
+  line-height: 1.6;
+  padding: 0.75rem 1rem;
+  border-left: 2px solid rgba(0,255,255,0.3);
+  background: rgba(0,255,255,0.02);
+  border-radius: 4px;
+}
+
+.gl-modal__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.gl-modal__item {
+  padding: 0.85rem;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(0,255,255,0.08);
+  border-radius: 8px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.gl-modal__item:hover {
+  border-color: rgba(0,255,255,0.25);
+  transform: translateX(3px);
+}
+
+.gl-modal__item-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.gl-modal__item-flag {
+  padding: 0.25rem 0.6rem;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(0,255,255,0.15);
+  border-radius: 5px;
+  color: #00ffff;
+  font-family: 'Courier New', monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.gl-modal__item-copy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  border: 1px solid rgba(0,255,255,0.15);
+  background: rgba(0,255,255,0.04);
+  color: #00ffff;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: auto;
+}
+
+.gl-modal__item-copy:hover {
+  background: rgba(0,255,255,0.12);
+  border-color: rgba(0,255,255,0.5);
+}
+
+.gl-modal__item-desc {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.45);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.gl-modal__footer {
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid rgba(0,255,255,0.1);
+  display: flex;
+  justify-content: center;
+}
+
+/* 
+   CARD COMPATIBILITY RING
+    */
+.gl-card__compat {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid;
+  z-index: 5;
+  pointer-events: auto;
+  box-shadow: 0 0 6px;
+}
+
+.gl-card__compat--exceeds,
+.gl-card__compat--meets-recommended {
+  border-color: #00ff88;
+  background: rgba(0, 255, 136, 0.25);
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.4);
+}
+
+.gl-card__compat--meets-minimum {
+  border-color: #ffaa00;
+  background: rgba(255, 170, 0, 0.25);
+  box-shadow: 0 0 8px rgba(255, 170, 0, 0.4);
+}
+
+.gl-card__compat--below {
+  border-color: #ff4444;
+  background: rgba(255, 68, 68, 0.25);
+  box-shadow: 0 0 8px rgba(255, 68, 68, 0.4);
+}
+
+/* 
+   VERDICT BADGE (Dash Header)
+    */
+.gl-verdict-badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  border: 1px solid;
+  flex-shrink: 0;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  text-transform: uppercase;
+}
+
+/* ===== Game Benchmark Button (3D Lid Design) ===== */
+.gl-test-specs-btn {
+  --bench-ease: cubic-bezier(0.5, 0, 0.3, 1);
+  --bench-ease-elastic: cubic-bezier(0.5, 2, 0.3, 0.8);
+  --bench-radius: 5px;
+  --bench-primary: rgba(0, 0, 0, 0.4);
+  outline: none;
+  cursor: pointer;
+  border: 1px solid rgba(0, 255, 255, 0.15);
+  border-radius: var(--bench-radius);
+  position: relative;
+  width: 160px;
+  height: 44px;
+  pointer-events: auto;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  transition:
+    background-color 2s linear,
+    box-shadow 0.5s ease,
+    transform 0.6s ease;
+  transform: rotateX(4deg);
+  background: var(--bench-primary);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow:
+    inset 0 0 12px rgba(0, 255, 255, 0.05),
+    0 3px 6px -2px rgba(0, 0, 0, 0.4),
+    0 18px 14px -8px rgba(0, 0, 0, 0.2);
+  font-size: 10px;
+  font-family: Arial, sans-serif;
+  letter-spacing: 1.2px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  user-select: none;
+  overflow: visible;
+}
+
+.gl-test-specs-btn::before,
+.gl-test-specs-btn::after {
+  content: "";
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  background: #00ffff;
+  position: absolute;
+  display: block;
+  filter: blur(25px);
+  mix-blend-mode: plus-lighter;
+  margin: auto;
+  inset: 0;
+  top: 6px;
+  transition: all 1s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.gl-test-specs-btn::after {
+  transform: scale(0);
+}
+
+@keyframes glBtnPulse {
+  40% { transform: scale(1); }
+}
+
+/* Wrap / lid — closed state */
+.gl-btn__wrap {
+  border-radius: calc(var(--bench-radius) * 0.85);
+  inset: 0;
+  padding: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5) 0%, rgba(0, 30, 30, 0.6) 50%, rgba(0, 20, 20, 0.5) 100%);
+  position: absolute;
+  transform-origin: top;
+  transform: scale(0.99, 1) translate3d(0px, -4px, 10px);
+  transition: transform 0.7s ease, box-shadow 0.7s ease;
+  z-index: 2;
+  box-shadow: none;
+}
+
+/* Lid opens on hover */
+.gl-test-specs-btn:hover .gl-btn__wrap {
+  transform: translate3d(0, 0, 10px) rotateX(70deg);
+  box-shadow:
+    rgba(0, 255, 255, 0.15) 0px 4px 1px -1px,
+    rgba(0, 80, 80, 0.4) 0px 7px 0 -2px,
+    rgba(0, 0, 0, 0.5) 0px 40px 25px -20px;
+}
+
+/* Reflex / shine sweep */
+.gl-btn__reflex {
+  position: absolute;
+  z-index: 9;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.gl-btn__reflex::before {
+  content: "";
+  position: absolute;
+  width: 160px;
+  background: linear-gradient(
+    to right,
+    rgba(0, 255, 255, 0.05) 10%,
+    rgba(0, 255, 255, 0.2) 60%,
+    rgba(0, 255, 255, 0.15) 60%,
+    rgba(0, 255, 255, 0.05) 90%
+  );
+  top: -40%;
+  bottom: -40%;
+  left: -132%;
+  transform: translateX(0) skew(-30deg);
+}
+
+.gl-test-specs-btn:hover .gl-btn__reflex::before {
+  animation: none;
+  transform: translate(250%, 0) skew(-30deg);
+  transition: transform 0.7s var(--bench-ease);
+}
+
+@keyframes glBtnShine {
+  0%, 100% {
+    transform: translateX(0) skew(-30deg);
+  }
+  50% {
+    transform: translate(250%, 0) skew(-30deg);
+  }
+}
+
+/* Content area */
+.gl-btn__content {
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  position: relative;
+  height: 100%;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  border-radius: calc(var(--bench-radius) * 0.85);
+}
+
+.gl-btn__content::before,
+.gl-btn__content::after {
+  content: "";
+  inset: 0;
+  position: absolute;
+  transition: all 1s var(--bench-ease);
+  border-radius: inherit;
+  z-index: -1;
+}
+
+.gl-btn__content::before {
+  filter: blur(2px);
+  top: -2px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.45) 30%, rgba(0, 0, 0, 0.55) 90%);
+}
+
+.gl-btn__content::after {
+  box-shadow:
+    inset 0 -4px 1px 0 rgba(0, 255, 255, 0.05),
+    inset 0 -2px 1px 0 rgba(0, 255, 255, 0.08),
+    inset 0 -1px 0 0 rgba(0, 255, 255, 0.12),
+    inset 0 -2px 0 0 rgba(0, 255, 255, 0.04);
+}
+
+/* Character-by-character text */
+.gl-btn__text {
+  transition: all 0.3s ease;
+  transform: translateY(-1px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  inset: 0;
+}
+
+.gl-btn__text span {
+  display: block;
+  color: transparent;
+  position: relative;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  font-family: 'Rajdhani', 'Share Tech Mono', 'Courier New', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.gl-btn__text span::before,
+.gl-btn__text span::after {
+  content: attr(data-label);
+  position: absolute;
+  left: 0;
+  color: #00ffff;
+  text-shadow: 0 0 6px rgba(0, 255, 255, 0.4);
+}
+
+.gl-btn__text span::before {
+  opacity: 0;
+  transform: translateY(-100%);
+}
+
+.gl-test-specs-btn:hover .gl-btn__text span::before {
+  animation: glBtnCharIn 0.8s ease calc(var(--i) * 0.03s) forwards;
+}
+
+.gl-test-specs-btn:hover .gl-btn__text span::after {
+  animation: glBtnCharOut 1.2s ease calc(var(--i) * 0.03s) backwards;
+}
+
+@keyframes glBtnCharIn {
+  0% {
+    opacity: 0;
+    transform: scale(6) translateX(-80%);
+    filter: blur(8px);
+    color: #00ffff;
+  }
+  25% {
+    transform: translateY(10%) translateX(calc(-20px + ((var(--i) - 1) / 14) * 40px)) scale(1.8);
+    opacity: 1;
+    filter: blur(1px);
+    color: transparent;
+  }
+  50% {
+    transform: translateY(15%);
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes glBtnCharOut {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  40% {
+    color: #00ffff;
+  }
+  100% {
+    transform: translateY(-80%) scale(3);
+    filter: blur(4px);
+    color: #001a1a;
+    text-shadow: 0 3px 2px rgba(0, 255, 255, 0.4);
+    opacity: 0;
+  }
+}
+
+/* Gear wrapper — clips gears inside button */
+.gl-btn__gears-clip {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: var(--bench-radius);
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.gl-btn__gears-clip svg {
+  width: 80%;
+  height: auto;
+  fill: #00cccc;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.gl-btn__gears-clip svg .gl-gear-shadow {
+  fill: rgba(0, 255, 255, 0.08);
+  translate: 2px 8px;
+}
+
+.gl-btn__gears-clip svg .gl-gear-sm {
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+.gl-btn__gears-clip svg .gl-gear-md {
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+.gl-btn__gears-clip svg .gl-gear-lg {
+  transform-origin: center;
+  transform-box: fill-box;
+  translate: 3px -6px;
+}
+
+.gl-test-specs-btn:hover .gl-btn__gears-clip svg .gl-gear-sm {
+  animation: glBtnGearSpin 2.5s infinite linear;
+}
+
+.gl-test-specs-btn:hover .gl-btn__gears-clip svg .gl-gear-md {
+  animation: glBtnGearSpin reverse 3.75s infinite linear;
+}
+
+.gl-test-specs-btn:hover .gl-btn__gears-clip svg .gl-gear-lg {
+  animation: glBtnGearSpin 5s infinite linear;
+}
+
+@keyframes glBtnGearSpin {
+  to { transform: rotate(359deg); }
+}
+
+/* Hover state: lift up, show gears, open lid */
+.gl-test-specs-btn:hover {
+  transition:
+    all 0.6s var(--bench-ease-elastic),
+    background 1s ease;
+  transform: rotateX(0deg) translateY(3px);
+}
+
+.gl-test-specs-btn:hover .gl-btn__content::before {
+  transform: scale(0.97, 0.92);
+}
+
+.gl-test-specs-btn:hover .gl-btn__gears-clip {
+  opacity: 1;
+}
+
+.gl-test-specs-btn:hover::after {
+  opacity: 0;
+  animation: none;
+}
+
+/* Active / press */
+.gl-test-specs-btn:active {
+  transform: rotateX(0deg) translateY(5px);
+}
+
+.gl-test-specs-btn:active .gl-btn__wrap {
+  transform: scale(1) translate3d(0, 0, 10px) rotateX(70deg);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Game Profile Tab
+   ═══════════════════════════════════════════════════════════ */
+
+@keyframes gl-spin {
+  to { transform: rotate(360deg); }
+}
+.gl-spin { animation: gl-spin 1s linear infinite; }
+
+.gl-empty--sm {
+  padding: 48px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: rgba(255,255,255,.45);
+}
+
+/* --- Profile container --- */
+.gl-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* --- Action bar --- */
+.gl-profile__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gl-profile__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border: 1px solid rgba(0,255,255,.18);
+  border-radius: 6px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .2s, border-color .2s, opacity .2s;
+  background: rgba(0,255,255,.06);
+  color: #00ffff;
+}
+
+.gl-profile__btn:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+.gl-profile__btn--save {
+  background: rgba(0,255,255,.12);
+  border-color: rgba(0,255,255,.35);
+}
+.gl-profile__btn--save:not(:disabled):hover {
+  background: rgba(0,255,255,.22);
+  border-color: #00ffff;
+}
+
+.gl-profile__btn--rec {
+  background: rgba(255,170,0,.08);
+  border-color: rgba(255,170,0,.25);
+  color: #ffaa00;
+}
+.gl-profile__btn--rec:not(:disabled):hover {
+  background: rgba(255,170,0,.18);
+  border-color: #ffaa00;
+}
+
+.gl-profile__btn--reset {
+  background: rgba(255,60,60,.06);
+  border-color: rgba(255,60,60,.2);
+  color: #ff5555;
+}
+.gl-profile__btn--reset:not(:disabled):hover {
+  background: rgba(255,60,60,.14);
+  border-color: #ff5555;
+}
+
+/* --- Error banner --- */
+.gl-profile__error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: rgba(255,60,60,.08);
+  border: 1px solid rgba(255,60,60,.25);
+  font-size: 13px;
+  color: #ff6b6b;
+}
+
+/* --- Section --- */
+.gl-profile__section {
+  border: 1px solid rgba(0,255,255,0.08);
+  border-radius: 10px;
+  background: rgba(6,8,16,0.55);
+  overflow: hidden;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.gl-profile__section::-webkit-scrollbar {
+  width: 4px;
+}
+.gl-profile__section::-webkit-scrollbar-track {
+  background: transparent;
+}
+.gl-profile__section::-webkit-scrollbar-thumb {
+  background: rgba(0,255,255,.15);
+  border-radius: 4px;
+}
+.gl-profile__section::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,255,255,.3);
+}
+
+/* --- 2-Column Layout --- */
+.gl-profile__columns {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 12px;
+  align-items: start;
+  max-width: 1020px;
+  width: 100%;
+  margin: 0 auto;
+  row-gap: 6px;
+}
+
+.gl-profile__col-left {
+  min-width: 0;
+  width: 100%;
+}
+
+.gl-profile__col-left .gl-profile__section {
+  width: 100%;
+}
+
+.gl-profile__col-right {
+  min-width: 0;
+}
+
+.gl-profile__section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #00ffff;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(0,255,255,0.06);
+  background: rgba(0,255,255,0.02);
+}
+
+.gl-profile__head-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+}
+
+.gl-profile__btn--sm {
+  padding: 3px 8px;
+  font-size: 10px;
+  gap: 3px;
+  border-radius: 4px;
+}
+
+/* --- Presets List --- */
+.gl-profile__presets-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.gl-profile__preset-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.03);
+  transition: background .15s;
+}
+
+.gl-profile__preset-row:last-child {
+  border-bottom: none;
+}
+
+.gl-profile__preset-row:nth-child(even) {
+  background: rgba(255,255,255,.012);
+}
+
+.gl-profile__preset-row:hover {
+  background: rgba(0,255,255,.03);
+}
+
+.gl-profile__preset-row--changed {
+  background: rgba(0,255,255,.05) !important;
+}
+
+.gl-profile__preset-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.gl-profile__preset-label {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(255,255,255,.75);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gl-profile__preset-desc {
+  font-size: 10px;
+  color: rgba(255,255,255,.25);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Toggle Switch --- */
+.gl-profile__preset-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.gl-profile__preset-toggle-track {
+  position: relative;
+  width: 32px;
+  height: 16px;
+  border-radius: 8px;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.08);
+  transition: background .2s, border-color .2s;
+}
+
+.gl-profile__preset-toggle--on .gl-profile__preset-toggle-track {
+  background: rgba(0,255,255,.2);
+  border-color: rgba(0,255,255,.3);
+}
+
+.gl-profile__preset-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.4);
+  transition: transform .2s, background .2s, box-shadow .2s;
+}
+
+.gl-profile__preset-toggle--on .gl-profile__preset-toggle-thumb {
+  transform: translateX(16px);
+  background: #00ffff;
+  box-shadow: 0 0 6px rgba(0,255,255,.5);
+}
+
+.gl-profile__preset-toggle-label {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.3);
+  min-width: 48px;
+  text-align: left;
+  transition: color .2s;
+}
+
+.gl-profile__preset-toggle--on .gl-profile__preset-toggle-label {
+  color: #00ffff;
+}
+
+/* --- Section Footer (Lock + Reset/Apply under Pro Players) --- */
+.gl-profile__action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 0 0;
+}
+
+.gl-profile__action {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 16px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .4px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 6px;
+  background: rgba(255,255,255,.03);
+  color: rgba(255,255,255,.5);
+  cursor: pointer;
+  transition: all .25s ease;
+  position: relative;
+  overflow: hidden;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.gl-profile__action::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity .25s ease;
+  pointer-events: none;
+}
+
+.gl-profile__action:disabled {
+  opacity: .3;
+  cursor: not-allowed;
+}
+
+/* Reset */
+.gl-profile__action--reset {
+  border-color: rgba(255,80,80,.15);
+  color: rgba(255,100,100,.7);
+}
+.gl-profile__action--reset::before {
+  background: linear-gradient(135deg, rgba(255,60,60,.12) 0%, transparent 60%);
+}
+.gl-profile__action--reset:not(:disabled):hover {
+  border-color: rgba(255,80,80,.4);
+  color: #ff6b6b;
+  background: rgba(255,60,60,.08);
+  box-shadow: 0 0 12px rgba(255,60,60,.15), inset 0 0 12px rgba(255,60,60,.05);
+}
+.gl-profile__action--reset:not(:disabled):hover::before { opacity: 1; }
+
+/* Lock */
+.gl-profile__action--lock {
+  border-color: rgba(255,200,0,.15);
+  color: rgba(255,200,0,.6);
+}
+.gl-profile__action--lock::before {
+  background: linear-gradient(135deg, rgba(255,200,0,.1) 0%, transparent 60%);
+}
+.gl-profile__action--lock:not(:disabled):hover {
+  border-color: rgba(255,200,0,.4);
+  color: #ffc800;
+  background: rgba(255,200,0,.08);
+  box-shadow: 0 0 12px rgba(255,200,0,.15), inset 0 0 12px rgba(255,200,0,.05);
+}
+.gl-profile__action--lock:not(:disabled):hover::before { opacity: 1; }
+
+.gl-profile__action--locked {
+  border-color: rgba(255,200,0,.3);
+  color: #ffc800;
+  background: rgba(255,200,0,.06);
+}
+
+/* Apply */
+.gl-profile__action--apply {
+  border-color: rgba(0,255,255,.2);
+  color: rgba(0,255,255,.7);
+}
+.gl-profile__action--apply::before {
+  background: linear-gradient(135deg, rgba(0,255,255,.12) 0%, transparent 60%);
+}
+.gl-profile__action--apply:not(:disabled):hover {
+  border-color: rgba(0,255,255,.5);
+  color: #00ffff;
+  background: rgba(0,255,255,.1);
+  box-shadow: 0 0 14px rgba(0,255,255,.2), inset 0 0 14px rgba(0,255,255,.06);
+}
+.gl-profile__action--apply:not(:disabled):hover::before { opacity: 1; }
+
+/* Read-only indicator in tabs */
+.gl-profile__ro-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  transition: all .2s;
+}
+.gl-profile__ro-indicator--locked {
+  color: #ffc800;
+  background: rgba(255,200,0,.1);
+  border: 1px solid rgba(255,200,0,.2);
+}
+.gl-profile__ro-indicator--open {
+  color: rgba(0,255,255,.5);
+  background: rgba(0,255,255,.05);
+  border: 1px solid rgba(0,255,255,.1);
+}
+
+.gl-profile__section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 18px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #00ffff;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(0,255,255,0.06);
+  background: rgba(0,255,255,0.02);
+}
+
+.gl-profile__section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 18px 0 0;
+  color: rgba(255,255,255,.5);
+}
+
+/* ── Inner tabs (Video / Videoconfig) ── */
+.gl-profile__inner-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-bottom: 1px solid rgba(0,255,255,0.08);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(6,8,16,0.95);
+}
+
+.gl-profile__inner-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 14px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  color: rgba(255,255,255,0.35);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color .2s, background .2s, box-shadow .2s;
+  position: relative;
+  white-space: nowrap;
+}
+
+.gl-profile__tab-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 0 10px;
+}
+
+.gl-profile__tab-meta .gl-profile__ro-badge {
+  padding: 3px 8px;
+  font-size: 10px;
+  gap: 4px;
+}
+
+.gl-profile__ro-hint {
+  font-size: 9px;
+  color: rgba(0,255,255,.45);
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: .3px;
+  white-space: nowrap;
+  transition: color .3s, text-shadow .3s;
+}
+
+/* Flash animation on lock/unlock toggle */
+.gl-profile__tab-meta--flash .gl-profile__ro-badge {
+  animation: ro-badge-flash .8s ease;
+}
+.gl-profile__tab-meta--flash .gl-profile__ro-hint {
+  animation: ro-hint-flash .8s ease;
+}
+
+@keyframes ro-badge-flash {
+  0%   { transform: scale(1); }
+  15%  { transform: scale(1.15); box-shadow: 0 0 14px rgba(0,255,255,.5); }
+  30%  { transform: scale(1); }
+  50%  { transform: scale(1.08); box-shadow: 0 0 8px rgba(0,255,255,.3); }
+  100% { transform: scale(1); box-shadow: none; }
+}
+
+@keyframes ro-hint-flash {
+  0%   { color: rgba(255,255,255,.25); text-shadow: none; }
+  20%  { color: rgba(0,255,255,.9); text-shadow: 0 0 8px rgba(0,255,255,.4); }
+  60%  { color: rgba(0,255,255,.5); text-shadow: 0 0 4px rgba(0,255,255,.2); }
+  100% { color: rgba(255,255,255,.25); text-shadow: none; }
+}
+
+.gl-profile__inner-tab:hover {
+  color: rgba(255,255,255,0.6);
+  background: rgba(0,255,255,0.03);
+}
+
+.gl-profile__inner-tab--active {
+  color: #00ffff;
+  background: rgba(0,255,255,0.04);
+  box-shadow: inset 0 -2px 0 #00ffff;
+}
+
+/* Locked section overlay */
+.gl-profile__section--locked {
+  position: relative;
+  overflow: hidden !important;
+}
+
+.gl-profile__section--locked .gl-profile__inner-tabs {
+  pointer-events: auto;
+  position: relative;
+  z-index: 20;
+}
+
+.gl-profile__section--locked .gl-profile__lock-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  z-index: 10;
+  background: rgba(10,12,18,.88);
+  color: rgba(255,255,255,.7);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border-radius: inherit;
+}
+
+.gl-profile__section--locked .gl-profile__lock-overlay svg {
+  color: rgba(0,255,255,.5);
+}
+
+.gl-profile__additional-desc {
+  padding: 0 18px 8px;
+}
+.gl-profile__additional-desc p {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255,255,255,.35);
+}
+
+/* ── Apex-style setting rows ── */
+.gl-profile__apex-settings {
+  display: flex;
+  flex-direction: column;
+}
+
+.gl-profile__apex-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.03);
+  transition: background .15s;
+}
+
+.gl-profile__apex-row:last-child {
+  border-bottom: none;
+}
+
+.gl-profile__apex-row:nth-child(even) {
+  background: rgba(255,255,255,.012);
+}
+
+.gl-profile__apex-row:hover {
+  background: rgba(0,255,255,.03);
+}
+
+.gl-profile__apex-row--changed {
+  background: rgba(0,255,255,.05) !important;
+}
+
+.gl-profile__apex-label {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: rgba(255,255,255,.75);
+  min-width: 0;
+  flex: 1;
+}
+
+.gl-profile__apex-label-key {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  color: rgba(255,255,255,.2);
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+.gl-profile__apex-control {
+  flex: 0 0 32%;
+  margin-left: 16px;
+}
+
+/* Toggle: two buttons side by side */
+.gl-profile__apex-toggle-group {
+  display: flex;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.1);
+}
+
+.gl-profile__apex-toggle-btn {
+  padding: 6px 18px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.4);
+  transition: background .15s, color .15s;
+  min-width: 80px;
+  text-align: center;
+}
+
+.gl-profile__apex-toggle-btn + .gl-profile__apex-toggle-btn {
+  border-left: 1px solid rgba(255,255,255,.08);
+}
+
+.gl-profile__apex-toggle-btn:hover {
+  background: rgba(255,255,255,.08);
+  color: rgba(255,255,255,.6);
+}
+
+.gl-profile__apex-toggle-btn--active {
+  background: rgba(0,255,255,.12);
+  color: #00ffff;
+}
+
+.gl-profile__apex-toggle-btn--active:hover {
+  background: rgba(0,255,255,.18);
+}
+
+/* Select: < value > arrows */
+.gl-profile__apex-selector {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.gl-profile__apex-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 32px;
+  background: rgba(0,255,255,.06);
+  border: none;
+  color: #00ffff;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+
+.gl-profile__apex-nav:hover {
+  background: rgba(0,255,255,.15);
+}
+
+.gl-profile__apex-selector-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 140px;
+  background: rgba(255,255,255,.03);
+  padding: 4px 12px 6px;
+}
+
+.gl-profile__apex-selector-value {
+  text-align: center;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(255,255,255,.8);
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.gl-profile__apex-selector-track {
+  display: flex;
+  gap: 3px;
+  width: 100%;
+  margin-top: 3px;
+}
+
+.gl-profile__apex-selector-seg {
+  flex: 1;
+  height: 3px;
+  border-radius: 1px;
+  background: rgba(255,255,255,.1);
+  transition: background .15s;
+}
+
+.gl-profile__apex-selector-seg--filled {
+  background: #00ffff;
+}
+
+/* --- Core settings grid --- */
+.gl-profile__core-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+  padding: 2px 18px 18px;
+}
+
+.gl-profile__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gl-profile__field--wide {
+  grid-column: 1 / -1;
+}
+
+.gl-profile__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,.55);
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  font-family: 'Rajdhani', sans-serif;
+}
+
+.gl-profile__select-wrap {
+  position: relative;
+}
+
+.gl-profile__select {
+  width: 100%;
+  padding: 8px 32px 8px 12px;
+  background: rgba(0,255,255,.04);
+  border: 1px solid rgba(0,255,255,.15);
+  border-radius: 5px;
+  color: #fff;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  appearance: none;
+  cursor: pointer;
+  transition: border-color .2s;
+}
+.gl-profile__select:hover,
+.gl-profile__select:focus {
+  border-color: rgba(0,255,255,.4);
+  outline: none;
+}
+
+.gl-profile__select option {
+  background: #0d1017;
+  color: #fff;
+  padding: 6px 12px;
+}
+
+.gl-profile__select-arrow {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(0,255,255,.4);
+  pointer-events: none;
+}
+
+.gl-profile__input {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(0,255,255,.04);
+  border: 1px solid rgba(0,255,255,.15);
+  border-radius: 5px;
+  color: #fff;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  transition: border-color .2s;
+  box-sizing: border-box;
+}
+.gl-profile__input:focus {
+  border-color: rgba(0,255,255,.4);
+  outline: none;
+}
+
+/* --- Toggle / checkbox rows --- */
+.gl-profile__toggles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 6px 16px;
+  padding: 4px 18px 18px;
+}
+
+.gl-profile__toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.gl-profile__checkbox {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgba(0,255,255,.2);
+  border-radius: 4px;
+  background: rgba(0,255,255,.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s, border-color .15s;
+  color: transparent;
+  cursor: pointer;
+}
+
+.gl-profile__checkbox--on {
+  background: rgba(0,255,255,.15);
+  border-color: #00ffff;
+  color: #00ffff;
+}
+
+.gl-profile__toggle-label {
+  font-size: 13px;
+  color: rgba(255,255,255,.7);
+  font-weight: 500;
+}
+
+.gl-profile__toggle-value {
+  margin-left: auto;
+  font-size: 11px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  color: rgba(0,255,255,.4);
+  min-width: 24px;
+  text-align: right;
+}
+
+/* --- Current value hint --- */
+.gl-profile__current {
+  font-size: 10.5px;
+  color: rgba(255,255,255,.25);
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+/* --- Status bar --- */
+.gl-profile__status-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 0 4px;
+}
+
+.gl-profile__ro-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: .3px;
+}
+
+.gl-profile__ro-badge--locked {
+  background: rgba(255,170,0,.08);
+  border: 1px solid rgba(255,170,0,.25);
+  color: #ffaa00;
+}
+
+.gl-profile__ro-badge--unlocked {
+  background: rgba(0,255,136,.06);
+  border: 1px solid rgba(0,255,136,.2);
+  color: #00ff88;
+}
+
+.gl-profile__setting-count {
+  font-size: 12px;
+  color: rgba(255,255,255,.35);
+}
+
+/* --- Read-only toggle button --- */
+.gl-profile__ro-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .2s, border-color .2s, opacity .2s;
+  letter-spacing: .3px;
+}
+
+.gl-profile__ro-toggle-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.gl-profile__ro-toggle-btn--unlock {
+  background: rgba(0,255,255,.06);
+  border: 1px solid rgba(0,255,255,.2);
+  color: #00ffff;
+}
+.gl-profile__ro-toggle-btn--unlock:not(:disabled):hover {
+  background: rgba(0,255,255,.14);
+  border-color: rgba(0,255,255,.45);
+}
+
+.gl-profile__ro-toggle-btn--lock {
+  background: rgba(255,170,0,.06);
+  border: 1px solid rgba(255,170,0,.2);
+  color: #ffaa00;
+}
+.gl-profile__ro-toggle-btn--lock:not(:disabled):hover {
+  background: rgba(255,170,0,.14);
+  border-color: rgba(255,170,0,.4);
+}
+
+/* --- Slider --- */
+.gl-profile__slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.gl-profile__slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 28px;
+  border-radius: 0;
+  background: rgba(255,255,255,.06);
+  outline: none;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,.08);
+}
+
+.gl-profile__slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 3px;
+  height: 28px;
+  border-radius: 0;
+  background: #e85a2a;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(232,90,42,.5);
+}
+
+.gl-profile__slider::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 10px rgba(232,90,42,.7);
+}
+
+.gl-profile__slider::-moz-range-thumb {
+  width: 3px;
+  height: 28px;
+  border-radius: 0;
+  background: #e85a2a;
+  border: none;
+  cursor: pointer;
+}
+
+.gl-profile__slider::-moz-range-track {
+  height: 28px;
+  border-radius: 0;
+  background: rgba(255,255,255,.06);
+}
+
+.gl-profile__slider-value {
+  min-width: 42px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255,255,255,.85);
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  border-left: none;
+}
+
+/* --- All Settings table --- */
+.gl-profile__all-settings {
+  overflow: hidden;
+  padding: 0 14px 14px;
+}
+
+.gl-profile__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  table-layout: fixed;
+}
+
+.gl-profile__table thead th {
+  text-align: left;
+  padding: 8px 12px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(0,255,255,.5);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  border-bottom: 1px solid rgba(0,255,255,.1);
+}
+
+.gl-profile__table tbody tr {
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  transition: background .15s;
+}
+
+.gl-profile__table tbody tr:hover {
+  background: rgba(0,255,255,.03);
+}
+
+.gl-profile__row--changed {
+  background: rgba(0,255,255,.04) !important;
+}
+
+.gl-profile__td-key {
+  padding: 7px 12px;
+  vertical-align: middle;
+}
+
+.gl-profile__key-name {
+  display: block;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  color: rgba(255,255,255,.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gl-profile__key-friendly {
+  display: block;
+  font-size: 10.5px;
+  color: rgba(0,255,255,.4);
+  margin-top: 1px;
+}
+
+.gl-profile__td-current {
+  padding: 7px 12px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  color: rgba(255,255,255,.35);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.gl-profile__td-edit {
+  padding: 4px 12px;
+  vertical-align: middle;
+}
+
+.gl-profile__table-input {
+  width: 100%;
+  min-width: 60px;
+  max-width: 180px;
+  padding: 4px 8px;
+  background: rgba(0,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 4px;
+  color: #fff;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  transition: border-color .2s;
+  box-sizing: border-box;
+}
+
+.gl-profile__table-input:focus {
+  border-color: rgba(0,255,255,.35);
+  outline: none;
+}
+
+.gl-profile__table-input--changed {
+  border-color: rgba(0,255,255,.4);
+  background: rgba(0,255,255,.06);
+}
+
+/* --- Config path footer --- */
+.gl-profile__path {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(255,255,255,.25);
+  padding: 4px 0;
+  word-break: break-all;
+}
+
+.gl-test-specs-btn:active .gl-btn__content::before {
+  filter: blur(10px);
+  transform: scaleX(0.95);
+}
+
+.gl-verdict-badge--exceeds,
+.gl-verdict-badge--meets-recommended {
+  color: #00ff88;
+  border-color: rgba(0, 255, 136, 0.35);
+  background: rgba(0, 255, 136, 0.08);
+}
+
+.gl-verdict-badge--meets-minimum {
+  color: #ffaa00;
+  border-color: rgba(255, 170, 0, 0.3);
+  background: rgba(255, 170, 0, 0.08);
+}
+
+.gl-verdict-badge--below {
+  color: #ff4444;
+  border-color: rgba(255, 68, 68, 0.3);
+  background: rgba(255, 68, 68, 0.08);
+}
+
+.gl-verdict-badge__text {
+  white-space: nowrap;
+}
+
+/* 
+   FPS PREDICTION TIERS
+    */
+.gl-fps-section {
+  margin-bottom: 1.15rem;
+}
+
+.gl-fps-tiers {
+  display: flex;
+  gap: 10px;
+}
+
+.gl-fps-tier {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.6rem 0.5rem 0.55rem;
+  background: rgba(0,0,0,0.22);
+  border: 1px solid rgba(0,255,255,0.07);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s ease;
+}
+
+.gl-fps-tier::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.gl-fps-tier:hover {
+  border-color: rgba(0,255,255,0.15);
+}
+
+.gl-fps-tier:hover::before {
+  opacity: 1;
+}
+
+/* Quality label */
+.gl-fps-tier__quality {
+  font-size: 0.52rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2.5px;
+  color: rgba(0,255,255,0.45);
+  margin-bottom: 0.35rem;
+}
+
+/* Hero FPS number */
+.gl-fps-tier__hero {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  line-height: 1;
+}
+
+.gl-fps-tier__tilde {
+  font-size: 0.85rem;
+  font-weight: 700;
+  opacity: 0.35;
+}
+
+.gl-fps-tier__value {
+  font-size: 1.55rem;
+  font-weight: 900;
+  font-family: 'Courier New', monospace;
+  letter-spacing: -1px;
+}
+
+.gl-fps-tier__unit {
+  font-size: 0.42rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2.5px;
+  color: rgba(255,255,255,0.22);
+  margin-top: 1px;
+}
+
+/* Progress bar */
+.gl-fps-tier__bar {
+  width: 100%;
+  height: 3px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  margin-top: 0.55rem;
+  position: relative;
+}
+
+.gl-fps-tier__fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Verdict color variants ── */
+
+/* Exceeds / Meets Recommended */
+.gl-fps-tier--exceeds .gl-fps-tier__value,
+.gl-fps-tier--meets-recommended .gl-fps-tier__value {
+  color: #00ff88;
+  text-shadow: 0 0 24px rgba(0,255,136,0.3), 0 0 60px rgba(0,255,136,0.08);
+}
+.gl-fps-tier--exceeds .gl-fps-tier__tilde,
+.gl-fps-tier--meets-recommended .gl-fps-tier__tilde {
+  color: rgba(0,255,136,0.4);
+}
+.gl-fps-tier--exceeds .gl-fps-tier__fill,
+.gl-fps-tier--meets-recommended .gl-fps-tier__fill {
+  background: linear-gradient(90deg, rgba(0,255,136,0.15), #00ff88);
+  box-shadow: 0 0 8px rgba(0,255,136,0.25);
+}
+.gl-fps-tier--exceeds::before,
+.gl-fps-tier--meets-recommended::before {
+  background: radial-gradient(ellipse at 50% 70%, rgba(0,255,136,0.04), transparent 70%);
+}
+
+/* Meets Minimum */
+.gl-fps-tier--meets-minimum .gl-fps-tier__value {
+  color: #ffaa00;
+  text-shadow: 0 0 24px rgba(255,170,0,0.3), 0 0 60px rgba(255,170,0,0.08);
+}
+.gl-fps-tier--meets-minimum .gl-fps-tier__tilde {
+  color: rgba(255,170,0,0.4);
+}
+.gl-fps-tier--meets-minimum .gl-fps-tier__fill {
+  background: linear-gradient(90deg, rgba(255,170,0,0.15), #ffaa00);
+  box-shadow: 0 0 8px rgba(255,170,0,0.25);
+}
+.gl-fps-tier--meets-minimum::before {
+  background: radial-gradient(ellipse at 50% 70%, rgba(255,170,0,0.04), transparent 70%);
+}
+
+/* Below */
+.gl-fps-tier--below .gl-fps-tier__value {
+  color: #ff4444;
+  text-shadow: 0 0 24px rgba(255,68,68,0.3), 0 0 60px rgba(255,68,68,0.08);
+}
+.gl-fps-tier--below .gl-fps-tier__tilde {
+  color: rgba(255,68,68,0.4);
+}
+.gl-fps-tier--below .gl-fps-tier__fill {
+  background: linear-gradient(90deg, rgba(255,68,68,0.15), #ff4444);
+  box-shadow: 0 0 8px rgba(255,68,68,0.25);
+}
+.gl-fps-tier--below::before {
+  background: radial-gradient(ellipse at 50% 70%, rgba(255,68,68,0.04), transparent 70%);
+}
+
+.gl-fps-disclaimer {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.55rem;
+  color: rgba(255,255,255,0.17);
+  text-align: right;
+  font-style: italic;
+}
+
+/* 
+   SCROLLBAR
+    */
+.gl-view::-webkit-scrollbar,
+.gl-dash::-webkit-scrollbar,
+.gl-bench__body::-webkit-scrollbar,
+.gl-modal__body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.gl-view::-webkit-scrollbar-track,
+.gl-dash::-webkit-scrollbar-track,
+.gl-bench__body::-webkit-scrollbar-track,
+.gl-modal__body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.gl-view::-webkit-scrollbar-thumb,
+.gl-dash::-webkit-scrollbar-thumb,
+.gl-bench__body::-webkit-scrollbar-thumb,
+.gl-modal__body::-webkit-scrollbar-thumb {
+  background: rgba(0,255,255,0.15);
+  border-radius: 10px;
+}
+
+.gl-view::-webkit-scrollbar-thumb:hover,
+.gl-dash::-webkit-scrollbar-thumb:hover,
+.gl-bench__body::-webkit-scrollbar-thumb:hover,
+.gl-modal__body::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,255,255,0.3);
+}
+
+/* 
+   RESPONSIVE
+    */
+@media (max-width: 1024px) {
+  .gl-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+  .gl-hero__title { font-size: 1.6rem; }
+  .gl-dash__main-row { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .gl-tabs { flex-wrap: wrap; }
+  .gl-tab { font-size: 9px; letter-spacing: 1px; padding: 6px 12px; }
+  .gl-profile__toolbar { flex-direction: column; align-items: stretch; }
+  .gl-profile__toolbar-right { justify-content: flex-end; }
+  .gl-profile__columns { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .gl-view, .gl-dash { padding: 1rem; }
+  .gl-hero__title { font-size: 1.35rem; }
+  .gl-hero__metrics { flex-wrap: wrap; gap: 0.5rem; }
+  .gl-controls { flex-direction: column; }
+  .gl-search { min-width: 100%; }
+  .gl-grid { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .gl-settings-grid { grid-template-columns: 1fr 1fr; }
+  .gl-sys-grid { grid-template-columns: 1fr; }
+  .gl-dash__title { font-size: 1.2rem; }
+  .gl-dash__sub-line { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .gl-dash__sub-divider { display: none; }
+  .gl-presets-bar { flex-direction: column; gap: 0.6rem; }
+  .gl-tabs { flex-wrap: wrap; }
+  .gl-tab-slider { display: none; }
+}
+
+@media (max-width: 480px) {
+  .gl-grid { grid-template-columns: 1fr; }
+  .gl-settings-grid { grid-template-columns: 1fr; }
+  .gl-hero__title { font-size: 1.2rem; }
+  .gl-hero { padding: 1rem; }
+  .gl-modal-overlay { padding: 0.75rem; }
+  .gl-launch-combined__header { flex-direction: column; align-items: flex-start; }
+  .gl-dash__inline-stats { display: none; }
+  .gl-dash__title-line { flex-direction: column; gap: 4px; }
+}

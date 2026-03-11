@@ -1,0 +1,262 @@
+/* ══════════════════════════════════════════════════════
+   DEV UPDATES  —  Developer status panel
+══════════════════════════════════════════════════════ */
+
+/* ── Trigger wrapper ─────────────────────────────── */
+.devupdates-wrapper {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.devupdates-btn {
+  position: relative;
+  width: 46px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #aaa);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  -webkit-app-region: no-drag;
+}
+
+.devupdates-btn:hover {
+  background: rgba(168, 130, 255, 0.08);
+  color: #a882ff;
+}
+
+.devupdates-btn--active {
+  color: #a882ff;
+  background: rgba(168, 130, 255, 0.06);
+}
+
+/* Unseen dot */
+.devupdates-dot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #a882ff;
+  box-shadow: 0 0 6px rgba(168, 130, 255, 0.7);
+  animation: devupdates-dot-pulse 2s ease-in-out infinite;
+}
+
+@keyframes devupdates-dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .45; transform: scale(.75); }
+}
+
+/* ── Panel ───────────────────────────────────────── */
+.devupdates-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 520px;
+  max-height: 520px;
+  background: #0c0d11;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  z-index: 9999;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  animation: du-in 0.18s ease-out;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-app-region: no-drag;
+}
+
+@keyframes du-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Header ──────────────────────────────────────── */
+.devupdates-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.devupdates-panel-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e2e8f0;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.devupdates-panel-title svg {
+  color: #a882ff;
+}
+
+.devupdates-panel-close {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.12s, color 0.12s;
+}
+
+.devupdates-panel-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+}
+
+/* ── Scrollable body ─────────────────────────────── */
+.devupdates-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 6px;
+}
+
+.devupdates-panel-body::-webkit-scrollbar {
+  width: 3px;
+}
+
+.devupdates-panel-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.devupdates-panel-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.devupdates-panel-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* ── Empty state ─────────────────────────────────── */
+.devupdates-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  color: #475569;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+}
+
+/* ── Update item ─────────────────────────────────── */
+.devupdates-item {
+  padding: 8px 14px 10px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.devupdates-item + .devupdates-item {
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* ── Type indicator (left strip) ─────────────────── */
+.devupdates-indicator {
+  flex-shrink: 0;
+  width: 2px;
+  min-height: 28px;
+  border-radius: 2px;
+  margin-top: 1px;
+  align-self: stretch;
+}
+
+.devupdates-indicator--bug {
+  background: #f87171;
+}
+
+.devupdates-indicator--in-progress {
+  background: #a882ff;
+}
+
+.devupdates-indicator--planned {
+  background: #38bdf8;
+}
+
+.devupdates-indicator--info {
+  background: #64748b;
+}
+
+/* ── Content ─────────────────────────────────────── */
+.devupdates-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.devupdates-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.devupdates-type-badge {
+  flex-shrink: 0;
+  font-size: 7px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 1.5px 5px;
+  border-radius: 3px;
+}
+
+.devupdates-type-badge--bug {
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+}
+
+.devupdates-type-badge--in-progress {
+  background: rgba(168, 130, 255, 0.12);
+  color: #a882ff;
+}
+
+.devupdates-type-badge--planned {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+}
+
+.devupdates-type-badge--info {
+  background: rgba(100, 116, 139, 0.12);
+  color: #94a3b8;
+}
+
+.devupdates-item-date {
+  font-size: 9.5px;
+  color: #475569;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.devupdates-item-title {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.devupdates-item-desc {
+  font-size: 10px;
+  color: #94a3b8;
+  line-height: 1.4;
+  margin-top: 2px;
+}

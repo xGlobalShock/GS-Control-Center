@@ -1,0 +1,9 @@
+/* Dashboard - New layout styles */
+.dashboard-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  transform: translateZ(0);
+  contain: layout style;
+}
+

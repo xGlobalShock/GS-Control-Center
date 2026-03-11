@@ -1,0 +1,204 @@
+/* ═══════════════════════════════════════════════════════════════
+   CLEANUP TOOLKIT PAGE — Glassmorphic Bento HUD
+   Deep Space (#050505) · Electric Cyan (#00F2FF) · Neon Emerald
+═══════════════════════════════════════════════════════════════ */
+
+/* apply a sharp, futuristic typeface across the page */
+.cleaner-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  font-family: 'Orbitron', sans-serif;
+  transform: translateZ(0);
+  contain: layout style;
+}
+
+/* ══════════════════════════════════════════════════════
+   TAB BAR — Floating glass segment control
+══════════════════════════════════════════════════════ */
+.cleaner-tabs {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  background: rgba(6, 8, 16, 0.55);
+  border: 1px solid rgba(0, 242, 255, 0.06);
+  border-radius: 12px;
+  width: fit-content;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(0, 242, 255, 0.03);
+}
+
+.cleaner-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 20px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+  position: relative;
+}
+
+.cleaner-tab:hover {
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.cleaner-tab--active {
+  color: #00F2FF;
+  background: rgba(0, 242, 255, 0.06);
+  border-color: rgba(0, 242, 255, 0.12);
+  box-shadow:
+    0 0 20px rgba(0, 242, 255, 0.04),
+    inset 0 1px 0 rgba(0, 242, 255, 0.06);
+}
+
+.cleaner-tab--active:hover {
+  color: #00F2FF;
+  background: rgba(0, 242, 255, 0.08);
+}
+
+.cleaner-tab-label {
+  white-space: nowrap;
+}
+
+.cleaner-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: background 0.2s, color 0.2s;
+}
+
+.cleaner-tab--active .cleaner-tab-count {
+  background: rgba(0, 242, 255, 0.12);
+  color: rgba(0, 242, 255, 0.9);
+}
+
+/* ══════════════════════════════════════════════════════
+   CARD GRID — Responsive auto-fill with dashboard sizing
+══════════════════════════════════════════════════════ */
+.cleaner-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+
+/* smaller cards used for games tab */
+.cleaner-grid--small {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+@media (max-width: 1400px) {
+  .cleaner-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .cleaner-tabs {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cleaner-tab {
+    padding: 8px 14px;
+    font-size: 11px;
+  }
+
+  .cleaner-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cleaner-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap');
+
+/* tabs container with description on right */
+.cleaner-tabs-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+/* informational description box next to tabs */
+.cleaner-tab-desc {
+  font-size: 11px;
+  color: #c0c0c0;
+  margin: 0 0 0 12px;
+  flex-shrink: 0;
+  font-family: 'Poppins', sans-serif; /* more readable for prose */
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: 0.2px;
+  max-width: 60%;
+  text-align: right;
+  position: relative;
+  overflow: hidden;
+
+  /* box styling */
+  background: rgba(6, 8, 16, 0.6);
+  border: 1px solid rgba(0, 242, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px 6px 28px; /* leave space for icon */
+  backdrop-filter: blur(8px);
+}
+
+/* little info icon before the text */
+.cleaner-tab-desc::before {
+  content: '\2139'; /* ℹ️ information symbol */
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: #00F2FF;
+}
+
+.cleaner-tab-desc:hover {
+  box-shadow: 0 0 8px rgba(0, 242, 255, 0.2);
+}
+
+/* animated underline */
+.cleaner-tab-desc::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00F2FF, transparent);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.5s ease;
+}
+
+.cleaner-tab-desc:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}

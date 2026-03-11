@@ -1,0 +1,318 @@
+/* ── Locked section ── */
+.settings-section--locked {
+  position: relative;
+  cursor: default;
+  opacity: 0.5;
+  filter: grayscale(0.4);
+  pointer-events: none;
+  user-select: none;
+}
+
+.settings-lock-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 5;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border-radius: 12px;
+}
+
+.settings-lock-overlay svg {
+  opacity: 0.7;
+}
+
+.settings-container {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  transform: translateZ(0);
+  contain: layout style;
+}
+
+.settings-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.settings-section {
+  background: rgba(8, 10, 18, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 242, 255, 0.08);
+  border-radius: 12px;
+  padding: 25px;
+  position: relative;
+  overflow: hidden;
+}
+
+.settings-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.2), transparent);
+}
+
+.section-header {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin: 0 0 20px 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(0, 242, 255, 0.06);
+  transition: all 0.3s ease;
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-item:hover {
+  background: rgba(0, 242, 255, 0.03);
+  padding: 16px 12px;
+  border-radius: 8px;
+  margin: 0 -12px;
+  padding: 16px 12px;
+}
+
+.setting-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label-title {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.label-description {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 50px;
+  height: 28px;
+  cursor: pointer;
+}
+
+.toggle-switch input {
+  display: none;
+}
+
+.slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 242, 255, 0.1);
+  border: 1px solid rgba(0, 242, 255, 0.15);
+  border-radius: 20px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+}
+
+.slider::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.toggle-switch input:checked + .slider {
+  background: linear-gradient(135deg, rgba(0, 242, 255, 0.8) 0%, rgba(0, 255, 136, 0.6) 100%);
+  border-color: rgba(0, 242, 255, 0.5);
+}
+
+.toggle-switch input:checked + .slider::after {
+  left: 26px;
+}
+
+.theme-select {
+  background: rgba(0, 242, 255, 0.06);
+  border: 1px solid rgba(0, 242, 255, 0.15);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.theme-select:hover {
+  border-color: rgba(0, 242, 255, 0.4);
+  background: rgba(0, 242, 255, 0.1);
+}
+
+.theme-select option {
+  background: var(--bg-dark);
+  color: var(--text-primary);
+}
+
+.about-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.about-info p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.about-info p:first-child {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* ── GPU Status Indicator ── */
+.gpu-status-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gpu-status-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.gpu-status-icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gpu-icon-active {
+  color: #00ff88;
+  filter: drop-shadow(0 0 6px rgba(0, 255, 136, 0.4));
+}
+
+.gpu-icon-crashed {
+  color: #ff4466;
+  filter: drop-shadow(0 0 6px rgba(255, 68, 102, 0.4));
+}
+
+.gpu-status-icon-wrap:has(.gpu-icon-active) {
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+}
+
+.gpu-status-icon-wrap:has(.gpu-icon-crashed) {
+  background: rgba(255, 68, 102, 0.08);
+  border: 1px solid rgba(255, 68, 102, 0.15);
+}
+
+.gpu-status-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gpu-status-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.gpu-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  width: fit-content;
+}
+
+.gpu-status-badge.active {
+  color: #00ff88;
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+}
+
+.gpu-status-badge.crashed {
+  color: #ff4466;
+  background: rgba(255, 68, 102, 0.1);
+  border: 1px solid rgba(255, 68, 102, 0.2);
+}
+
+.gpu-status-detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid rgba(0, 242, 255, 0.06);
+}
+
+.gpu-detail-key {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.gpu-detail-value {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.section-title {
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: var(--text-primary);
+  margin: 0 0 20px 0;
+  position: relative;
+  padding-bottom: 10px;
+}
+
+.section-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 40px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+  border-radius: 2px;
+}

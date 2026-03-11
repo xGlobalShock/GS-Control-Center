@@ -1,0 +1,277 @@
+/* ═══════════════════════════════════════════════════════════════
+   AURORA — Single-Focus Showcase
+   Centered preset · Orb icon · Feature pills · No background
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Page ── */
+.aur {
+  --a-accent: #00f2ff;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 0 2rem;
+  transform: translateZ(0);
+  contain: layout style;
+}
+
+/* Make the OG header span full width */
+.aur > .page-header {
+  width: 100%;
+  padding: 0 2rem;
+  align-self: stretch;
+}
+
+/* ═══════════════════
+   Slide Content
+═══════════════════ */
+.aur-slide {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  max-width: 580px;
+  width: 100%;
+  padding: 1.5rem 1.5rem 0;
+  flex: 1;
+  justify-content: center;
+}
+
+/* ═══════════════════
+   Icon Orb
+═══════════════════ */
+.aur-orb {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 110px;
+  height: 110px;
+  margin-bottom: 1.25rem;
+}
+
+.aur-orb__ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid;
+}
+
+.aur-orb__ring--outer {
+  inset: 0;
+  border-color: color-mix(in srgb, var(--a-accent) 10%, transparent);
+  animation: aurRingSpin 20s linear infinite;
+  border-style: dashed;
+}
+
+.aur-orb__ring--inner {
+  inset: 12px;
+  border-color: color-mix(in srgb, var(--a-accent) 18%, transparent);
+  animation: aurRingSpin 12s linear infinite reverse;
+}
+
+@keyframes aurRingSpin {
+  to { transform: rotate(360deg); }
+}
+
+.aur-orb__glow {
+  position: absolute;
+  inset: 15px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--a-accent) 12%, transparent) 0%,
+    color-mix(in srgb, var(--a-accent) 3%, transparent) 60%,
+    transparent 100%
+  );
+}
+
+.aur-orb__icon {
+  position: relative;
+  z-index: 2;
+  color: var(--a-accent);
+  filter: drop-shadow(0 0 20px color-mix(in srgb, var(--a-accent) 40%, transparent));
+}
+
+/* ═══════════════════
+   Title
+═══════════════════ */
+.aur-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 6px;
+  text-align: center;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+  text-shadow: 0 0 30px color-mix(in srgb, var(--a-accent) 15%, transparent);
+}
+
+/* ── Difficulty badge ── */
+.aur-diff {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 3px 12px;
+  border-radius: 20px;
+  border: 1px solid;
+  margin-bottom: 10px;
+}
+.aur-diff--beginner     { color: #00ff88; border-color: rgba(0,255,136,0.2); background: rgba(0,255,136,0.05); }
+.aur-diff--intermediate { color: #ffc864; border-color: rgba(255,200,100,0.2); background: rgba(255,200,100,0.05); }
+.aur-diff--advanced     { color: #ff66ff; border-color: rgba(255,0,255,0.2); background: rgba(255,0,255,0.05); }
+
+/* ── Description ── */
+.aur-desc {
+  font-size: 0.8rem;
+  color: rgba(200,210,225,0.4);
+  text-align: center;
+  line-height: 1.65;
+  margin: 0 0 18px;
+  max-width: 420px;
+}
+
+/* ═══════════════════
+   Feature Pills
+═══════════════════ */
+.aur-features {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  max-width: 520px;
+}
+
+.aur-feat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.66rem;
+  color: rgba(200,210,225,0.55);
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.25s;
+}
+
+.aur-feat:hover {
+  background: color-mix(in srgb, var(--a-accent) 6%, transparent);
+  border-color: color-mix(in srgb, var(--a-accent) 15%, transparent);
+  color: rgba(230,235,245,0.8);
+}
+
+.aur-feat__icon {
+  color: var(--a-accent);
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════
+   Deploy Button
+═══════════════════ */
+.aur-deploy {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 48px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #fff;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--a-accent) 25%, rgba(0,0,0,0.6)) 0%,
+    color-mix(in srgb, var(--a-accent) 10%, rgba(0,0,0,0.6)) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--a-accent) 30%, transparent);
+  border-radius: 14px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.aur-deploy:hover:not(:disabled) {
+  box-shadow:
+    0 4px 30px color-mix(in srgb, var(--a-accent) 20%, transparent),
+    0 0 60px color-mix(in srgb, var(--a-accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--a-accent) 50%, transparent);
+}
+
+.aur-deploy:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.aur-deploy:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.aur-deploy__shimmer {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,0.07),
+    transparent
+  );
+  transition: none;
+}
+
+.aur-deploy:hover:not(:disabled) .aur-deploy__shimmer {
+  animation: aurShimmer 1.5s ease-in-out infinite;
+}
+
+.aur-deploy--busy .aur-deploy__shimmer {
+  animation: aurShimmer 1s ease-in-out infinite;
+}
+
+@keyframes aurShimmer {
+  0%   { left: -100%; }
+  100% { left: 200%; }
+}
+
+/* ── Spinner ── */
+.aur-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.15);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: aurSpin 0.7s linear infinite;
+}
+
+@keyframes aurSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ═══════════════════
+   Responsive
+═══════════════════ */
+@media (max-width: 600px) {
+  .aur { padding: 0 1rem 1.5rem; }
+  .aur-title { font-size: 1.5rem; }
+  .aur-orb { width: 80px; height: 80px; }
+  .aur-deploy { padding: 12px 32px; font-size: 0.78rem; }
+}
+

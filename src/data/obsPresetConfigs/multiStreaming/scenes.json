@@ -1,0 +1,50 @@
+{
+  "current_scene": "Untitled",
+  "current_program_scene": "Untitled",
+  "scene_order": [
+    {
+      "name": "Untitled"
+    }
+  ],
+  "scene_sources": {
+    "Untitled": {
+      "audio_devices": [
+        {
+          "name": "🎚️ Spotify",
+          "type": "wasapi_output_capture"
+        },
+        {
+          "name": "🎚️ Discord",
+          "type": "wasapi_output_capture"
+        },
+        {
+          "name": "🎚️ Mic",
+          "type": "wasapi_input_capture",
+          "filters": ["Noise Gate", "Noise Suppression", "Compressor", "3-Band Equalizer", "Limiter"]
+        }
+      ],
+      "video_sources": [
+        {
+          "name": "Game Capture",
+          "type": "game_capture"
+        }
+      ],
+      "alert_sources": [
+        {
+          "name": "🎚️ Twitch Alerts",
+          "type": "browser_source"
+        },
+        {
+          "name": "🎚️ SE Alerts",
+          "type": "browser_source"
+        }
+      ],
+      "overlay_sources": [
+        {
+          "name": "FPS Counter",
+          "type": "text_gdiplus"
+        }
+      ]
+    }
+  }
+}
