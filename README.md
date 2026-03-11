@@ -9,7 +9,7 @@ Whether you're setting up a **new gaming rig**, optimizing your **streaming setu
 **Real-time monitoring • Smart optimizations • One-click setup • No bloat**
 
 ![Status](https://img.shields.io/badge/Status-BETA-orange)
-![Version](https://img.shields.io/badge/Version-1.3.3-blue)
+![Version](https://img.shields.io/badge/Version-1.3.6-blue)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-blue)
 ![Electron](https://img.shields.io/badge/Electron-27-blueviolet)
 ![React](https://img.shields.io/badge/React-18-61dafb)
@@ -28,11 +28,7 @@ Download the latest installer from the newest release:
 # Installation
 
 1. Download the latest installer from **[GitHub Releases](https://github.com/xGlobalShock/GS-Control-Center/releases)**
-2. Run:
-
-```
-GS-Control-Center-Setup-x.x.x.exe
-```
+2. Run: ```GS-Control-Center-Setup-x.x.x.exe```
 
 ---
 
