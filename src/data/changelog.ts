@@ -9,6 +9,18 @@ export interface ChangelogEntry {
 }
 
 const changelog: ChangelogEntry[] = [
+  {
+    version: '1.3.7',
+    date: '2026-03-11',
+    highlights: 'Modular Architecture & Codebase Cleanup',
+    changes: [
+      { type: 'new', text: 'Project is now open source on GitHub.' },
+      { type: 'improved', text: 'Modular backend architecture for improved stability.' },
+      { type: 'improved', text: 'Reorganized project structure for cleaner code organization.' },
+      { type: 'fixed', text: 'Removed deprecated cleaner utilities.' },
+      { type: 'fixed', text: 'Resolved stale file references.' },
+    ],
+  },
 {
     version: '1.3.5',
     date: '2026-03-11',

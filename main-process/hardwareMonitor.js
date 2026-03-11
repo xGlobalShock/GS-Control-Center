@@ -688,11 +688,13 @@ function _startNvGpuPoll() {
   _realtimeNvGpuTimer = setInterval(poll, 3000);
 }
 
-function _startRealtimePush() {
+async function _startRealtimePush() {
   if (_realtimeTimer) return;
 
   if (!_rtPrimed) {
     _rtPrimed = true;
+    // Prime si.currentLoad() so the first real reading isn't cumulative-since-boot (80-100%)
+    try { await si.currentLoad(); } catch {}
   }
 
   _startLatencyPoll();
