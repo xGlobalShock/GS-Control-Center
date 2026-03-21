@@ -58,6 +58,9 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
     }
     setLoading(true);
     setUpdatedIds(new Set());
+    setPackages([]);
+    setPackageSizes({});
+    setProgress(null);
     try {
       const result = await window.electron.ipcRenderer.invoke('software:check-updates', true);
       if (result.success) {
@@ -90,22 +93,13 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
     }
   }, [addToast]);
 
-  // Silently load pre-warmed cached data when page becomes active (no loading spinner)
+  // When page becomes active, run a full update check and show loading indicator
   useEffect(() => {
     if (isActive && !hasScanned.current) {
       hasScanned.current = true;
-      (async () => {
-        if (!window.electron?.ipcRenderer) return;
-        try {
-          const result = await window.electron.ipcRenderer.invoke('software:check-updates');
-          if (result.success) {
-            setPackages(result.packages);
-            setLastChecked(new Date().toLocaleTimeString());
-          }
-        } catch {}
-      })();
+      checkUpdates();
     }
-  }, [isActive]);
+  }, [isActive, checkUpdates]);
 
   const handleCancelUpdate = async () => {
     if (!window.electron?.ipcRenderer) return;
@@ -247,10 +241,10 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
       />
 
       {/* Loading state */}
-      {loading && packages.length === 0 && (
+      {loading && (
         <div className="su-loading">
           <Loader2 size={32} className="su-spin" />
-          <p>Scanning installed packages…</p>
+          <p>Checking for updates…</p>
         </div>
       )}
 
@@ -269,7 +263,7 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
       )}
 
       {/* Update table */}
-      {packages.length > 0 && (
+      {!loading && packages.length > 0 && (
         <motion.div
           className="su-table-wrap"
           initial={{ opacity: 0, y: 15 }}
@@ -316,10 +310,12 @@ const SoftwareUpdates: React.FC<SoftwareUpdatesProps> = ({ isActive = false }) =
                       <span className="su-new-version">{pkg.available}</span>
                     </div>
                     <div className="su-cell su-cell--size">
-                      {packageSizes[pkg.id] ? (
+                      {packageSizes[pkg.id] === undefined ? (
+                        <span className="su-pkg-size su-pkg-size--loading">Loading…</span>
+                      ) : packageSizes[pkg.id] ? (
                         <span className="su-pkg-size">{packageSizes[pkg.id]}</span>
                       ) : (
-                        <span className="su-pkg-size su-pkg-size--loading">—</span>
+                        <span className="su-pkg-size su-pkg-size--failed">Unknown</span>
                       )}
                     </div>
                     <div className="su-cell su-cell--source">{pkg.source}</div>

@@ -115,16 +115,73 @@ const Cleaner: React.FC = () => {
         const result: CleanResult = await window.electron.ipcRenderer.invoke(channel);
         
         if (result.success) {
-          // Build a single consistent message: "files deleted — size freed"
-          const parts: string[] = [];
-          if (result.filesDeleted !== undefined && result.filesDeleted > 0) {
-            parts.push(`${result.filesDeleted} file${result.filesDeleted !== 1 ? 's' : ''} deleted`);
+          const filesText = result.filesDeleted !== undefined ? `${result.filesDeleted} file${result.filesDeleted !== 1 ? 's' : ''}` : null;
+          const sizeText = result.spaceSaved ? result.spaceSaved : null;
+
+          const dnsMatch = typeof result.spaceSaved === 'string' ? result.spaceSaved.match(/(\d+)\s*DNS entries removed/i) : null;
+          const mbMatch = typeof result.spaceSaved === 'string' ? result.spaceSaved.match(/(\d+(?:\.\d+)?)\s*(MB|GB|KB)/i) : null;
+
+          const normalizedSizeText = (() => {
+            if (!sizeText || !mbMatch) return sizeText;
+            const value = Number(mbMatch[1]);
+            const unit = mbMatch[2].toUpperCase();
+            if (unit === 'MB' && value >= 1000) {
+              return `${(value / 1024).toFixed(2)} GB`;
+            }
+            if (unit === 'KB') {
+              return `${value.toFixed(0)} KB`;
+            }
+            if (unit === 'GB') {
+              return `${value.toFixed(2)} GB`;
+            }
+            return `${value.toFixed(2)} ${unit}`;
+          })();
+
+        if (filesText && mbMatch) {
+          addToast(
+            <span>
+              Successfully removed <strong className="toast-highlight">{filesText}</strong>, freeing{' '}
+              <strong className="toast-highlight">{normalizedSizeText}</strong>
+            </span>,
+            'success'
+          );
+        } else if (filesText && normalizedSizeText) {
+          addToast(
+            <span>
+              Successfully removed <strong className="toast-highlight">{filesText}</strong>
+              {normalizedSizeText ? <> (saved <strong className="toast-highlight">{normalizedSizeText}</strong>)</> : ''}
+            </span>,
+            'success'
+          );
+        } else if (dnsMatch) {
+          addToast(
+            <span>
+              Successfully removed <strong className="toast-highlight">{dnsMatch[1]} DNS entries</strong>
+            </span>,
+            'success'
+          );
+        } else if (typeof result.spaceSaved === 'string' && /disk space (now )?freed/i.test(result.spaceSaved)) {
+          addToast(result.message || 'Recycle bin emptied successfully', 'success');
+        } else if (normalizedSizeText) {
+          if (/standby list cleared successfully/i.test(result.message || '')) {
+            addToast(
+              <span>
+                Purged <strong className="toast-highlight">{normalizedSizeText}</strong> of cached memory
+              </span>,
+              'success'
+            );
+          } else {
+            addToast(
+              <span>
+                Successfully freed <strong className="toast-highlight">{normalizedSizeText}</strong>
+              </span>,
+              'success'
+            );
           }
-          if (result.spaceSaved && /^\d/.test(result.spaceSaved)) {
-            parts.push(`${result.spaceSaved} freed`);
-          }
-          const message = parts.length > 0 ? parts.join(' — ') : (result.message || 'Cleanup complete');
+        } else {
+          const message = result.message || 'Cleanup complete';
           addToast(message, 'success');
+        }
         } else {
           addToast(result.message || 'Cleanup failed', 'error');
         }
