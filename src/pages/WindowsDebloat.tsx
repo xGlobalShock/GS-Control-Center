@@ -10,6 +10,7 @@ import {
   Trash2,
   AlertTriangle,
   LayoutGrid,
+  Lock,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { useToast } from '../contexts/ToastContext';
@@ -38,6 +39,8 @@ interface WindowsDebloatProps {
 const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false }) => {
   const { addToast } = useToast();
 
+  const IS_COMING_SOON = true; // LOCK / UNLOCK PAGE
+
   /* ── State ── */
   const [tab, setTab] = useState<DebloatTab>('apps');
   const [items, setItems] = useState<DebloatItem[]>([]);
@@ -52,23 +55,24 @@ const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false }) => 
 
   /* ── IPC channel map ── */
   const LIST_CHANNEL: Record<DebloatTab, string> = {
-    apps:         'wdebloat:list-apps',
+    apps: 'wdebloat:list-apps',
     capabilities: 'wdebloat:list-capabilities',
-    features:     'wdebloat:list-features',
+    features: 'wdebloat:list-features',
   };
   const REMOVE_BULK_CHANNEL: Record<DebloatTab, string> = {
-    apps:         'wdebloat:remove-apps',
+    apps: 'wdebloat:remove-apps',
     capabilities: 'wdebloat:remove-capabilities',
-    features:     'wdebloat:remove-features',
+    features: 'wdebloat:remove-features',
   };
   const INSTALL_BULK_CHANNEL: Record<DebloatTab, string> = {
-    apps:         'wdebloat:install-apps',
+    apps: 'wdebloat:install-apps',
     capabilities: 'wdebloat:add-capabilities',
-    features:     'wdebloat:add-features',
+    features: 'wdebloat:add-features',
   };
 
   /* ── Fetch list for the current tab ── */
   const fetchItems = useCallback(async (targetTab: DebloatTab = tab) => {
+    if (IS_COMING_SOON) return;
     if (!window.electron?.ipcRenderer) return;
     setLoading(true);
     setSelected(new Set());
@@ -217,14 +221,14 @@ const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false }) => 
   const notInstalledCount = items.filter(i => !i.installed).length;
 
   /* ── Selected item breakdown ── */
-  const selectedInstalled    = Array.from(selected).filter(id => items.find(i => i.id === id)?.installed).length;
+  const selectedInstalled = Array.from(selected).filter(id => items.find(i => i.id === id)?.installed).length;
   const selectedNotInstalled = selected.size - selectedInstalled;
 
   /* ── Tab labels ── */
   const TAB_LABELS: Record<DebloatTab, string> = {
-    apps:         'Windows Apps',
+    apps: 'Windows Apps',
     capabilities: 'Capabilities',
-    features:     'Optional Features',
+    features: 'Optional Features',
   };
 
   return (
@@ -248,219 +252,230 @@ const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false }) => 
         }
       />
 
-      {/* ── Not-elevated warning ── */}
-      {!isElevated && (
-        <div className="wd-elevate-warn">
-          <AlertTriangle size={15} />
-          <span>
-            Some actions require <strong>Administrator</strong> privileges. Restart the app as admin to enable debloat operations.
-          </span>
+      {IS_COMING_SOON && (
+        <div className="wd-lock-overlay">
+          <Lock size={36} strokeWidth={1.5} />
+          <span className="wd-lock-caption">Coming Soon</span>
+          <span className="wd-lock-sub">Windows Debloat is currently in development</span>
         </div>
       )}
 
-      {/* ── Tab Switcher ── */}
-      <div className="wd-tabs">
-        {(['apps', 'capabilities', 'features'] as DebloatTab[]).map(t => (
-          <button
-            key={t}
-            className={`wd-tab${tab === t ? ' wd-tab--active' : ''}`}
-            onClick={() => switchTab(t)}
-            disabled={busy}
-          >
-            <LayoutGrid size={12} />
-            {TAB_LABELS[t]}
-          </button>
-        ))}
-      </div>
+      {/* ── Page Content (Locked) ── */}
+      <div className={`wd-content ${IS_COMING_SOON ? 'wd-content--locked' : ''}`}>
+        {/* ── Not-elevated warning ── */}
+        {!isElevated && (
+          <div className="wd-elevate-warn">
+            <AlertTriangle size={15} />
+            <span>
+              Some actions require <strong>Administrator</strong> privileges. Restart the app as admin to enable debloat operations.
+            </span>
+          </div>
+        )}
 
-      {/* ── Toolbar ── */}
-      <div className="wd-toolbar">
-        <div className="wd-toolbar-l">
-          {/* Search */}
-          <div className="wd-search-wrap">
-            <Search size={12} className="wd-search-icon" />
-            <input
-              className="wd-search"
-              placeholder={`Search ${TAB_LABELS[tab].toLowerCase()}…`}
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              disabled={loading || busy}
-            />
-            {searchQuery && (
-              <button className="wd-search-x" onClick={() => setSearchQuery('')}>
-                <X size={11} />
-              </button>
+        {/* ── Tab Switcher ── */}
+        <div className="wd-tabs">
+          {(['apps', 'capabilities', 'features'] as DebloatTab[]).map(t => (
+            <button
+              key={t}
+              className={`wd-tab${tab === t ? ' wd-tab--active' : ''}`}
+              onClick={() => switchTab(t)}
+              disabled={busy}
+            >
+              <LayoutGrid size={12} />
+              {TAB_LABELS[t]}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Toolbar ── */}
+        <div className="wd-toolbar">
+          <div className="wd-toolbar-l">
+            {/* Search */}
+            <div className="wd-search-wrap">
+              <Search size={12} className="wd-search-icon" />
+              <input
+                className="wd-search"
+                placeholder={`Search ${TAB_LABELS[tab].toLowerCase()}…`}
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                disabled={loading || busy}
+              />
+              {searchQuery && (
+                <button className="wd-search-x" onClick={() => setSearchQuery('')}>
+                  <X size={11} />
+                </button>
+              )}
+            </div>
+
+            {/* Progress msg during bulk ops */}
+            {busy && progressMsg && (
+              <span className="wd-progress-msg">{progressMsg}</span>
             )}
           </div>
 
-          {/* Progress msg during bulk ops */}
-          {busy && progressMsg && (
-            <span className="wd-progress-msg">{progressMsg}</span>
+          <div className="wd-toolbar-r">
+            {/* Install selected */}
+            <button
+              className="wd-btn wd-btn--install"
+              onClick={handleInstallSelected}
+              disabled={loading || busy || selectedNotInstalled === 0}
+              title={`Install ${selectedNotInstalled} selected item${selectedNotInstalled !== 1 ? 's' : ''}`}
+            >
+              {busy && selectedNotInstalled > 0
+                ? <Loader2 size={12} className="wd-spin" />
+                : <Download size={12} />
+              }
+              Install Selected
+              {selectedNotInstalled > 0 && <span style={{ opacity: 0.7 }}>({selectedNotInstalled})</span>}
+            </button>
+
+            {/* Uninstall selected */}
+            <button
+              className="wd-btn wd-btn--remove"
+              onClick={handleRemoveSelected}
+              disabled={loading || busy || selectedInstalled === 0}
+              title={`Remove ${selectedInstalled} selected item${selectedInstalled !== 1 ? 's' : ''}`}
+            >
+              {busy && selectedInstalled > 0
+                ? <Loader2 size={12} className="wd-spin" />
+                : <Trash2 size={12} />
+              }
+              Uninstall Selected
+              {selectedInstalled > 0 && <span style={{ opacity: 0.7 }}>({selectedInstalled})</span>}
+            </button>
+
+            {/* Refresh */}
+            <button
+              className="wd-icon-btn"
+              onClick={() => fetchItems(tab)}
+              disabled={loading || busy}
+              title="Refresh"
+            >
+              <RefreshCw size={13} className={loading ? 'wd-spin' : ''} />
+            </button>
+          </div>
+        </div>
+
+        {/* ── Selection Bar ── */}
+        <div className="wd-sel-bar">
+          <label className="wd-check-label">
+            <input
+              type="checkbox"
+              className="wd-check"
+              checked={allFilteredSelected}
+              onChange={allFilteredSelected ? clearSelection : selectAll}
+              disabled={loading || busy}
+            />
+            Select All
+          </label>
+          <label className="wd-check-label">
+            <input
+              type="checkbox"
+              className="wd-check"
+              checked={filtered.filter(i => i.installed && !i.nonRemovable).length > 0 &&
+                filtered.filter(i => i.installed && !i.nonRemovable).every(i => selected.has(i.id))}
+              onChange={e => e.target.checked ? selectInstalled() : clearSelection()}
+              disabled={loading || busy}
+            />
+            Select All Installed
+          </label>
+          <label className="wd-check-label">
+            <input
+              type="checkbox"
+              className="wd-check"
+              checked={filtered.filter(i => !i.installed && !i.nonRemovable).length > 0 &&
+                filtered.filter(i => !i.installed && !i.nonRemovable).every(i => selected.has(i.id))}
+              onChange={e => e.target.checked ? selectNotInstalled() : clearSelection()}
+              disabled={loading || busy}
+            />
+            Select All Not Installed
+          </label>
+
+          {selected.size > 0 && (
+            <span className="wd-sel-count">{selected.size} selected</span>
           )}
         </div>
 
-        <div className="wd-toolbar-r">
-          {/* Install selected */}
-          <button
-            className="wd-btn wd-btn--install"
-            onClick={handleInstallSelected}
-            disabled={loading || busy || selectedNotInstalled === 0}
-            title={`Install ${selectedNotInstalled} selected item${selectedNotInstalled !== 1 ? 's' : ''}`}
-          >
-            {busy && selectedNotInstalled > 0
-              ? <Loader2 size={12} className="wd-spin" />
-              : <Download size={12} />
-            }
-            Install Selected
-            {selectedNotInstalled > 0 && <span style={{ opacity: 0.7 }}>({selectedNotInstalled})</span>}
-          </button>
+        {/* ── Body ── */}
+        <div className="wd-body">
+          <AnimatePresence mode="wait">
+            {loading ? (
+              <motion.div
+                key="loading"
+                className="wd-loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <Loader2 size={28} className="wd-spin" />
+                <span>Loading {TAB_LABELS[tab].toLowerCase()}…</span>
+              </motion.div>
+            ) : filtered.length === 0 ? (
+              <motion.div
+                key="empty"
+                className="wd-empty"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <PackageX size={32} className="wd-empty-icon" />
+                <span>{searchQuery ? 'No items match your search' : `No ${TAB_LABELS[tab].toLowerCase()} found`}</span>
+              </motion.div>
+            ) : (
+              <motion.div
+                key={`grid-${tab}`}
+                className="wd-grid"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                {filtered.map(item => {
+                  const isSelected = selected.has(item.id);
+                  const dotClass = item.installed ? 'wd-dot wd-dot--on' : 'wd-dot wd-dot--off';
+                  const cardClass = [
+                    'wd-card',
+                    isSelected ? 'wd-card--selected' : '',
+                    item.nonRemovable ? 'wd-card--non-removable' : '',
+                  ].filter(Boolean).join(' ');
 
-          {/* Uninstall selected */}
-          <button
-            className="wd-btn wd-btn--remove"
-            onClick={handleRemoveSelected}
-            disabled={loading || busy || selectedInstalled === 0}
-            title={`Remove ${selectedInstalled} selected item${selectedInstalled !== 1 ? 's' : ''}`}
-          >
-            {busy && selectedInstalled > 0
-              ? <Loader2 size={12} className="wd-spin" />
-              : <Trash2 size={12} />
-            }
-            Uninstall Selected
-            {selectedInstalled > 0 && <span style={{ opacity: 0.7 }}>({selectedInstalled})</span>}
-          </button>
+                  return (
+                    <div
+                      key={item.id}
+                      className={cardClass}
+                      onClick={() => toggleItem(item.id, item.nonRemovable)}
+                      title={item.nonRemovable ? 'This component cannot be removed' : undefined}
+                    >
+                      {/* Checkbox */}
+                      <div className="wd-card-cb" />
 
-          {/* Refresh */}
-          <button
-            className="wd-icon-btn"
-            onClick={() => fetchItems(tab)}
-            disabled={loading || busy}
-            title="Refresh"
-          >
-            <RefreshCw size={13} className={loading ? 'wd-spin' : ''} />
-          </button>
-        </div>
-      </div>
+                      {/* Status dot */}
+                      <span className={dotClass} />
 
-      {/* ── Selection Bar ── */}
-      <div className="wd-sel-bar">
-        <label className="wd-check-label">
-          <input
-            type="checkbox"
-            className="wd-check"
-            checked={allFilteredSelected}
-            onChange={allFilteredSelected ? clearSelection : selectAll}
-            disabled={loading || busy}
-          />
-          Select All
-        </label>
-        <label className="wd-check-label">
-          <input
-            type="checkbox"
-            className="wd-check"
-            checked={filtered.filter(i => i.installed && !i.nonRemovable).length > 0 &&
-              filtered.filter(i => i.installed && !i.nonRemovable).every(i => selected.has(i.id))}
-            onChange={e => e.target.checked ? selectInstalled() : clearSelection()}
-            disabled={loading || busy}
-          />
-          Select All Installed
-        </label>
-        <label className="wd-check-label">
-          <input
-            type="checkbox"
-            className="wd-check"
-            checked={filtered.filter(i => !i.installed && !i.nonRemovable).length > 0 &&
-              filtered.filter(i => !i.installed && !i.nonRemovable).every(i => selected.has(i.id))}
-            onChange={e => e.target.checked ? selectNotInstalled() : clearSelection()}
-            disabled={loading || busy}
-          />
-          Select All Not Installed
-        </label>
+                      {/* Info */}
+                      <div className="wd-card-info">
+                        <span className="wd-card-name">{item.name}</span>
+                        {tab === 'apps' && item.version && (
+                          <span className="wd-card-sub">v{item.version}</span>
+                        )}
+                        {tab !== 'apps' && item.rawName && item.rawName !== item.name && (
+                          <span className="wd-card-sub" title={item.rawName}>{item.rawName}</span>
+                        )}
+                      </div>
 
-        {selected.size > 0 && (
-          <span className="wd-sel-count">{selected.size} selected</span>
-        )}
-      </div>
-
-      {/* ── Body ── */}
-      <div className="wd-body">
-        <AnimatePresence mode="wait">
-          {loading ? (
-            <motion.div
-              key="loading"
-              className="wd-loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <Loader2 size={28} className="wd-spin" />
-              <span>Loading {TAB_LABELS[tab].toLowerCase()}…</span>
-            </motion.div>
-          ) : filtered.length === 0 ? (
-            <motion.div
-              key="empty"
-              className="wd-empty"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <PackageX size={32} className="wd-empty-icon" />
-              <span>{searchQuery ? 'No items match your search' : `No ${TAB_LABELS[tab].toLowerCase()} found`}</span>
-            </motion.div>
-          ) : (
-            <motion.div
-              key={`grid-${tab}`}
-              className="wd-grid"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            >
-              {filtered.map(item => {
-                const isSelected = selected.has(item.id);
-                const dotClass = item.installed ? 'wd-dot wd-dot--on' : 'wd-dot wd-dot--off';
-                const cardClass = [
-                  'wd-card',
-                  isSelected ? 'wd-card--selected' : '',
-                  item.nonRemovable ? 'wd-card--non-removable' : '',
-                ].filter(Boolean).join(' ');
-
-                return (
-                  <div
-                    key={item.id}
-                    className={cardClass}
-                    onClick={() => toggleItem(item.id, item.nonRemovable)}
-                    title={item.nonRemovable ? 'This component cannot be removed' : undefined}
-                  >
-                    {/* Checkbox */}
-                    <div className="wd-card-cb" />
-
-                    {/* Status dot */}
-                    <span className={dotClass} />
-
-                    {/* Info */}
-                    <div className="wd-card-info">
-                      <span className="wd-card-name">{item.name}</span>
-                      {tab === 'apps' && item.version && (
-                        <span className="wd-card-sub">v{item.version}</span>
-                      )}
-                      {tab !== 'apps' && item.rawName && item.rawName !== item.name && (
-                        <span className="wd-card-sub" title={item.rawName}>{item.rawName}</span>
+                      {/* Badge for capabilities / features */}
+                      {tab !== 'apps' && (
+                        <span className={`wd-card-badge ${item.installed ? 'wd-card-badge--enabled' : 'wd-card-badge--disabled'}`}>
+                          {item.installed ? (tab === 'features' ? 'Enabled' : 'Installed') : (tab === 'features' ? 'Disabled' : 'Not Installed')}
+                        </span>
                       )}
                     </div>
-
-                    {/* Badge for capabilities / features */}
-                    {tab !== 'apps' && (
-                      <span className={`wd-card-badge ${item.installed ? 'wd-card-badge--enabled' : 'wd-card-badge--disabled'}`}>
-                        {item.installed ? (tab === 'features' ? 'Enabled' : 'Installed') : (tab === 'features' ? 'Disabled' : 'Not Installed')}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </motion.div>
-          )}
-        </AnimatePresence>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </motion.div>
   );

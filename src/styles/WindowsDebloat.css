@@ -10,6 +10,57 @@
   contain: layout style;
 }
 
+.wd-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+/* ── Locked Page Overlay ── */
+.wd-content--locked {
+  opacity: 0.25;
+  filter: grayscale(0.5) blur(1px);
+  pointer-events: none;
+  user-select: none;
+}
+
+.wd-lock-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: transparent;
+  z-index: 10;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.wd-lock-overlay svg {
+  opacity: 0.8;
+  color: #60c8ff;
+  filter: drop-shadow(0 0 8px rgba(96, 200, 255, 0.4));
+}
+
+.wd-lock-caption {
+  font-size: 16px;
+  font-weight: 700;
+  color: white;
+}
+
+.wd-lock-sub {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(145, 168, 195, 0.6);
+  letter-spacing: 1px;
+}
+
 /* ════════════════════════════════
    TOOLBAR
 ════════════════════════════════ */
@@ -83,7 +134,9 @@
   transition: color 0.15s;
 }
 
-.wd-search-x:hover { color: rgba(195, 215, 235, 0.8); }
+.wd-search-x:hover {
+  color: rgba(195, 215, 235, 0.8);
+}
 
 /* Icon button (refresh) */
 .wd-icon-btn {
@@ -105,7 +158,10 @@
   color: rgba(195, 215, 235, 0.9);
 }
 
-.wd-icon-btn:disabled { opacity: 0.35; cursor: default; }
+.wd-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
 
 /* Action buttons */
 .wd-btn {
@@ -124,8 +180,14 @@
   white-space: nowrap;
 }
 
-.wd-btn:active:not(:disabled) { transform: scale(0.97); }
-.wd-btn:disabled { opacity: 0.35; cursor: default; }
+.wd-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.wd-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
 
 .wd-btn--install {
   background: rgba(16, 185, 129, 0.15);
@@ -194,17 +256,26 @@
 .wd-tab::after {
   content: '';
   position: absolute;
-  bottom: 0; left: 0; right: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
   height: 2px;
   background: transparent;
   transition: background 0.15s;
   border-radius: 2px 2px 0 0;
 }
 
-.wd-tab:hover:not(.wd-tab--active) { color: rgba(195, 215, 235, 0.65); }
+.wd-tab:hover:not(.wd-tab--active) {
+  color: rgba(195, 215, 235, 0.65);
+}
 
-.wd-tab--active { color: #60c8ff; }
-.wd-tab--active::after { background: #60c8ff; }
+.wd-tab--active {
+  color: #60c8ff;
+}
+
+.wd-tab--active::after {
+  background: #60c8ff;
+}
 
 /* ════════════════════════════════
    SELECTION BAR
@@ -230,7 +301,9 @@
   transition: color 0.15s;
 }
 
-.wd-check-label:hover { color: rgba(195, 215, 235, 0.75); }
+.wd-check-label:hover {
+  color: rgba(195, 215, 235, 0.75);
+}
 
 .wd-check {
   width: 13px;
@@ -277,8 +350,14 @@
   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
-.wd-body::-webkit-scrollbar { width: 5px; }
-.wd-body::-webkit-scrollbar-track { background: transparent; }
+.wd-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.wd-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .wd-body::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 99px;
@@ -297,7 +376,9 @@
   font-size: 13px;
 }
 
-.wd-empty-icon { opacity: 0.35; }
+.wd-empty-icon {
+  opacity: 0.35;
+}
 
 /* GRID */
 .wd-grid {
@@ -380,8 +461,16 @@
   box-shadow: 0 0 5px currentColor;
 }
 
-.wd-dot--on  { background: #34d399; color: #34d399; }
-.wd-dot--off { background: rgba(145, 168, 195, 0.3); color: transparent; box-shadow: none; }
+.wd-dot--on {
+  background: #34d399;
+  color: #34d399;
+}
+
+.wd-dot--off {
+  background: rgba(145, 168, 195, 0.3);
+  color: transparent;
+  box-shadow: none;
+}
 
 /* Card text */
 .wd-card-info {
@@ -447,6 +536,11 @@
 
 /* Spin animation */
 @keyframes wd-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
-.wd-spin { animation: wd-spin 0.8s linear infinite; }
+
+.wd-spin {
+  animation: wd-spin 0.8s linear infinite;
+}

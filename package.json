@@ -1,6 +1,6 @@
 {
   "name": "gs-control-center",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "GS Control Center - Advanced System Optimization Tool",
   "author": "GS Control Center Team",
   "main": "electron/main.js",

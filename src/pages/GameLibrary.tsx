@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, Monitor, Cpu, ArrowLeft, Copy, Info, Shield, Gamepad2, Check, HardDrive, CheckCircle, XCircle, Zap, Settings, RefreshCw, Save, RotateCcw, ChevronDown, ChevronUp, AlertTriangle, Lock, Unlock, Eye, User } from 'lucide-react';
+import { Search, X, Monitor, Cpu, ArrowLeft, Copy, Info, Gamepad2, HardDrive, CheckCircle, XCircle, Zap, Settings, RefreshCw, AlertTriangle, Lock, Unlock, Eye, User } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import type { HardwareInfo } from '../App';
 import { GAME_REQUIREMENTS } from '../data/gameRequirements';
@@ -77,23 +77,6 @@ const GAME_PROFILE_SETTINGS: Record<string, ProfileSettingDef[]> = {
 
 const coreKeys = new Set(APEX_PROFILE_SETTINGS.filter(s => s.section === 'core').map(s => s.key));
 
-/** Toggle settings: these keys are considered "on" (performance mode) at these values */
-const TOGGLE_PERF_VALUES: Record<string, { on: string; off: string }> = {
-  'setting.fullscreen': { on: '1', off: '0' },
-  'setting.mat_picmip': { on: '4', off: '0' },
-  'setting.mat_forceaniso': { on: '1', off: '4' },
-  'setting.mat_ambient_occlusion_enabled': { on: '0', off: '1' },
-  'setting.csm_coverage': { on: '1', off: '3' },
-  'setting.stream_memory': { on: '0', off: '300000' },
-  'setting.gpu_level': { on: '0', off: '3' },
-  'setting.shadow_enable': { on: '0', off: '1' },
-  'setting.volumetric_lighting': { on: '0', off: '1' },
-  'setting.r_lod_switch_scale': { on: '0.5', off: '1' },
-  'setting.particle_effects': { on: '0', off: '2' },
-  'setting.impact_marks': { on: '0', off: '1' },
-  'setting.ragdoll': { on: '0', off: '1' },
-};
-
 /* ── Resolution & Aspect Ratio data ── */
 interface ResolutionEntry { w: number; h: number; label: string; native?: boolean; }
 const ASPECT_RESOLUTIONS: Record<string, ResolutionEntry[]> = {
@@ -120,9 +103,9 @@ const ASPECT_KEYS = Object.keys(ASPECT_RESOLUTIONS);
 
 function classifyAspectRatio(w: number, h: number): string {
   const ratio = w / h;
-  if (Math.abs(ratio - 16/9) < 0.05) return '16:9';
-  if (Math.abs(ratio - 16/10) < 0.08) return '16:10';
-  if (Math.abs(ratio - 4/3) < 0.1 || Math.abs(ratio - 5/4) < 0.1) return '4:3 / 5:4';
+  if (Math.abs(ratio - 16 / 9) < 0.05) return '16:9';
+  if (Math.abs(ratio - 16 / 10) < 0.08) return '16:10';
+  if (Math.abs(ratio - 4 / 3) < 0.1 || Math.abs(ratio - 5 / 4) < 0.1) return '4:3 / 5:4';
   return '16:10'; // most custom stretched resolutions fall here
 }
 
@@ -160,13 +143,20 @@ interface VideoControlDef {
 
 const APEX_VIDEO_CONTROLS: VideoControlDef[] = [
   // Matches in-game ADVANCED order exactly
-  { key: 'setting.mat_vsync_mode', label: 'V-Sync', control: 'select',
-    options: [{ label: 'Disabled', value: '0' }, { label: 'Double Buffered', value: '1' }, { label: 'Triple Buffered', value: '2' }, { label: 'Adaptive', value: '3' }, { label: 'Adaptive (1/2 Rate)', value: '4' }] },
-  { key: 'setting.mat_nvidia_reflex_enabled', label: 'Nvidia Reflex', control: 'select',
-    options: [{ label: 'Disabled', value: '0' }, { label: 'Enabled', value: '1' }, { label: 'Enabled + Boost', value: '2' }] },
-  { key: 'setting.mat_antialias_mode', label: 'Anti-aliasing', control: 'select',
-    options: [{ label: 'None', value: '0' }, { label: 'TSAA', value: '12' }] },
-  { key: 'setting.stream_memory', label: 'Texture Streaming Budget', control: 'select',
+  {
+    key: 'setting.mat_vsync_mode', label: 'V-Sync', control: 'select',
+    options: [{ label: 'Disabled', value: '0' }, { label: 'Double Buffered', value: '1' }, { label: 'Triple Buffered', value: '2' }, { label: 'Adaptive', value: '3' }, { label: 'Adaptive (1/2 Rate)', value: '4' }]
+  },
+  {
+    key: 'setting.mat_nvidia_reflex_enabled', label: 'Nvidia Reflex', control: 'select',
+    options: [{ label: 'Disabled', value: '0' }, { label: 'Enabled', value: '1' }, { label: 'Enabled + Boost', value: '2' }]
+  },
+  {
+    key: 'setting.mat_antialias_mode', label: 'Anti-aliasing', control: 'select',
+    options: [{ label: 'None', value: '0' }, { label: 'TSAA', value: '12' }]
+  },
+  {
+    key: 'setting.stream_memory', label: 'Texture Streaming Budget', control: 'select',
     options: [
       { label: 'None', value: '0' },
       { label: 'Very Low (2 GB)', value: '160000' },
@@ -175,89 +165,102 @@ const APEX_VIDEO_CONTROLS: VideoControlDef[] = [
       { label: 'High (4 GB)', value: '1000000' },
       { label: 'Very High (6 GB)', value: '2000000' },
       { label: 'Ultra (8 GB)', value: '3000000' },
-    ] },
-  { key: 'setting.mat_forceaniso', label: 'Texture Filtering', control: 'select',
+    ]
+  },
+  {
+    key: 'setting.mat_forceaniso', label: 'Texture Filtering', control: 'select',
     options: [
       { label: 'Bilinear', value: '1' },
       { label: 'Trilinear', value: '2' },
       { label: 'Anisotropic 2x', value: '4' },
       { label: 'Anisotropic 4x', value: '8' },
       { label: 'Anisotropic 8x', value: '16' },
-    ] },
-  { key: 'setting.ssao_quality', label: 'Ambient Occlusion Quality', control: 'select',
+    ]
+  },
+  {
+    key: 'setting.ssao_quality', label: 'Ambient Occlusion Quality', control: 'select',
     options: [
       { label: 'Disabled', value: '0' },
       { label: 'Low', value: '1' },
       { label: 'Medium', value: '2' },
       { label: 'High', value: '3' },
       { label: 'Very High', value: '4' },
-    ] },
-  { key: 'setting.csm_coverage', label: 'Sun Shadow Coverage', control: 'toggle',
-    options: [{ label: 'Low', value: '1' }, { label: 'High', value: '2' }] },
-  { key: 'setting.csm_cascade_res', label: 'Sun Shadow Detail', control: 'toggle',
+    ]
+  },
+  {
+    key: 'setting.csm_coverage', label: 'Sun Shadow Coverage', control: 'toggle',
+    options: [{ label: 'Low', value: '1' }, { label: 'High', value: '2' }]
+  },
+  {
+    key: 'setting.csm_cascade_res', label: 'Sun Shadow Detail', control: 'toggle',
     options: [
       { label: 'Low', value: '512' },
       { label: 'High', value: '1024' }
-    ] },
+    ]
+  },
 
-  { key: 'setting.shadow_depth_upres_factor_max', label: 'Spot Shadow Detail', control: 'select',
+  {
+    key: 'setting.shadow_depth_upres_factor_max', label: 'Spot Shadow Detail', control: 'select',
     options: [
       { label: 'Disabled', value: '0' },
       { label: 'Low', value: '1' },
       { label: 'High', value: '2' },
       { label: 'Very High', value: '3' },
       { label: 'Ultra', value: '4' },
-    ] },
-  { key: 'setting.volumetric_lighting', label: 'Volumetric Lighting', control: 'toggle',
-    options: [{ label: 'Disabled', value: '0' }, { label: 'Enabled', value: '1' }] },
-  { key: 'setting.shadow_enable', label: 'Dynamic Spot Shadows', control: 'toggle',
-    options: [{ label: 'Disabled', value: '0' }, { label: 'Enabled', value: '1' }] },
-  { key: 'setting.r_lod_switch_scale', label: 'Model Detail', control: 'select',
+    ]
+  },
+  {
+    key: 'setting.volumetric_lighting', label: 'Volumetric Lighting', control: 'toggle',
+    options: [{ label: 'Disabled', value: '0' }, { label: 'Enabled', value: '1' }]
+  },
+  {
+    key: 'setting.shadow_enable', label: 'Dynamic Spot Shadows', control: 'toggle',
+    options: [{ label: 'Disabled', value: '0' }, { label: 'Enabled', value: '1' }]
+  },
+  {
+    key: 'setting.r_lod_switch_scale', label: 'Model Detail', control: 'select',
     options: [
       { label: 'Low', value: '0.6' },
       { label: 'Medium', value: '0.8' },
       { label: 'High', value: '1' },
       { label: 'Very High', value: '2' },
-    ] },
-  { key: 'setting.mat_picmip', label: 'Map Detail', control: 'select',
+    ]
+  },
+  {
+    key: 'setting.mat_picmip', label: 'Map Detail', control: 'select',
     options: [
       { label: 'Very Low', value: '3' },
       { label: 'Low', value: '2' },
       { label: 'Medium', value: '1' },
       { label: 'High', value: '0' },
-    ] },
-  { key: 'setting.particle_cpu_level', label: 'Effects Detail', control: 'select',
+    ]
+  },
+  {
+    key: 'setting.particle_cpu_level', label: 'Effects Detail', control: 'select',
     options: [
       { label: 'Low', value: '0' },
       { label: 'Medium', value: '1' },
       { label: 'High', value: '2' },
-    ] },
-  { key: 'setting.r_decals', label: 'Impact Marks', control: 'select',
+    ]
+  },
+  {
+    key: 'setting.r_decals', label: 'Impact Marks', control: 'select',
     options: [
       { label: 'Disabled', value: '0' },
       { label: 'Low', value: '64' },
       { label: 'Medium', value: '128' },
       { label: 'High', value: '256' },
-    ] },
-  { key: 'setting.cl_ragdoll_maxcount', label: 'Ragdolls', control: 'select',
+    ]
+  },
+  {
+    key: 'setting.cl_ragdoll_maxcount', label: 'Ragdolls', control: 'select',
     options: [
       { label: 'Low', value: '0' },
       { label: 'Medium', value: '4' },
       { label: 'High', value: '8' },
-    ] },
+    ]
+  },
 ];
-
-const APEX_CONTROLS_MAP = new Map(APEX_VIDEO_CONTROLS.map(c => [c.key, c]));
-
-/** Translate a raw setting value into a human-readable label using the control's options */
-function getControlValueLabel(key: string, value: string): string {
-  const ctrl = APEX_CONTROLS_MAP.get(key);
-  if (ctrl?.options) {
-    const opt = ctrl.options.find(o => o.value === value);
-    if (opt) return opt.label;
-  }
-  return value;
-}
 
 /* ── Pro Player Configs (loaded from V-Config folder) ── */
 interface ProPlayerEntry {
@@ -560,20 +563,21 @@ const GameLibrary: React.FC<GameLibraryProps> = ({ hardwareInfo, isActive }) => 
   const [showSpecsModal, setShowSpecsModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'launch' | 'profile'>('profile');
 
+  const IS_VIDEO_COMING_SOON = true; // LOCK / UNLOCK VIDEO SETTINGS PAGE
+
   // Game Profile state
   const [profileSettings, setProfileSettings] = useState<Record<string, string>>({});
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileDirty, setProfileDirty] = useState(false);
-  const [profilePath, setProfilePath] = useState<string | null>(null);
   const [profileModified, setProfileModified] = useState<Record<string, string>>({});
   const [profileKeyOrder, setProfileKeyOrder] = useState<string[]>([]);
   const [profileIsReadOnly, setProfileIsReadOnly] = useState(false);
   const [profileInnerTab, setProfileInnerTab] = useState<'video' | 'config'>('config');
   const [profileLockBusy, setProfileLockBusy] = useState(false);
   const [roFlash, setRoFlash] = useState(false);
-  const [systemResolutions, setSystemResolutions] = useState<{w: number; h: number}[]>([]);
+  const [systemResolutions, setSystemResolutions] = useState<{ w: number; h: number }[]>([]);
   const [activePlayerConfig, setActivePlayerConfig] = useState<string | null>(null);
   const [proPlayers, setProPlayers] = useState<ProPlayerEntry[]>([]);
   const [playerConfigLoading, setPlayerConfigLoading] = useState<string | null>(null);
@@ -583,7 +587,7 @@ const GameLibrary: React.FC<GameLibraryProps> = ({ hardwareInfo, isActive }) => 
     if (!window.electron?.ipcRenderer) return;
     window.electron.ipcRenderer.invoke('system:get-display-resolutions').then((res: any) => {
       if (res?.success && res.resolutions) setSystemResolutions(res.resolutions);
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   // Load pro player list from V-Config folder
@@ -636,7 +640,6 @@ const GameLibrary: React.FC<GameLibraryProps> = ({ hardwareInfo, isActive }) => 
         setProfileSettings(res.settings);
         setProfileModified({});
         setProfileDirty(false);
-        setProfilePath(res.path);
         setProfileKeyOrder(res.keyOrder || Object.keys(res.settings));
         setProfileIsReadOnly(res.isReadOnly ?? false);
         setActivePlayerConfig(null);
@@ -740,7 +743,7 @@ const GameLibrary: React.FC<GameLibraryProps> = ({ hardwareInfo, isActive }) => 
   const filteredGames = useMemo(() => {
     return games.filter(game => {
       const matchesSearch = game.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           game.description.toLowerCase().includes(searchTerm.toLowerCase());
+        game.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = selectedCategory === 'All' || game.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
@@ -847,46 +850,46 @@ const GameLibrary: React.FC<GameLibraryProps> = ({ hardwareInfo, isActive }) => 
               {filteredGames.map((game, index) => {
                 const isLocked = game.id !== 'apex-legends';
                 return (
-                <div
-                  key={game.id}
-                  className={`gl-card ${isLocked ? 'gl-card--locked' : ''}`}
-                  style={{ '--card-i': index } as React.CSSProperties}
-                  onClick={() => !isLocked && handleGameClick(game)}
-                >
-                  <div className="gl-card__img-wrap">
-                    <img src={game.image} alt={game.title} className="gl-card__img" loading="lazy" />
-                    <div className="gl-card__hover-overlay" />
-                    <div className="gl-card__corner gl-card__corner--tl" />
-                    <div className="gl-card__corner gl-card__corner--tr" />
-                    <div className="gl-card__corner gl-card__corner--bl" />
-                    <div className="gl-card__corner gl-card__corner--br" />
-                    {isLocked && (
-                      <div className="gl-card__lock-overlay">
-                        <Lock size={22} />
-                        <span>Coming Soon</span>
-                      </div>
-                    )}
-                    {/* Compatibility ring */}
-                    {!isLocked && gameVerdicts[game.id] !== 'unknown' && (
-                      <span className={`gl-card__compat gl-card__compat--${gameVerdicts[game.id]}`} title={
-                        gameVerdicts[game.id] === 'exceeds' ? 'Exceeds recommended specs' :
-                        gameVerdicts[game.id] === 'meets-recommended' ? 'Meets recommended specs' :
-                        gameVerdicts[game.id] === 'meets-minimum' ? 'Meets minimum specs' :
-                        'Below minimum specs'
-                      } />
-                    )}
-                  </div>
-
-                  <div className="gl-card__body">
-                    <h3 className="gl-card__title">{game.title}</h3>
-                    <p className="gl-card__desc">{game.description}</p>
-                    <div className="gl-card__meta">
-                      <span className="gl-card__badge">{game.category}</span>
-                      {!isLocked && <span className="gl-card__count">{game.recommended.graphics.settings.length} tweaks</span>}
+                  <div
+                    key={game.id}
+                    className={`gl-card ${isLocked ? 'gl-card--locked' : ''}`}
+                    style={{ '--card-i': index } as React.CSSProperties}
+                    onClick={() => !isLocked && handleGameClick(game)}
+                  >
+                    <div className="gl-card__img-wrap">
+                      <img src={game.image} alt={game.title} className="gl-card__img" loading="lazy" />
+                      <div className="gl-card__hover-overlay" />
+                      <div className="gl-card__corner gl-card__corner--tl" />
+                      <div className="gl-card__corner gl-card__corner--tr" />
+                      <div className="gl-card__corner gl-card__corner--bl" />
+                      <div className="gl-card__corner gl-card__corner--br" />
+                      {isLocked && (
+                        <div className="gl-card__lock-overlay">
+                          <Lock size={22} />
+                          <span>Coming Soon</span>
+                        </div>
+                      )}
+                      {/* Compatibility ring */}
+                      {!isLocked && gameVerdicts[game.id] !== 'unknown' && (
+                        <span className={`gl-card__compat gl-card__compat--${gameVerdicts[game.id]}`} title={
+                          gameVerdicts[game.id] === 'exceeds' ? 'Exceeds recommended specs' :
+                            gameVerdicts[game.id] === 'meets-recommended' ? 'Meets recommended specs' :
+                              gameVerdicts[game.id] === 'meets-minimum' ? 'Meets minimum specs' :
+                                'Below minimum specs'
+                        } />
+                      )}
                     </div>
+
+                    <div className="gl-card__body">
+                      <h3 className="gl-card__title">{game.title}</h3>
+                      <p className="gl-card__desc">{game.description}</p>
+                      <div className="gl-card__meta">
+                        <span className="gl-card__badge">{game.category}</span>
+                        {!isLocked && <span className="gl-card__count">{game.recommended.graphics.settings.length} tweaks</span>}
+                      </div>
+                    </div>
+                    <div className="gl-card__glow" />
                   </div>
-                  <div className="gl-card__glow" />
-                </div>
                 );
               })}
             </div>
@@ -1034,442 +1037,441 @@ const GameLibrary: React.FC<GameLibraryProps> = ({ hardwareInfo, isActive }) => 
                 {/* Game Profile Tab */}
                 {activeTab === 'profile' && selectedGame && (() => {
                   const knownKeys = new Set((GAME_PROFILE_SETTINGS[selectedGame.id] || []).map(d => d.key));
-                  const extraKeys = profileKeyOrder.filter(k => !knownKeys.has(k));
                   const labelMap = selectedGame.id === 'apex-legends' ? APEX_SETTING_LABELS : {};
                   return (
-                  <motion.div key="profile" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }}>
-                    {profileLoading ? (
-                      <div className="gl-empty gl-empty--sm">
-                        <RefreshCw size={28} className="gl-spin" />
-                        <p>Reading game settings...</p>
-                      </div>
-                    ) : profileError && Object.keys(profileSettings).length === 0 ? (
-                      <div className="gl-empty gl-empty--sm">
-                        <AlertTriangle size={28} />
-                        <p>{profileError}</p>
-                        <button className="gl-cmd-btn gl-cmd-btn--copy" onClick={() => loadProfile(selectedGame.id)}>
-                          <RefreshCw size={14} /> Retry
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="gl-profile">
-                        {profileError && (
-                          <div className="gl-profile__error">
-                            <AlertTriangle size={14} /> {profileError}
-                          </div>
-                        )}
-
-                        {/* 2-column layout: settings left, presets right */}
-                        <div className="gl-profile__columns">
-                          {/* Left column: Video Settings + Videoconfig */}
-                          <div className="gl-profile__col-left">
-                            <div className={`gl-profile__section ${profileInnerTab === 'video' ? 'gl-profile__section--locked' : ''}`}>
-                              {profileInnerTab === 'video' && (
-                                <div className="gl-profile__lock-overlay">
-                                  <Lock size={22} />
-                                  <span>Coming Soon</span>
-                                </div>
-                              )}
-                              <div className="gl-profile__inner-tabs">
-                                <button className={`gl-profile__inner-tab ${profileInnerTab === 'video' ? 'gl-profile__inner-tab--active' : ''}`} onClick={(e) => { setProfileInnerTab('video'); const section = (e.target as HTMLElement).closest('.gl-profile__section'); if (section) section.scrollTop = 0; }}><Monitor size={13} /> Video Settings</button>
-                                <button className={`gl-profile__inner-tab ${profileInnerTab === 'config' ? 'gl-profile__inner-tab--active' : ''}`} onClick={(e) => { setProfileInnerTab('config'); const section = (e.target as HTMLElement).closest('.gl-profile__section'); if (section) section.scrollTop = 0; }}><Eye size={13} /> Videoconfig Settings</button>
-                                <div className={`gl-profile__tab-meta ${roFlash ? 'gl-profile__tab-meta--flash' : ''}`}>
-                                  <span className="gl-profile__ro-hint">
-                                    {profileIsReadOnly ? 'VideoConfig is set to:' : 'VideoConfig is set to:'}
-                                  </span>
-                                  <div className={`gl-profile__ro-badge ${profileIsReadOnly ? 'gl-profile__ro-badge--locked' : 'gl-profile__ro-badge--unlocked'}`}>
-                                    {profileIsReadOnly ? <Lock size={10} /> : <Unlock size={10} />}
-                                    {profileIsReadOnly ? 'Read Only' : 'Writable'}
-                                  </div>
-                                </div>
-                              </div>
-                          {profileInnerTab === 'video' && (
-                          <div className="gl-profile__apex-settings">
-                            {/* Display Mode */}
-                            {(() => {
-                              const fs = getEffectiveValue('setting.fullscreen');
-                              const border = getEffectiveValue('setting.nowindowborder');
-                              const mode = getDisplayMode(fs, border);
-                              const modeIdx = DISPLAY_MODES.findIndex(m => m.value === mode);
-                              const modeLabel = DISPLAY_MODES.find(m => m.value === mode)?.label || mode;
-                              return (
-                                <div className="gl-profile__apex-row">
-                                  <span className="gl-profile__apex-label">Display Mode</span>
-                                  <div className="gl-profile__apex-control">
-                                    <div className="gl-profile__apex-selector">
-                                    <button className="gl-profile__apex-nav" onClick={() => {
-                                      const prev = DISPLAY_MODES[Math.max(0, modeIdx - 1)];
-                                      if (prev.value === 'fullscreen') { handleProfileChange('setting.fullscreen', '1'); handleProfileChange('setting.nowindowborder', '0'); }
-                                      else if (prev.value === 'borderless') { handleProfileChange('setting.fullscreen', '0'); handleProfileChange('setting.nowindowborder', '1'); }
-                                      else { handleProfileChange('setting.fullscreen', '0'); handleProfileChange('setting.nowindowborder', '0'); }
-                                    }}>‹</button>
-                                    <div className="gl-profile__apex-selector-center">
-                                      <span className="gl-profile__apex-selector-value">{modeLabel}</span>
-                                      <div className="gl-profile__apex-selector-track">
-                                        {DISPLAY_MODES.map((_, i) => (
-                                          <span key={i} className={`gl-profile__apex-selector-seg ${i <= modeIdx ? 'gl-profile__apex-selector-seg--filled' : ''}`} />
-                                        ))}
-                                      </div>
-                                    </div>
-                                    <button className="gl-profile__apex-nav" onClick={() => {
-                                      const next = DISPLAY_MODES[Math.min(DISPLAY_MODES.length - 1, modeIdx + 1)];
-                                      if (next.value === 'fullscreen') { handleProfileChange('setting.fullscreen', '1'); handleProfileChange('setting.nowindowborder', '0'); }
-                                      else if (next.value === 'borderless') { handleProfileChange('setting.fullscreen', '0'); handleProfileChange('setting.nowindowborder', '1'); }
-                                      else { handleProfileChange('setting.fullscreen', '0'); handleProfileChange('setting.nowindowborder', '0'); }
-                                    }}>›</button>
-                                  </div>
-                                  </div>
-                                </div>
-                              );
-                            })()}
-
-                            {/* Aspect Ratio + Resolution */}
-                            {(() => {
-                              const curW = parseInt(getEffectiveValue('setting.defaultres') || '0', 10);
-                              const curH = parseInt(getEffectiveValue('setting.defaultresheight') || '0', 10);
-                              const detectedAspect = detectAspectRatio(curW, curH, mergedAspectResolutions);
-                              const resolutions = mergedAspectResolutions[detectedAspect] || [];
-                              const isKnown = resolutions.some(r => r.w === curW && r.h === curH);
-                              const displayResolutions = isKnown ? resolutions : [...resolutions, { w: curW, h: curH, label: `${curW}x${curH} (Custom)` }];
-                              const aspectIdx = ASPECT_KEYS.indexOf(detectedAspect);
-                              const resIdx = displayResolutions.findIndex(r => r.w === curW && r.h === curH);
-                              const resLabel = displayResolutions.find(r => r.w === curW && r.h === curH);
-                              return (
-                                <>
-                                  <div className="gl-profile__apex-row">
-                                    <span className="gl-profile__apex-label">Aspect Ratio</span>
-                                    <div className="gl-profile__apex-control">
-                                    <div className="gl-profile__apex-selector">
-                                      <button className="gl-profile__apex-nav" onClick={() => {
-                                        const newIdx = Math.max(0, aspectIdx - 1);
-                                        const newAspect = ASPECT_KEYS[newIdx];
-                                        const newRes = mergedAspectResolutions[newAspect] || [];
-                                        const last = newRes[newRes.length - 1];
-                                        if (last) { handleProfileChange('setting.defaultres', String(last.w)); handleProfileChange('setting.defaultresheight', String(last.h)); }
-                                      }}>‹</button>
-                                      <div className="gl-profile__apex-selector-center">
-                                        <span className="gl-profile__apex-selector-value">{detectedAspect}</span>
-                                        <div className="gl-profile__apex-selector-track">
-                                          {ASPECT_KEYS.map((_, i) => (
-                                            <span key={i} className={`gl-profile__apex-selector-seg ${i <= aspectIdx ? 'gl-profile__apex-selector-seg--filled' : ''}`} />
-                                          ))}
-                                        </div>
-                                      </div>
-                                      <button className="gl-profile__apex-nav" onClick={() => {
-                                        const newIdx = Math.min(ASPECT_KEYS.length - 1, aspectIdx + 1);
-                                        const newAspect = ASPECT_KEYS[newIdx];
-                                        const newRes = mergedAspectResolutions[newAspect] || [];
-                                        const last = newRes[newRes.length - 1];
-                                        if (last) { handleProfileChange('setting.defaultres', String(last.w)); handleProfileChange('setting.defaultresheight', String(last.h)); }
-                                      }}>›</button>
-                                    </div>
-                                    </div>
-                                  </div>
-
-                                  <div className="gl-profile__apex-row">
-                                    <span className="gl-profile__apex-label">Resolution</span>
-                                    <div className="gl-profile__apex-control">
-                                    <div className="gl-profile__apex-selector">
-                                      <button className="gl-profile__apex-nav" onClick={() => {
-                                        const newIdx = Math.max(0, resIdx - 1);
-                                        const r = displayResolutions[newIdx];
-                                        handleProfileChange('setting.defaultres', String(r.w));
-                                        handleProfileChange('setting.defaultresheight', String(r.h));
-                                      }}>‹</button>
-                                      <div className="gl-profile__apex-selector-center">
-                                        <span className="gl-profile__apex-selector-value">
-                                          {resLabel ? `${resLabel.label}${resLabel.native ? ' (Native)' : ''}` : `${curW}x${curH}`}
-                                        </span>
-                                        <div className="gl-profile__apex-selector-track">
-                                          {displayResolutions.map((_, i) => (
-                                            <span key={i} className={`gl-profile__apex-selector-seg ${i <= resIdx ? 'gl-profile__apex-selector-seg--filled' : ''}`} />
-                                          ))}
-                                        </div>
-                                      </div>
-                                      <button className="gl-profile__apex-nav" onClick={() => {
-                                        const newIdx = Math.min(displayResolutions.length - 1, resIdx + 1);
-                                        const r = displayResolutions[newIdx];
-                                        handleProfileChange('setting.defaultres', String(r.w));
-                                        handleProfileChange('setting.defaultresheight', String(r.h));
-                                      }}>›</button>
-                                    </div>
-                                    </div>
-                                  </div>
-                                </>
-                              );
-                            })()}
-
-                            {/* Remaining core settings (Anti-Aliasing, V-Sync, Brightness) */}
-                            {(GAME_PROFILE_SETTINGS[selectedGame.id] || []).filter(s => s.section === 'core' && s.type !== 'resolution' && s.key !== 'setting.fullscreen' && s.key !== 'setting.nowindowborder').map(def => {
-                              const effective = getEffectiveValue(def.key) || (def.options?.length ? def.options[0].value : '');
-                              const current = profileSettings[def.key] ?? '';
-                              const changed = profileModified[def.key] !== undefined && profileModified[def.key] !== current;
-                              return (
-                              <div key={def.key} className={`gl-profile__apex-row ${changed ? 'gl-profile__apex-row--changed' : ''}`}>
-                                <span className="gl-profile__apex-label">{def.label}</span>
-                                <div className="gl-profile__apex-control">
-                                {def.type === 'select' && def.options && (() => {
-                                  const idx = def.options.findIndex(o => o.value === effective);
-                                  const displayLabel = def.options.find(o => o.value === effective)?.label || effective;
-                                  return (
-                                    <div className="gl-profile__apex-selector">
-                                      <button className="gl-profile__apex-nav" onClick={() => {
-                                        if (idx > 0) handleProfileChange(def.key, def.options![idx - 1].value);
-                                        else if (idx === -1 && def.options!.length > 0) handleProfileChange(def.key, def.options![0].value);
-                                      }}>‹</button>
-                                      <div className="gl-profile__apex-selector-center">
-                                        <span className="gl-profile__apex-selector-value">{displayLabel}</span>
-                                        <div className="gl-profile__apex-selector-track">
-                                          {def.options!.map((_, i) => (
-                                            <span key={i} className={`gl-profile__apex-selector-seg ${i <= idx ? 'gl-profile__apex-selector-seg--filled' : ''}`} />
-                                          ))}
-                                        </div>
-                                      </div>
-                                      <button className="gl-profile__apex-nav" onClick={() => {
-                                        if (idx < def.options!.length - 1) handleProfileChange(def.key, def.options![idx + 1].value);
-                                        else if (idx === -1 && def.options!.length > 0) handleProfileChange(def.key, def.options![0].value);
-                                      }}>›</button>
-                                    </div>
-                                  );
-                                })()}
-                                {def.type === 'slider' && (() => {
-                                  const rawVal = parseFloat(getEffectiveValue(def.key) || String(def.min || 0));
-                                  const isBrightness = def.key === 'setting.gamma';
-                                  let sliderMin: number, sliderMax: number, sliderStep: number, sliderVal: number, displayVal: number | string, displayUnit: string, fillPct: number;
-                                  if (isBrightness) {
-                                    // Gamma is inverted: lower gamma = higher brightness
-                                    // gamma 1.75 → 0%, gamma 1.0 → 50%, gamma 0.25 → 100%
-                                    sliderMin = 0; sliderMax = 100; sliderStep = 1;
-                                    sliderVal = Math.round(Math.max(0, Math.min(100, (1.75 - rawVal) / 1.5 * 100)));
-                                    displayVal = sliderVal; displayUnit = '%'; fillPct = sliderVal;
-                                  } else {
-                                    sliderMin = def.min ?? 0; sliderMax = def.max ?? 100; sliderStep = def.step ?? 1;
-                                    sliderVal = rawVal; displayVal = rawVal; displayUnit = def.unit || '';
-                                    fillPct = ((rawVal - sliderMin) / (sliderMax - sliderMin)) * 100;
-                                  }
-                                  return (
-                                    <div className="gl-profile__slider-wrap">
-                                      <input type="range" className="gl-profile__slider" min={sliderMin} max={sliderMax} step={sliderStep} value={sliderVal} onChange={e => {
-                                        if (isBrightness) {
-                                          const pct = parseFloat(e.target.value);
-                                          const gamma = 1.75 - (pct / 100) * 1.5;
-                                          handleProfileChange(def.key, gamma.toFixed(6));
-                                        } else {
-                                          handleProfileChange(def.key, e.target.value);
-                                        }
-                                      }} style={{ background: `linear-gradient(to right, rgba(255,255,255,.18) ${fillPct}%, rgba(255,255,255,.06) ${fillPct}%)` }} />
-                                      <span className="gl-profile__slider-value">{displayVal}{displayUnit}</span>
-                                    </div>
-                                  );
-                                })()}
-                                </div>
-                              </div>
-                              );
-                            })}
-
-                            {/* Divider */}
-                            <div className="gl-profile__apex-divider">
-                              <span className="gl-profile__apex-divider-label">Advanced</span>
+                    <motion.div key="profile" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }}>
+                      {profileLoading ? (
+                        <div className="gl-empty gl-empty--sm">
+                          <RefreshCw size={28} className="gl-spin" />
+                          <p>Reading game settings...</p>
+                        </div>
+                      ) : profileError && Object.keys(profileSettings).length === 0 ? (
+                        <div className="gl-empty gl-empty--sm">
+                          <AlertTriangle size={28} />
+                          <p>{profileError}</p>
+                          <button className="gl-cmd-btn gl-cmd-btn--copy" onClick={() => loadProfile(selectedGame.id)}>
+                            <RefreshCw size={14} /> Retry
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="gl-profile">
+                          {profileError && (
+                            <div className="gl-profile__error">
+                              <AlertTriangle size={14} /> {profileError}
                             </div>
+                          )}
 
-                            {/* Advanced video settings */}
-                            {APEX_VIDEO_CONTROLS
-                                .filter(ctrl => !coreKeys.has(ctrl.key) && profileSettings[ctrl.key] !== undefined)
-                                .map(ctrl => {
-                                  const effective = getEffectiveValue(ctrl.key);
-                                  const current = profileSettings[ctrl.key] ?? '';
-                                  const changed = profileModified[ctrl.key] !== undefined && profileModified[ctrl.key] !== current;
-
-                                  return (
-                                    <div key={ctrl.key} className={`gl-profile__apex-row ${changed ? 'gl-profile__apex-row--changed' : ''}`}>
-                                      <span className="gl-profile__apex-label">{ctrl.label}</span>
-                                      <div className="gl-profile__apex-control">
-                                        {(ctrl.control === 'toggle' || ctrl.control === 'select') && ctrl.options && (() => {
-                                          const matchOpt = (o: { value: string }) => o.value === effective || (effective && !isNaN(Number(o.value)) && !isNaN(Number(effective)) && Number(o.value) === Number(effective));
-                                          const idx = ctrl.options.findIndex(matchOpt);
-                                          const displayLabel = ctrl.options.find(matchOpt)?.label || effective;
-                                          return (
+                          {/* 2-column layout: settings left, presets right */}
+                          <div className="gl-profile__columns">
+                            {/* Left column: Video Settings + Videoconfig */}
+                            <div className="gl-profile__col-left">
+                              <div className={`gl-profile__section ${profileInnerTab === 'video' && IS_VIDEO_COMING_SOON ? 'gl-profile__section--locked' : ''}`}>
+                                {profileInnerTab === 'video' && IS_VIDEO_COMING_SOON && (
+                                  <div className="gl-profile__lock-overlay">
+                                    <Lock size={22} />
+                                    <span>Coming Soon</span>
+                                  </div>
+                                )}
+                                <div className="gl-profile__inner-tabs">
+                                  <button className={`gl-profile__inner-tab ${profileInnerTab === 'video' ? 'gl-profile__inner-tab--active' : ''}`} onClick={(e) => { setProfileInnerTab('video'); const section = (e.target as HTMLElement).closest('.gl-profile__section'); if (section) section.scrollTop = 0; }}><Monitor size={13} /> Video Settings</button>
+                                  <button className={`gl-profile__inner-tab ${profileInnerTab === 'config' ? 'gl-profile__inner-tab--active' : ''}`} onClick={(e) => { setProfileInnerTab('config'); const section = (e.target as HTMLElement).closest('.gl-profile__section'); if (section) section.scrollTop = 0; }}><Eye size={13} /> Videoconfig Settings</button>
+                                  <div className={`gl-profile__tab-meta ${roFlash ? 'gl-profile__tab-meta--flash' : ''}`}>
+                                    <span className="gl-profile__ro-hint">
+                                      {profileIsReadOnly ? 'VideoConfig is set to:' : 'VideoConfig is set to:'}
+                                    </span>
+                                    <div className={`gl-profile__ro-badge ${profileIsReadOnly ? 'gl-profile__ro-badge--locked' : 'gl-profile__ro-badge--unlocked'}`}>
+                                      {profileIsReadOnly ? <Lock size={10} /> : <Unlock size={10} />}
+                                      {profileIsReadOnly ? 'Read Only' : 'Writable'}
+                                    </div>
+                                  </div>
+                                </div>
+                                {profileInnerTab === 'video' && (
+                                  <div className="gl-profile__apex-settings">
+                                    {/* Display Mode */}
+                                    {(() => {
+                                      const fs = getEffectiveValue('setting.fullscreen');
+                                      const border = getEffectiveValue('setting.nowindowborder');
+                                      const mode = getDisplayMode(fs, border);
+                                      const modeIdx = DISPLAY_MODES.findIndex(m => m.value === mode);
+                                      const modeLabel = DISPLAY_MODES.find(m => m.value === mode)?.label || mode;
+                                      return (
+                                        <div className="gl-profile__apex-row">
+                                          <span className="gl-profile__apex-label">Display Mode</span>
+                                          <div className="gl-profile__apex-control">
                                             <div className="gl-profile__apex-selector">
-                                              <button
-                                                className="gl-profile__apex-nav"
-                                                onClick={() => {
-                                                  if (idx > 0) handleProfileChange(ctrl.key, ctrl.options![idx - 1].value);
-                                                  else if (idx === -1 && ctrl.options!.length > 0) handleProfileChange(ctrl.key, ctrl.options![0].value);
-                                                }}
-                                              >‹</button>
+                                              <button className="gl-profile__apex-nav" onClick={() => {
+                                                const prev = DISPLAY_MODES[Math.max(0, modeIdx - 1)];
+                                                if (prev.value === 'fullscreen') { handleProfileChange('setting.fullscreen', '1'); handleProfileChange('setting.nowindowborder', '0'); }
+                                                else if (prev.value === 'borderless') { handleProfileChange('setting.fullscreen', '0'); handleProfileChange('setting.nowindowborder', '1'); }
+                                                else { handleProfileChange('setting.fullscreen', '0'); handleProfileChange('setting.nowindowborder', '0'); }
+                                              }}>‹</button>
                                               <div className="gl-profile__apex-selector-center">
-                                                <span className="gl-profile__apex-selector-value">{displayLabel}</span>
+                                                <span className="gl-profile__apex-selector-value">{modeLabel}</span>
                                                 <div className="gl-profile__apex-selector-track">
-                                                  {ctrl.options!.map((_, i) => (
-                                                    <span key={i} className={`gl-profile__apex-selector-seg ${i <= idx ? 'gl-profile__apex-selector-seg--filled' : ''}`} />
+                                                  {DISPLAY_MODES.map((_, i) => (
+                                                    <span key={i} className={`gl-profile__apex-selector-seg ${i <= modeIdx ? 'gl-profile__apex-selector-seg--filled' : ''}`} />
                                                   ))}
                                                 </div>
                                               </div>
-                                              <button
-                                                className="gl-profile__apex-nav"
-                                                onClick={() => {
-                                                  if (idx < ctrl.options!.length - 1) handleProfileChange(ctrl.key, ctrl.options![idx + 1].value);
-                                                  else if (idx === -1 && ctrl.options!.length > 0) handleProfileChange(ctrl.key, ctrl.options![0].value);
-                                                }}
-                                              >›</button>
+                                              <button className="gl-profile__apex-nav" onClick={() => {
+                                                const next = DISPLAY_MODES[Math.min(DISPLAY_MODES.length - 1, modeIdx + 1)];
+                                                if (next.value === 'fullscreen') { handleProfileChange('setting.fullscreen', '1'); handleProfileChange('setting.nowindowborder', '0'); }
+                                                else if (next.value === 'borderless') { handleProfileChange('setting.fullscreen', '0'); handleProfileChange('setting.nowindowborder', '1'); }
+                                                else { handleProfileChange('setting.fullscreen', '0'); handleProfileChange('setting.nowindowborder', '0'); }
+                                              }}>›</button>
                                             </div>
-                                          );
-                                        })()}
-                                        {ctrl.control === 'slider' && (() => {
-                                          const sMin = ctrl.min ?? 0;
-                                          const sMax = ctrl.max ?? 100;
-                                          const sVal = parseFloat(effective || String(sMin));
-                                          const sFill = ((sVal - sMin) / (sMax - sMin)) * 100;
-                                          return (
-                                          <div className="gl-profile__slider-wrap">
-                                            <input
-                                              type="range"
-                                              className="gl-profile__slider"
-                                              min={sMin}
-                                              max={sMax}
-                                              step={ctrl.step ?? 1}
-                                              value={sVal}
-                                              onChange={e => handleProfileChange(ctrl.key, e.target.value)}
-                                              style={{ background: `linear-gradient(to right, rgba(255,255,255,.18) ${sFill}%, rgba(255,255,255,.06) ${sFill}%)` }}
-                                            />
-                                            <span className="gl-profile__slider-value">
-                                              {sVal}{ctrl.unit || ''}
-                                            </span>
                                           </div>
-                                          );
-                                        })()}
-                                      </div>
+                                        </div>
+                                      );
+                                    })()}
+
+                                    {/* Aspect Ratio + Resolution */}
+                                    {(() => {
+                                      const curW = parseInt(getEffectiveValue('setting.defaultres') || '0', 10);
+                                      const curH = parseInt(getEffectiveValue('setting.defaultresheight') || '0', 10);
+                                      const detectedAspect = detectAspectRatio(curW, curH, mergedAspectResolutions);
+                                      const resolutions = mergedAspectResolutions[detectedAspect] || [];
+                                      const isKnown = resolutions.some(r => r.w === curW && r.h === curH);
+                                      const displayResolutions = isKnown ? resolutions : [...resolutions, { w: curW, h: curH, label: `${curW}x${curH} (Custom)` }];
+                                      const aspectIdx = ASPECT_KEYS.indexOf(detectedAspect);
+                                      const resIdx = displayResolutions.findIndex(r => r.w === curW && r.h === curH);
+                                      const resLabel = displayResolutions.find(r => r.w === curW && r.h === curH);
+                                      return (
+                                        <>
+                                          <div className="gl-profile__apex-row">
+                                            <span className="gl-profile__apex-label">Aspect Ratio</span>
+                                            <div className="gl-profile__apex-control">
+                                              <div className="gl-profile__apex-selector">
+                                                <button className="gl-profile__apex-nav" onClick={() => {
+                                                  const newIdx = Math.max(0, aspectIdx - 1);
+                                                  const newAspect = ASPECT_KEYS[newIdx];
+                                                  const newRes = mergedAspectResolutions[newAspect] || [];
+                                                  const last = newRes[newRes.length - 1];
+                                                  if (last) { handleProfileChange('setting.defaultres', String(last.w)); handleProfileChange('setting.defaultresheight', String(last.h)); }
+                                                }}>‹</button>
+                                                <div className="gl-profile__apex-selector-center">
+                                                  <span className="gl-profile__apex-selector-value">{detectedAspect}</span>
+                                                  <div className="gl-profile__apex-selector-track">
+                                                    {ASPECT_KEYS.map((_, i) => (
+                                                      <span key={i} className={`gl-profile__apex-selector-seg ${i <= aspectIdx ? 'gl-profile__apex-selector-seg--filled' : ''}`} />
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                                <button className="gl-profile__apex-nav" onClick={() => {
+                                                  const newIdx = Math.min(ASPECT_KEYS.length - 1, aspectIdx + 1);
+                                                  const newAspect = ASPECT_KEYS[newIdx];
+                                                  const newRes = mergedAspectResolutions[newAspect] || [];
+                                                  const last = newRes[newRes.length - 1];
+                                                  if (last) { handleProfileChange('setting.defaultres', String(last.w)); handleProfileChange('setting.defaultresheight', String(last.h)); }
+                                                }}>›</button>
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                          <div className="gl-profile__apex-row">
+                                            <span className="gl-profile__apex-label">Resolution</span>
+                                            <div className="gl-profile__apex-control">
+                                              <div className="gl-profile__apex-selector">
+                                                <button className="gl-profile__apex-nav" onClick={() => {
+                                                  const newIdx = Math.max(0, resIdx - 1);
+                                                  const r = displayResolutions[newIdx];
+                                                  handleProfileChange('setting.defaultres', String(r.w));
+                                                  handleProfileChange('setting.defaultresheight', String(r.h));
+                                                }}>‹</button>
+                                                <div className="gl-profile__apex-selector-center">
+                                                  <span className="gl-profile__apex-selector-value">
+                                                    {resLabel ? `${resLabel.label}${resLabel.native ? ' (Native)' : ''}` : `${curW}x${curH}`}
+                                                  </span>
+                                                  <div className="gl-profile__apex-selector-track">
+                                                    {displayResolutions.map((_, i) => (
+                                                      <span key={i} className={`gl-profile__apex-selector-seg ${i <= resIdx ? 'gl-profile__apex-selector-seg--filled' : ''}`} />
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                                <button className="gl-profile__apex-nav" onClick={() => {
+                                                  const newIdx = Math.min(displayResolutions.length - 1, resIdx + 1);
+                                                  const r = displayResolutions[newIdx];
+                                                  handleProfileChange('setting.defaultres', String(r.w));
+                                                  handleProfileChange('setting.defaultresheight', String(r.h));
+                                                }}>›</button>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </>
+                                      );
+                                    })()}
+
+                                    {/* Remaining core settings (Anti-Aliasing, V-Sync, Brightness) */}
+                                    {(GAME_PROFILE_SETTINGS[selectedGame.id] || []).filter(s => s.section === 'core' && s.type !== 'resolution' && s.key !== 'setting.fullscreen' && s.key !== 'setting.nowindowborder').map(def => {
+                                      const effective = getEffectiveValue(def.key) || (def.options?.length ? def.options[0].value : '');
+                                      const current = profileSettings[def.key] ?? '';
+                                      const changed = profileModified[def.key] !== undefined && profileModified[def.key] !== current;
+                                      return (
+                                        <div key={def.key} className={`gl-profile__apex-row ${changed ? 'gl-profile__apex-row--changed' : ''}`}>
+                                          <span className="gl-profile__apex-label">{def.label}</span>
+                                          <div className="gl-profile__apex-control">
+                                            {def.type === 'select' && def.options && (() => {
+                                              const idx = def.options.findIndex(o => o.value === effective);
+                                              const displayLabel = def.options.find(o => o.value === effective)?.label || effective;
+                                              return (
+                                                <div className="gl-profile__apex-selector">
+                                                  <button className="gl-profile__apex-nav" onClick={() => {
+                                                    if (idx > 0) handleProfileChange(def.key, def.options![idx - 1].value);
+                                                    else if (idx === -1 && def.options!.length > 0) handleProfileChange(def.key, def.options![0].value);
+                                                  }}>‹</button>
+                                                  <div className="gl-profile__apex-selector-center">
+                                                    <span className="gl-profile__apex-selector-value">{displayLabel}</span>
+                                                    <div className="gl-profile__apex-selector-track">
+                                                      {def.options!.map((_, i) => (
+                                                        <span key={i} className={`gl-profile__apex-selector-seg ${i <= idx ? 'gl-profile__apex-selector-seg--filled' : ''}`} />
+                                                      ))}
+                                                    </div>
+                                                  </div>
+                                                  <button className="gl-profile__apex-nav" onClick={() => {
+                                                    if (idx < def.options!.length - 1) handleProfileChange(def.key, def.options![idx + 1].value);
+                                                    else if (idx === -1 && def.options!.length > 0) handleProfileChange(def.key, def.options![0].value);
+                                                  }}>›</button>
+                                                </div>
+                                              );
+                                            })()}
+                                            {def.type === 'slider' && (() => {
+                                              const rawVal = parseFloat(getEffectiveValue(def.key) || String(def.min || 0));
+                                              const isBrightness = def.key === 'setting.gamma';
+                                              let sliderMin: number, sliderMax: number, sliderStep: number, sliderVal: number, displayVal: number | string, displayUnit: string, fillPct: number;
+                                              if (isBrightness) {
+                                                // Gamma is inverted: lower gamma = higher brightness
+                                                // gamma 1.75 → 0%, gamma 1.0 → 50%, gamma 0.25 → 100%
+                                                sliderMin = 0; sliderMax = 100; sliderStep = 1;
+                                                sliderVal = Math.round(Math.max(0, Math.min(100, (1.75 - rawVal) / 1.5 * 100)));
+                                                displayVal = sliderVal; displayUnit = '%'; fillPct = sliderVal;
+                                              } else {
+                                                sliderMin = def.min ?? 0; sliderMax = def.max ?? 100; sliderStep = def.step ?? 1;
+                                                sliderVal = rawVal; displayVal = rawVal; displayUnit = def.unit || '';
+                                                fillPct = ((rawVal - sliderMin) / (sliderMax - sliderMin)) * 100;
+                                              }
+                                              return (
+                                                <div className="gl-profile__slider-wrap">
+                                                  <input type="range" className="gl-profile__slider" min={sliderMin} max={sliderMax} step={sliderStep} value={sliderVal} onChange={e => {
+                                                    if (isBrightness) {
+                                                      const pct = parseFloat(e.target.value);
+                                                      const gamma = 1.75 - (pct / 100) * 1.5;
+                                                      handleProfileChange(def.key, gamma.toFixed(6));
+                                                    } else {
+                                                      handleProfileChange(def.key, e.target.value);
+                                                    }
+                                                  }} style={{ background: `linear-gradient(to right, rgba(255,255,255,.18) ${fillPct}%, rgba(255,255,255,.06) ${fillPct}%)` }} />
+                                                  <span className="gl-profile__slider-value">{displayVal}{displayUnit}</span>
+                                                </div>
+                                              );
+                                            })()}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+
+                                    {/* Divider */}
+                                    <div className="gl-profile__apex-divider">
+                                      <span className="gl-profile__apex-divider-label">Advanced</span>
                                     </div>
-                                  );
-                                })}
-                          </div>
-                          )}
-                          {profileInnerTab === 'config' && (
-                            <div className="gl-profile__all-settings">
-                              <table className="gl-profile__table">
-                                <thead>
-                                  <tr>
-                                    <th>Setting</th>
-                                    <th>Current Value</th>
-                                    <th>New Value</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {profileKeyOrder.map(key => {
-                                    const friendly = labelMap[key] || (knownKeys.has(key)
-                                      ? (GAME_PROFILE_SETTINGS[selectedGame.id] || []).find(d => d.key === key)?.label
-                                      : undefined);
-                                    const current = profileSettings[key] ?? '';
-                                    const modified = profileModified[key];
-                                    const effective = modified ?? current;
-                                    const changed = modified !== undefined && modified !== current;
+
+                                    {/* Advanced video settings */}
+                                    {APEX_VIDEO_CONTROLS
+                                      .filter(ctrl => !coreKeys.has(ctrl.key) && profileSettings[ctrl.key] !== undefined)
+                                      .map(ctrl => {
+                                        const effective = getEffectiveValue(ctrl.key);
+                                        const current = profileSettings[ctrl.key] ?? '';
+                                        const changed = profileModified[ctrl.key] !== undefined && profileModified[ctrl.key] !== current;
+
+                                        return (
+                                          <div key={ctrl.key} className={`gl-profile__apex-row ${changed ? 'gl-profile__apex-row--changed' : ''}`}>
+                                            <span className="gl-profile__apex-label">{ctrl.label}</span>
+                                            <div className="gl-profile__apex-control">
+                                              {(ctrl.control === 'toggle' || ctrl.control === 'select') && ctrl.options && (() => {
+                                                const matchOpt = (o: { value: string }) => o.value === effective || (effective && !isNaN(Number(o.value)) && !isNaN(Number(effective)) && Number(o.value) === Number(effective));
+                                                const idx = ctrl.options.findIndex(matchOpt);
+                                                const displayLabel = ctrl.options.find(matchOpt)?.label || effective;
+                                                return (
+                                                  <div className="gl-profile__apex-selector">
+                                                    <button
+                                                      className="gl-profile__apex-nav"
+                                                      onClick={() => {
+                                                        if (idx > 0) handleProfileChange(ctrl.key, ctrl.options![idx - 1].value);
+                                                        else if (idx === -1 && ctrl.options!.length > 0) handleProfileChange(ctrl.key, ctrl.options![0].value);
+                                                      }}
+                                                    >‹</button>
+                                                    <div className="gl-profile__apex-selector-center">
+                                                      <span className="gl-profile__apex-selector-value">{displayLabel}</span>
+                                                      <div className="gl-profile__apex-selector-track">
+                                                        {ctrl.options!.map((_, i) => (
+                                                          <span key={i} className={`gl-profile__apex-selector-seg ${i <= idx ? 'gl-profile__apex-selector-seg--filled' : ''}`} />
+                                                        ))}
+                                                      </div>
+                                                    </div>
+                                                    <button
+                                                      className="gl-profile__apex-nav"
+                                                      onClick={() => {
+                                                        if (idx < ctrl.options!.length - 1) handleProfileChange(ctrl.key, ctrl.options![idx + 1].value);
+                                                        else if (idx === -1 && ctrl.options!.length > 0) handleProfileChange(ctrl.key, ctrl.options![0].value);
+                                                      }}
+                                                    >›</button>
+                                                  </div>
+                                                );
+                                              })()}
+                                              {ctrl.control === 'slider' && (() => {
+                                                const sMin = ctrl.min ?? 0;
+                                                const sMax = ctrl.max ?? 100;
+                                                const sVal = parseFloat(effective || String(sMin));
+                                                const sFill = ((sVal - sMin) / (sMax - sMin)) * 100;
+                                                return (
+                                                  <div className="gl-profile__slider-wrap">
+                                                    <input
+                                                      type="range"
+                                                      className="gl-profile__slider"
+                                                      min={sMin}
+                                                      max={sMax}
+                                                      step={ctrl.step ?? 1}
+                                                      value={sVal}
+                                                      onChange={e => handleProfileChange(ctrl.key, e.target.value)}
+                                                      style={{ background: `linear-gradient(to right, rgba(255,255,255,.18) ${sFill}%, rgba(255,255,255,.06) ${sFill}%)` }}
+                                                    />
+                                                    <span className="gl-profile__slider-value">
+                                                      {sVal}{ctrl.unit || ''}
+                                                    </span>
+                                                  </div>
+                                                );
+                                              })()}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                  </div>
+                                )}
+                                {profileInnerTab === 'config' && (
+                                  <div className="gl-profile__all-settings">
+                                    <table className="gl-profile__table">
+                                      <thead>
+                                        <tr>
+                                          <th>Setting</th>
+                                          <th>Current Value</th>
+                                          <th>New Value</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {profileKeyOrder.map(key => {
+                                          const friendly = labelMap[key] || (knownKeys.has(key)
+                                            ? (GAME_PROFILE_SETTINGS[selectedGame.id] || []).find(d => d.key === key)?.label
+                                            : undefined);
+                                          const current = profileSettings[key] ?? '';
+                                          const modified = profileModified[key];
+                                          const effective = modified ?? current;
+                                          const changed = modified !== undefined && modified !== current;
+                                          return (
+                                            <tr key={key} className={changed ? 'gl-profile__row--changed' : ''}>
+                                              <td className="gl-profile__td-key">
+                                                <span className="gl-profile__key-name">{key}</span>
+                                                {friendly && <span className="gl-profile__key-friendly">{friendly}</span>}
+                                              </td>
+                                              <td className="gl-profile__td-current">{current}</td>
+                                              <td className="gl-profile__td-edit">
+                                                <input
+                                                  type="text"
+                                                  className={`gl-profile__table-input ${changed ? 'gl-profile__table-input--changed' : ''}`}
+                                                  value={effective}
+                                                  onChange={e => handleProfileChange(key, e.target.value)}
+                                                />
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Right column: Pro Player Configs */}
+                            <div className="gl-profile__col-right">
+                              <div className="gl-profile__section gl-profile__section--locked">
+                                <div className="gl-profile__lock-overlay">
+                                  <Lock size={18} />
+                                  <span>Coming Soon</span>
+                                </div>
+                                <div className="gl-profile__section-head">
+                                  <User size={13} />
+                                  <span>Pro Player Configs</span>
+                                </div>
+                                <div className="gl-profile__presets-list">
+                                  {proPlayers.map(player => {
+                                    const isActive = activePlayerConfig === player.name;
+                                    const isLoading = playerConfigLoading === player.name;
                                     return (
-                                      <tr key={key} className={changed ? 'gl-profile__row--changed' : ''}>
-                                        <td className="gl-profile__td-key">
-                                          <span className="gl-profile__key-name">{key}</span>
-                                          {friendly && <span className="gl-profile__key-friendly">{friendly}</span>}
-                                        </td>
-                                        <td className="gl-profile__td-current">{current}</td>
-                                        <td className="gl-profile__td-edit">
-                                          <input
-                                            type="text"
-                                            className={`gl-profile__table-input ${changed ? 'gl-profile__table-input--changed' : ''}`}
-                                            value={effective}
-                                            onChange={e => handleProfileChange(key, e.target.value)}
-                                          />
-                                        </td>
-                                      </tr>
+                                      <div key={player.name} className={`gl-profile__preset-row ${isActive ? 'gl-profile__preset-row--changed' : ''}`}>
+                                        <div className="gl-profile__preset-info">
+                                          <span className="gl-profile__preset-label">{player.name}</span>
+                                          <span className="gl-profile__preset-desc">{player.role}</span>
+                                        </div>
+                                        <button
+                                          className={`gl-profile__preset-toggle ${isActive ? 'gl-profile__preset-toggle--on' : ''}`}
+                                          disabled={isLoading}
+                                          onClick={async () => {
+                                            if (isActive) {
+                                              setProfileModified({});
+                                              setProfileDirty(false);
+                                              setActivePlayerConfig(null);
+                                            } else {
+                                              if (!selectedGame || !window.electron?.ipcRenderer) return;
+                                              setPlayerConfigLoading(player.name);
+                                              try {
+                                                const res: any = await window.electron.ipcRenderer.invoke('vconfig:read-player-config', selectedGame.id, player.name);
+                                                if (res?.success) {
+                                                  const newMods: Record<string, string> = {};
+                                                  for (const [k, v] of Object.entries(res.settings as Record<string, string>)) {
+                                                    if (profileSettings[k] !== undefined) {
+                                                      newMods[k] = v;
+                                                    }
+                                                  }
+                                                  setProfileModified(newMods);
+                                                  setProfileDirty(true);
+                                                  setActivePlayerConfig(player.name);
+                                                }
+                                              } catch { /* ignore */ }
+                                              setPlayerConfigLoading(null);
+                                            }
+                                          }}
+                                        >
+                                          <span className="gl-profile__preset-toggle-track">
+                                            <span className="gl-profile__preset-toggle-thumb" />
+                                          </span>
+                                          <span className="gl-profile__preset-toggle-label">{isLoading ? '...' : isActive ? 'Loaded' : 'Load'}</span>
+                                        </button>
+                                      </div>
                                     );
                                   })}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
+                                </div>
+                              </div>
+                              {/* Action bar below Pro Player Configs */}
+                              <div className="gl-profile__action-bar">
+                                <button className="gl-profile__action gl-profile__action--reset" onClick={handleProfileReset} disabled={profileSaving}>
+                                  Reset
+                                </button>
+                                <button
+                                  className={`gl-profile__action gl-profile__action--lock ${profileIsReadOnly ? 'gl-profile__action--locked' : ''}`}
+                                  onClick={() => handleToggleReadOnly(!profileIsReadOnly)}
+                                  disabled={profileLockBusy}
+                                >
+                                  {profileLockBusy ? '...' : profileIsReadOnly ? 'Unlock' : 'Read Only'}
+                                </button>
+                                <button className="gl-profile__action gl-profile__action--apply" onClick={handleProfileSave} disabled={!profileDirty || profileSaving}>
+                                  {profileSaving ? '...' : 'Apply'}
+                                </button>
+                              </div>
                             </div>
                           </div>
 
-                          {/* Right column: Pro Player Configs */}
-                          <div className="gl-profile__col-right">
-                            <div className="gl-profile__section gl-profile__section--locked">
-                              <div className="gl-profile__lock-overlay">
-                                <Lock size={18} />
-                                <span>Coming Soon</span>
-                              </div>
-                              <div className="gl-profile__section-head">
-                                <User size={13} />
-                                <span>Pro Player Configs</span>
-                              </div>
-                              <div className="gl-profile__presets-list">
-                                {proPlayers.map(player => {
-                                  const isActive = activePlayerConfig === player.name;
-                                  const isLoading = playerConfigLoading === player.name;
-                                  return (
-                                    <div key={player.name} className={`gl-profile__preset-row ${isActive ? 'gl-profile__preset-row--changed' : ''}`}>
-                                      <div className="gl-profile__preset-info">
-                                        <span className="gl-profile__preset-label">{player.name}</span>
-                                        <span className="gl-profile__preset-desc">{player.role}</span>
-                                      </div>
-                                      <button
-                                        className={`gl-profile__preset-toggle ${isActive ? 'gl-profile__preset-toggle--on' : ''}`}
-                                        disabled={isLoading}
-                                        onClick={async () => {
-                                          if (isActive) {
-                                            setProfileModified({});
-                                            setProfileDirty(false);
-                                            setActivePlayerConfig(null);
-                                          } else {
-                                            if (!selectedGame || !window.electron?.ipcRenderer) return;
-                                            setPlayerConfigLoading(player.name);
-                                            try {
-                                              const res: any = await window.electron.ipcRenderer.invoke('vconfig:read-player-config', selectedGame.id, player.name);
-                                              if (res?.success) {
-                                                const newMods: Record<string, string> = {};
-                                                for (const [k, v] of Object.entries(res.settings as Record<string, string>)) {
-                                                  if (profileSettings[k] !== undefined) {
-                                                    newMods[k] = v;
-                                                  }
-                                                }
-                                                setProfileModified(newMods);
-                                                setProfileDirty(true);
-                                                setActivePlayerConfig(player.name);
-                                              }
-                                            } catch { /* ignore */ }
-                                            setPlayerConfigLoading(null);
-                                          }
-                                        }}
-                                      >
-                                        <span className="gl-profile__preset-toggle-track">
-                                          <span className="gl-profile__preset-toggle-thumb" />
-                                        </span>
-                                        <span className="gl-profile__preset-toggle-label">{isLoading ? '...' : isActive ? 'Loaded' : 'Load'}</span>
-                                      </button>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          {/* Action bar below Pro Player Configs */}
-                          <div className="gl-profile__action-bar">
-                            <button className="gl-profile__action gl-profile__action--reset" onClick={handleProfileReset} disabled={profileSaving}>
-                              Reset
-                            </button>
-                            <button
-                              className={`gl-profile__action gl-profile__action--lock ${profileIsReadOnly ? 'gl-profile__action--locked' : ''}`}
-                              onClick={() => handleToggleReadOnly(!profileIsReadOnly)}
-                              disabled={profileLockBusy}
-                            >
-                              {profileLockBusy ? '...' : profileIsReadOnly ? 'Unlock' : 'Read Only'}
-                            </button>
-                            <button className="gl-profile__action gl-profile__action--apply" onClick={handleProfileSave} disabled={!profileDirty || profileSaving}>
-                              {profileSaving ? '...' : 'Apply'}
-                            </button>
-                          </div>
-                          </div>
                         </div>
-
-                      </div>
-                    )}
-                  </motion.div>
+                      )}
+                    </motion.div>
                   );
                 })()}
 
