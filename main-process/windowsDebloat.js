@@ -7,11 +7,6 @@ const windowManager = require('./windowManager');
 /* ─── Module state ──────────────────────────────────────────────────────── */
 let _isElevated = false;
 
-/* ─── Curated Windows Apps list (display name → package family pattern) ── */
-// This mirrors Winhance's known Windows App catalogue.
-// We enumerate ALL installed packages and then match against these for
-// friendly display names; unrecognised packages are still listed under
-// their package name.
 const WINDOWS_APPS_CATALOG = [
   { name: 'Calculator',                    pkg: 'Microsoft.WindowsCalculator' },
   { name: 'Camera',                        pkg: 'Microsoft.WindowsCamera' },
@@ -62,11 +57,40 @@ const WINDOWS_APPS_CATALOG = [
   { name: 'Notepad',                      pkg: 'Microsoft.WindowsNotepad' },
 ];
 
-/* ─── Helpers ───────────────────────────────────────────────────────────── */
-/**
- * Run a PowerShell command that returns JSON.
- * Wraps the script in -EncodedCommand to avoid quoting hell.
- */
+// WinHance-targeted Capabilities (friendly names derived from known packages)
+const WINHANCE_CAPABILITIES = [
+  { match: /internet.*explorer|intjudg/i, label: 'Internet Explorer' },
+  { match: /notepad/i, label: 'Notepad (Legacy)' },
+  { match: /openssh\.client/i, label: 'OpenSSH Client' },
+  { match: /openssh\.server/i, label: 'OpenSSH Server' },
+  { match: /powershell.*ise/i, label: 'PowerShell ISE' },
+  { match: /windows\.media\.player/i, label: 'Windows Media Player' },
+];
+
+const WINHANCE_OPTIONAL_FEATURES = [
+  { key: 'NetFx3', label: '.NET Framework 3.5' },
+  { key: 'Microsoft-Windows-Sandbox', label: 'Windows Sandbox' },
+  { key: 'Microsoft-Hyper-V-All', label: 'Hyper-V' },
+  { key: 'Microsoft-Hyper-V-Management-Tools', label: 'Hyper-V Management Tools' },
+  { key: 'Microsoft-Hyper-V-Hypervisor', label: 'Windows Hypervisor Platform' },
+  { key: 'Microsoft-Windows-Subsystem-Linux', label: 'Subsystem for Linux' },
+  { key: 'Microsoft-Window-Recall' , label: 'Recall' },
+  { key: 'Microsoft-Windows-Internet-Explorer-Optional', label: 'Internet Explorer' },
+];
+
+function findWinHanceCapability(rawName) {
+  if (!rawName) return null;
+  const normalized = rawName.toString();
+  const item = WINHANCE_CAPABILITIES.find(w => w.match.test(normalized));
+  return item ? item.label : null;
+}
+
+function findWinHanceFeature(rawName) {
+  if (!rawName) return null;
+  const entry = WINHANCE_OPTIONAL_FEATURES.find(w => w.key.toLowerCase() === rawName.toString().toLowerCase());
+  return entry ? entry.label : null;
+}
+
 async function runPS(script) {
   const encoded = Buffer.from(script, 'utf16le').toString('base64');
   const cmd = `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ${encoded}`;
@@ -79,9 +103,6 @@ async function runPS(script) {
   return stdout.trim();
 }
 
-/**
- * Send progress update to the renderer.
- */
 function sendProgress(msg, current, total) {
   const win = windowManager.getMainWindow();
   if (win && !win.isDestroyed()) {
@@ -89,12 +110,6 @@ function sendProgress(msg, current, total) {
   }
 }
 
-/* ─── IPC Handlers ──────────────────────────────────────────────────────── */
-
-/**
- * wdebloat:list-apps
- * Returns all AppxPackages (AllUsers) merged with catalog for friendly names.
- */
 async function handleListApps() {
   try {
     const script = `
@@ -112,12 +127,16 @@ $pkgs | ConvertTo-Json -Compress -Depth 2
 
     // Merge with catalog for friendly display names
     const items = packages.map(pkg => {
-      const lower = (pkg.Name || '').toLowerCase();
+      const packageFamily = (pkg.PackageFamilyName || '').toLowerCase();
+      const lowerName = (pkg.Name || '').toLowerCase();
       const catalogEntry = WINDOWS_APPS_CATALOG.find(c =>
-        lower.startsWith(c.pkg.toLowerCase()) || lower === c.pkg.toLowerCase()
+        packageFamily.startsWith(c.pkg.toLowerCase()) ||
+        lowerName.startsWith(c.pkg.toLowerCase()) ||
+        lowerName === c.pkg.toLowerCase()
       );
+
       return {
-        id: pkg.Name,
+        id: pkg.PackageFamilyName || pkg.Name,
         name: catalogEntry ? catalogEntry.name : pkg.Name,
         packageFamilyName: pkg.PackageFamilyName || '',
         version: pkg.Version || '',
@@ -129,9 +148,11 @@ $pkgs | ConvertTo-Json -Compress -Depth 2
 
     // Add catalog entries that are NOT installed (so user can reinstall them)
     for (const entry of WINDOWS_APPS_CATALOG) {
-      const alreadyListed = items.some(
-        i => i.id.toLowerCase().startsWith(entry.pkg.toLowerCase())
-      );
+      const alreadyListed = items.some(i => {
+        const idLower = (i.id || '').toLowerCase();
+        const pfnLower = (i.packageFamilyName || '').toLowerCase();
+        return idLower.startsWith(entry.pkg.toLowerCase()) || pfnLower.startsWith(entry.pkg.toLowerCase());
+      });
       if (!alreadyListed) {
         items.push({
           id: entry.pkg,
@@ -145,23 +166,18 @@ $pkgs | ConvertTo-Json -Compress -Depth 2
       }
     }
 
-    // Sort: catalog first (by name), then extras alphabetically
-    items.sort((a, b) => {
-      if (a.isCatalog && !b.isCatalog) return -1;
-      if (!a.isCatalog && b.isCatalog) return 1;
-      return a.name.localeCompare(b.name);
-    });
+    // Keep only catalog-managed entries for the Windows Apps tab and avoid showing low-level system packages.
+    const catalogItems = items.filter(i => i.isCatalog);
 
-    return { success: true, items };
+    // Sort: catalog first (by name)
+    catalogItems.sort((a, b) => a.name.localeCompare(b.name));
+
+    return { success: true, items: catalogItems };
   } catch (err) {
     return { success: false, error: err.message, items: [] };
   }
 }
 
-/**
- * wdebloat:remove-app
- * Remove a single AppxPackage for all users.
- */
 async function handleRemoveApp(_event, packageId) {
   if (!_isElevated) return { success: false, error: 'Administrator privileges required.' };
   try {
@@ -277,13 +293,19 @@ $caps | ConvertTo-Json -Compress -Depth 2
         caps = Array.isArray(parsed) ? parsed : [parsed];
       } catch { caps = []; }
     }
-    const items = caps.map(c => ({
-      id: c.Name,
-      name: c.Name.replace(/~.*$/, '').replace(/\.\d+\.\d+\.\d+$/, '').replace(/\./g, ' ').trim(),
-      rawName: c.Name,
-      installed: c.State === 'Installed',
-      state: c.State || 'Unknown',
-    }));
+    const items = caps
+      .map(c => {
+        const display = findWinHanceCapability(c.Name);
+        return display ? {
+          id: c.Name,
+          name: display,
+          rawName: c.Name,
+          installed: c.State === 'Installed',
+          state: c.State || 'Unknown',
+        } : null;
+      })
+      .filter(Boolean);
+
     return { success: true, items };
   } catch (err) {
     return { success: false, error: err.message, items: [] };
@@ -366,13 +388,18 @@ $feats | ConvertTo-Json -Compress -Depth 2
         feats = Array.isArray(parsed) ? parsed : [parsed];
       } catch { feats = []; }
     }
-    const items = feats.map(f => ({
-      id: f.FeatureName,
-      name: (f.FeatureName || '').replace(/[-_]/g, ' ').trim(),
-      rawName: f.FeatureName,
-      installed: f.State === 'Enabled',
-      state: f.State || 'Unknown',
-    }));
+    const items = feats
+      .map(f => {
+        const display = findWinHanceFeature(f.FeatureName);
+        return display ? {
+          id: f.FeatureName,
+          name: display,
+          rawName: f.FeatureName,
+          installed: f.State === 'Enabled',
+          state: f.State || 'Unknown',
+        } : null;
+      })
+      .filter(Boolean);
     return { success: true, items };
   } catch (err) {
     return { success: false, error: err.message, items: [] };

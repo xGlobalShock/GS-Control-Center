@@ -563,7 +563,7 @@ const GameLibrary: React.FC<GameLibraryProps> = ({ hardwareInfo, isActive }) => 
   const [showSpecsModal, setShowSpecsModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'launch' | 'profile'>('profile');
 
-  const IS_VIDEO_COMING_SOON = true; // LOCK / UNLOCK VIDEO SETTINGS PAGE
+  const IS_VIDEO_COMING_SOON = false; // LOCK / UNLOCK VIDEO SETTINGS PAGE
 
   // Game Profile state
   const [profileSettings, setProfileSettings] = useState<Record<string, string>>({});

@@ -387,6 +387,44 @@
   gap: 6px;
 }
 
+/* Section wrappers */
+.wd-grid-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.wd-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  padding-top: 12px;
+}
+
+.wd-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(215, 230, 245, 0.88);
+  text-transform: none;
+}
+
+.wd-section-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(145, 168, 195, 0.7);
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+}
+
+.wd-section-empty {
+  color: rgba(145, 168, 195, 0.5);
+  font-size: 12px;
+  padding: 8px 4px;
+}
+
 /* CARD */
 .wd-card {
   display: flex;
@@ -512,6 +550,11 @@
 .wd-card-badge--enabled {
   background: rgba(52, 211, 153, 0.12);
   color: #34d399;
+}
+
+.wd-card-badge--info {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
 }
 
 .wd-card-badge--disabled {

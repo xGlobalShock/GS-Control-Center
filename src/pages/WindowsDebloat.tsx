@@ -9,7 +9,6 @@ import {
   Download,
   Trash2,
   AlertTriangle,
-  LayoutGrid,
   Lock,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
@@ -17,9 +16,12 @@ import { useToast } from '../contexts/ToastContext';
 import '../styles/WindowsDebloat.css';
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
+type DebloatSource = 'apps' | 'capabilities' | 'features';
+
 interface DebloatItem {
   id: string;
   name: string;
+  source: DebloatSource;
   rawName?: string;
   packageFamilyName?: string;
   version?: string;
@@ -29,7 +31,8 @@ interface DebloatItem {
   state?: string;
 }
 
-type DebloatTab = 'apps' | 'capabilities' | 'features';
+// no longer using tabs replacement
+
 
 interface WindowsDebloatProps {
   isActive?: boolean;
@@ -42,7 +45,6 @@ const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false }) => 
   const IS_COMING_SOON = true; // LOCK / UNLOCK PAGE
 
   /* ── State ────────────────────────────────────────────────────────────── */
-  const [tab, setTab] = useState<DebloatTab>('apps');
   const [items, setItems] = useState<DebloatItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -51,56 +53,70 @@ const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false }) => 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isElevated, setIsElevated] = useState(true); // assume elevated; update if IPC says otherwise
 
-  const hasLoaded = React.useRef<Record<DebloatTab, boolean>>({ apps: false, capabilities: false, features: false });
+  const hasLoaded = React.useRef<Record<DebloatSource, boolean>>({ apps: false, capabilities: false, features: false });
 
   /* ── IPC channel map ── */
-  const LIST_CHANNEL: Record<DebloatTab, string> = {
+  const LIST_CHANNEL: Record<DebloatSource, string> = {
     apps: 'wdebloat:list-apps',
     capabilities: 'wdebloat:list-capabilities',
     features: 'wdebloat:list-features',
   };
-  const REMOVE_BULK_CHANNEL: Record<DebloatTab, string> = {
+  const REMOVE_BULK_CHANNEL: Record<DebloatSource, string> = {
     apps: 'wdebloat:remove-apps',
     capabilities: 'wdebloat:remove-capabilities',
     features: 'wdebloat:remove-features',
   };
-  const INSTALL_BULK_CHANNEL: Record<DebloatTab, string> = {
+  const INSTALL_BULK_CHANNEL: Record<DebloatSource, string> = {
     apps: 'wdebloat:install-apps',
     capabilities: 'wdebloat:add-capabilities',
     features: 'wdebloat:add-features',
   };
 
-  /* ── Fetch list for the current tab ── */
-  const fetchItems = useCallback(async (targetTab: DebloatTab = tab) => {
+  /* ── Fetch all sections in one view ── */
+  const fetchItems = useCallback(async () => {
     if (IS_COMING_SOON) return;
     if (!window.electron?.ipcRenderer) return;
     setLoading(true);
     setSelected(new Set());
     try {
-      const result = await window.electron.ipcRenderer.invoke(LIST_CHANNEL[targetTab]);
-      if (result.success) {
-        setItems(result.items || []);
-        hasLoaded.current[targetTab] = true;
+      const [apps, caps, feats] = await Promise.all([
+        window.electron.ipcRenderer.invoke(LIST_CHANNEL.apps),
+        window.electron.ipcRenderer.invoke(LIST_CHANNEL.capabilities),
+        window.electron.ipcRenderer.invoke(LIST_CHANNEL.features),
+      ]);
+
+      const merged: DebloatItem[] = [];
+      if (apps.success) {
+        merged.push(...(apps.items || []).map((i: any) => ({ ...i, source: 'apps' as DebloatSource })));
       } else {
-        if (result.error?.includes('privilege') || result.error?.includes('elevation')) {
-          setIsElevated(false);
-        }
-        addToast(result.error || 'Failed to load items', 'error');
+        if (apps.error?.includes('privilege') || apps.error?.includes('elevation')) setIsElevated(false);
+        addToast(apps.error || 'Failed to load apps list', 'error');
       }
+      if (caps.success) {
+        merged.push(...(caps.items || []).map((i: any) => ({ ...i, source: 'capabilities' as DebloatSource })));
+      }
+      if (feats.success) {
+        merged.push(...(feats.items || []).map((i: any) => ({ ...i, source: 'features' as DebloatSource })));
+      }
+
+      setItems(merged);
+      hasLoaded.current.apps = true;
+      hasLoaded.current.capabilities = true;
+      hasLoaded.current.features = true;
     } catch (err: any) {
       addToast('Failed to load: ' + err.message, 'error');
     } finally {
       setLoading(false);
     }
-  }, [tab]);
+  }, []);
 
-  /* ── Load on activate or tab change ── */
+  /* ── Load on activate only ── */
   useEffect(() => {
     if (!isActive) return;
-    if (!hasLoaded.current[tab]) {
-      fetchItems(tab);
+    if (!hasLoaded.current.apps || !hasLoaded.current.capabilities || !hasLoaded.current.features) {
+      fetchItems();
     }
-  }, [isActive, tab]);
+  }, [isActive]);
 
   /* ── Listen for progress events ── */
   useEffect(() => {
@@ -111,18 +127,6 @@ const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false }) => 
     return () => { if (unsub) unsub(); };
   }, []);
 
-  /* ── Tab switch ── */
-  const switchTab = (t: DebloatTab) => {
-    if (t === tab) return;
-    setTab(t);
-    setSearchQuery('');
-    setSelected(new Set());
-    setItems([]);
-    if (!hasLoaded.current[t]) {
-      // fetchItems with explicit tab because state hasn't updated yet
-      setTimeout(() => fetchItems(t), 0);
-    }
-  };
 
   /* ── Filtered items ── */
   const filtered = useMemo(() => {
@@ -166,21 +170,41 @@ const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false }) => 
   const handleRemoveSelected = async () => {
     if (selected.size === 0) return;
     const ids = Array.from(selected);
+    const appIds: string[] = [];
+    const capIds: string[] = [];
+    const featIds: string[] = [];
+    for (const id of ids) {
+      const item = items.find(i => i.id === id);
+      if (!item || item.nonRemovable) continue;
+      if (item.source === 'apps') appIds.push(id);
+      if (item.source === 'capabilities') capIds.push(id);
+      if (item.source === 'features') featIds.push(id);
+    }
+
     setBusy(true);
     setProgressMsg('Starting removal…');
     try {
-      const result = await window.electron.ipcRenderer.invoke(REMOVE_BULK_CHANNEL[tab], ids);
-      if (result.success) {
-        const failed = (result.results || []).filter((r: any) => !r.success);
-        if (failed.length === 0) {
-          addToast(`Removed ${ids.length} item${ids.length !== 1 ? 's' : ''} successfully`, 'success');
-        } else {
-          addToast(`Removed ${ids.length - failed.length}/${ids.length}. ${failed.length} failed.`, 'info');
-        }
-        await fetchItems(tab);
-      } else {
-        addToast(result.error || 'Removal failed', 'error');
+      const allResults: any[] = [];
+      if (appIds.length > 0) {
+        const r = await window.electron.ipcRenderer.invoke(REMOVE_BULK_CHANNEL.apps, appIds);
+        if (r.success) allResults.push(...r.results);
       }
+      if (capIds.length > 0) {
+        const r = await window.electron.ipcRenderer.invoke(REMOVE_BULK_CHANNEL.capabilities, capIds);
+        if (r.success) allResults.push(...r.results);
+      }
+      if (featIds.length > 0) {
+        const r = await window.electron.ipcRenderer.invoke(REMOVE_BULK_CHANNEL.features, featIds);
+        if (r.success) allResults.push(...r.results);
+      }
+
+      const failed = allResults.filter((r: any) => !r.success);
+      if (failed.length === 0) {
+        addToast(`Removed ${ids.length} item${ids.length !== 1 ? 's' : ''} successfully`, 'success');
+      } else {
+        addToast(`Removed ${ids.length - failed.length}/${ids.length}. ${failed.length} failed.`, 'info');
+      }
+      await fetchItems();
     } catch (err: any) {
       addToast('Error: ' + err.message, 'error');
     } finally {
@@ -193,21 +217,41 @@ const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false }) => 
   const handleInstallSelected = async () => {
     if (selected.size === 0) return;
     const ids = Array.from(selected);
+    const appIds: string[] = [];
+    const capIds: string[] = [];
+    const featIds: string[] = [];
+    for (const id of ids) {
+      const item = items.find(i => i.id === id);
+      if (!item) continue;
+      if (item.source === 'apps') appIds.push(id);
+      if (item.source === 'capabilities') capIds.push(id);
+      if (item.source === 'features') featIds.push(id);
+    }
+
     setBusy(true);
     setProgressMsg('Starting installation…');
     try {
-      const result = await window.electron.ipcRenderer.invoke(INSTALL_BULK_CHANNEL[tab], ids);
-      if (result.success) {
-        const failed = (result.results || []).filter((r: any) => !r.success);
-        if (failed.length === 0) {
-          addToast(`Installed ${ids.length} item${ids.length !== 1 ? 's' : ''} successfully`, 'success');
-        } else {
-          addToast(`Installed ${ids.length - failed.length}/${ids.length}. ${failed.length} failed.`, 'info');
-        }
-        await fetchItems(tab);
-      } else {
-        addToast(result.error || 'Installation failed', 'error');
+      const allResults: any[] = [];
+      if (appIds.length > 0) {
+        const r = await window.electron.ipcRenderer.invoke(INSTALL_BULK_CHANNEL.apps, appIds);
+        if (r.success) allResults.push(...r.results);
       }
+      if (capIds.length > 0) {
+        const r = await window.electron.ipcRenderer.invoke(INSTALL_BULK_CHANNEL.capabilities, capIds);
+        if (r.success) allResults.push(...r.results);
+      }
+      if (featIds.length > 0) {
+        const r = await window.electron.ipcRenderer.invoke(INSTALL_BULK_CHANNEL.features, featIds);
+        if (r.success) allResults.push(...r.results);
+      }
+
+      const failed = allResults.filter((r: any) => !r.success);
+      if (failed.length === 0) {
+        addToast(`Installed ${ids.length} item${ids.length !== 1 ? 's' : ''} successfully`, 'success');
+      } else {
+        addToast(`Installed ${ids.length - failed.length}/${ids.length}. ${failed.length} failed.`, 'info');
+      }
+      await fetchItems();
     } catch (err: any) {
       addToast('Error: ' + err.message, 'error');
     } finally {
@@ -224,12 +268,58 @@ const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false }) => 
   const selectedInstalled = Array.from(selected).filter(id => items.find(i => i.id === id)?.installed).length;
   const selectedNotInstalled = selected.size - selectedInstalled;
 
-  /* ── Tab labels ── */
-  const TAB_LABELS: Record<DebloatTab, string> = {
-    apps: 'Windows Apps',
-    capabilities: 'Capabilities',
-    features: 'Optional Features',
+  /* ── Section grouping (layout) ── */
+  const apps = filtered.filter(i => i.source === 'apps');
+  const capabilities = filtered.filter(i => i.source === 'capabilities');
+  const features = filtered.filter(i => i.source === 'features');
+
+  const renderItemCard = (item: DebloatItem) => {
+    const isSelected = selected.has(item.id);
+    const dotClass = item.installed ? 'wd-dot wd-dot--on' : 'wd-dot wd-dot--off';
+    const cardClass = ['wd-card', isSelected ? 'wd-card--selected' : '', item.nonRemovable ? 'wd-card--non-removable' : ''].filter(Boolean).join(' ');
+
+    const badgeClass = item.installed ? 'wd-card-badge wd-card-badge--enabled' : 'wd-card-badge wd-card-badge--disabled';
+    let badgeText = 'Unknown';
+    if (item.source === 'apps') {
+      badgeText = item.installed ? 'Installed' : item.isCatalog ? 'Reinstallable' : 'Not Installed';
+    } else if (item.source === 'features') {
+      badgeText = item.installed ? 'Enabled' : 'Disabled';
+    } else {
+      badgeText = item.installed ? 'Installed' : 'Not Installed';
+    }
+
+    return (
+      <div
+        key={item.id}
+        className={cardClass}
+        onClick={() => toggleItem(item.id, item.nonRemovable)}
+        title={item.nonRemovable ? 'This component cannot be removed' : undefined}
+      >
+        <div className="wd-card-cb" />
+        <span className={dotClass} />
+        <div className="wd-card-info">
+          <span className="wd-card-name">{item.name}</span>
+          {item.source === 'apps' && item.version && <span className="wd-card-sub">v{item.version}</span>}
+          {item.source !== 'apps' && item.rawName && item.rawName !== item.name && <span className="wd-card-sub" title={item.rawName}>{item.rawName}</span>}
+        </div>
+        <span className={badgeClass}>{badgeText}</span>
+      </div>
+    );
   };
+
+  const renderSection = (title: string, sectionItems: DebloatItem[]) => (
+    <div className="wd-section" key={title}>
+      <div className="wd-section-header">
+        <span>{title}</span>
+        <span className="wd-section-count">{sectionItems.length}</span>
+      </div>
+      {sectionItems.length === 0 ? (
+        <div className="wd-section-empty">No items in this section.</div>
+      ) : (
+        <div className="wd-grid">{sectionItems.map(renderItemCard)}</div>
+      )}
+    </div>
+  );
 
   return (
     <motion.div
@@ -272,20 +362,7 @@ const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false }) => 
           </div>
         )}
 
-        {/* ── Tab Switcher ── */}
-        <div className="wd-tabs">
-          {(['apps', 'capabilities', 'features'] as DebloatTab[]).map(t => (
-            <button
-              key={t}
-              className={`wd-tab${tab === t ? ' wd-tab--active' : ''}`}
-              onClick={() => switchTab(t)}
-              disabled={busy}
-            >
-              <LayoutGrid size={12} />
-              {TAB_LABELS[t]}
-            </button>
-          ))}
-        </div>
+        <div className="wd-tabs">{/* tabs removed; integrated sections below */}</div>
 
         {/* ── Toolbar ── */}
         <div className="wd-toolbar">
@@ -295,7 +372,7 @@ const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false }) => 
               <Search size={12} className="wd-search-icon" />
               <input
                 className="wd-search"
-                placeholder={`Search ${TAB_LABELS[tab].toLowerCase()}…`}
+                placeholder="Search Windows apps, capabilities, and features…"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 disabled={loading || busy}
@@ -347,7 +424,7 @@ const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false }) => 
             {/* Refresh */}
             <button
               className="wd-icon-btn"
-              onClick={() => fetchItems(tab)}
+              onClick={() => fetchItems()}
               disabled={loading || busy}
               title="Refresh"
             >
@@ -408,7 +485,7 @@ const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false }) => 
                 exit={{ opacity: 0 }}
               >
                 <Loader2 size={28} className="wd-spin" />
-                <span>Loading {TAB_LABELS[tab].toLowerCase()}…</span>
+                <span>Loading Windows apps and features…</span>
               </motion.div>
             ) : filtered.length === 0 ? (
               <motion.div
@@ -419,59 +496,20 @@ const WindowsDebloat: React.FC<WindowsDebloatProps> = ({ isActive = false }) => 
                 exit={{ opacity: 0 }}
               >
                 <PackageX size={32} className="wd-empty-icon" />
-                <span>{searchQuery ? 'No items match your search' : `No ${TAB_LABELS[tab].toLowerCase()} found`}</span>
+                <span>{searchQuery ? 'No items match your search' : 'No items found'}</span>
               </motion.div>
             ) : (
               <motion.div
-                key={`grid-${tab}`}
-                className="wd-grid"
+                key="grid"
+                className="wd-grid-sections"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
               >
-                {filtered.map(item => {
-                  const isSelected = selected.has(item.id);
-                  const dotClass = item.installed ? 'wd-dot wd-dot--on' : 'wd-dot wd-dot--off';
-                  const cardClass = [
-                    'wd-card',
-                    isSelected ? 'wd-card--selected' : '',
-                    item.nonRemovable ? 'wd-card--non-removable' : '',
-                  ].filter(Boolean).join(' ');
-
-                  return (
-                    <div
-                      key={item.id}
-                      className={cardClass}
-                      onClick={() => toggleItem(item.id, item.nonRemovable)}
-                      title={item.nonRemovable ? 'This component cannot be removed' : undefined}
-                    >
-                      {/* Checkbox */}
-                      <div className="wd-card-cb" />
-
-                      {/* Status dot */}
-                      <span className={dotClass} />
-
-                      {/* Info */}
-                      <div className="wd-card-info">
-                        <span className="wd-card-name">{item.name}</span>
-                        {tab === 'apps' && item.version && (
-                          <span className="wd-card-sub">v{item.version}</span>
-                        )}
-                        {tab !== 'apps' && item.rawName && item.rawName !== item.name && (
-                          <span className="wd-card-sub" title={item.rawName}>{item.rawName}</span>
-                        )}
-                      </div>
-
-                      {/* Badge for capabilities / features */}
-                      {tab !== 'apps' && (
-                        <span className={`wd-card-badge ${item.installed ? 'wd-card-badge--enabled' : 'wd-card-badge--disabled'}`}>
-                          {item.installed ? (tab === 'features' ? 'Enabled' : 'Installed') : (tab === 'features' ? 'Disabled' : 'Not Installed')}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
+                {renderSection('Windows Apps', apps)}
+                {renderSection('Windows Capabilities', capabilities)}
+                {renderSection('Windows Optional Features', features)}
               </motion.div>
             )}
           </AnimatePresence>
