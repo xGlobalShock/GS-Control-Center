@@ -58,7 +58,7 @@
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
-  width: 520px;
+  width: 650px;
   max-height: 520px;
   background: #0c0d11;
   backdrop-filter: blur(24px);
@@ -84,7 +84,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px 8px;
+  padding: 5px 10px 5px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -193,8 +193,8 @@
 }
 
 .whatsnew-highlights {
-  font-size: 10px;
-  color: #94a3b8;
+  font-size: 12px;
+  color: #00f7ff;
   margin: 4px 0 6px;
   font-style: italic;
   line-height: 1.4;
@@ -204,7 +204,7 @@
 .whatsnew-changes {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
 }
 
 .whatsnew-change {
@@ -218,8 +218,8 @@
 
 .whatsnew-change-badge {
   flex-shrink: 0;
-  font-size: 7px;
-  font-weight: 800;
+  font-size: 8px;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   padding: 1.5px 5px;
@@ -234,10 +234,10 @@
 
 .whatsnew-badge--improved {
   background: rgba(34, 197, 94, 0.12);
-  color: #4ade80;
+  color: #00ff5e;
 }
 
 .whatsnew-badge--fixed {
   background: rgba(251, 191, 36, 0.12);
-  color: #fbbf24;
+  color: #ffd900;
 }
