@@ -38,12 +38,14 @@ ChkReg 'gpu' 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers' 'HwSch
 ChkReg 'fse' 'HKCU:\\System\\GameConfigStore' 'GameDVR_FSEBehaviorMonitorEnabled'
 ChkReg 'usb' 'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\USB' 'DisableSelectiveSuspend'
 ChkReg 'dvr' 'HKCU:\\System\\GameConfigStore' 'GameDVR_Enabled'
-ChkReg 'w32' 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\PriorityControl' 'Win32PrioritySeparation'try {
+ChkReg 'w32' 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\PriorityControl' 'Win32PrioritySeparation'
+try {
   $mc = (Get-MMAgent -ErrorAction SilentlyContinue).MemoryCompression
   if ($null -ne $mc) { $r['mc'] = @{ exists = $true; value = [int]$mc } } else { $r['mc'] = @{ exists = $false; value = $null } }
 } catch {
   $r['mc'] = @{ exists = $false; value = $null }
-}$r | ConvertTo-Json -Compress
+}
+$r | ConvertTo-Json -Compress
     `, 6000);
 
     if (raw) {

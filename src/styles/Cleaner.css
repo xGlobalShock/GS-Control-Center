@@ -6,7 +6,7 @@
 .cleaner-page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 10px;
   transform: translateZ(0);
   contain: layout style;
 }
@@ -19,7 +19,7 @@
   gap: 3px;
   padding: 3px;
   background: rgba(6, 8, 16, 0.55);
-  border: 1px solid rgba(0, 242, 255, 0.06);
+  border: 1px solid rgba(0, 242, 255, 0.4);
   border-radius: 12px;
   width: fit-content;
   backdrop-filter: blur(12px);
@@ -37,7 +37,7 @@
   background: transparent;
   border: 1px solid transparent;
   border-radius: 9px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.7);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.4px;
@@ -48,7 +48,7 @@
 
 .cleaner-tab:hover {
   color: rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.025);
+  background: rgba(255, 255, 255, 0.055);
 }
 
 .cleaner-tab--active {
@@ -94,14 +94,20 @@
 ══════════════════════════════════════════════════════ */
 .cleaner-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 15px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
   width: 100%;
 }
 
-/* smaller cards used for games tab */
+/* slightly larger cards used for games tab */
 .cleaner-grid--small {
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+@media (max-width: 1400px) {
+  .cleaner-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
 }
 @media (max-width: 1400px) {
   .cleaner-grid {
@@ -146,7 +152,7 @@
 
 /* informational description box next to tabs */
 .cleaner-tab-desc {
-  font-size: 11px;
+  font-size: 9px;
   color: #c0c0c0;
   margin: 0 0 0 12px;
   flex-shrink: 0;
@@ -161,7 +167,7 @@
 
   /* box styling */
   background: rgba(6, 8, 16, 0.6);
-  border: 1px solid rgba(0, 242, 255, 0.1);
+  border: 1px solid rgba(0, 242, 255, 0.4);
   border-radius: 8px;
   padding: 8px 12px 6px 28px; /* leave space for icon */
   backdrop-filter: blur(8px);
@@ -171,10 +177,10 @@
 .cleaner-tab-desc::before {
   content: '\2139'; /* ℹ️ information symbol */
   position: absolute;
-  left: 10px;
+  left: 15px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 12px;
+  font-size: 15px;
   color: #00F2FF;
 }
 

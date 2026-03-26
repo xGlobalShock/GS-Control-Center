@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import PerformanceTweakCard from '../components/PerformanceTweakCard';
 import { ArrowCounterClockwise } from 'phosphor-react';
-import { performanceTweaks } from '../data/performanceTweaks';
+import { performanceTweaks, PerformanceTweak } from '../data/performanceTweaks';
 import { useToast } from '../contexts/ToastContext';
 import '../styles/Performance.css';
 
@@ -239,8 +239,19 @@ const Performance: React.FC = () => {
     }
   };
 
+  // Use categories matching the current performanceTweaks dataset.
+  const activeTweaks = performanceTweaks.filter(item => [
+    'IRQ Priority',
+    'Win32 Priority',
+    'GPU Scheduling',
+    'Disable Memory Compression',
+    'Stabilize Ping',
+    'Disable Fullscreen Optimization',
+    'Disable USB Suspend',
+    'Disable Game DVR'
+  ].includes(item.category));
   const appliedCount = Object.values(enabledTweaks).filter(Boolean).length;
-  const totalCount = performanceTweaks.length;
+  const totalCount = activeTweaks.length;
 
   return (
     <motion.div
@@ -287,7 +298,7 @@ const Performance: React.FC = () => {
 
       {/* Tweaks Grid */}
       <div className="perf-tweaks-grid">
-        {performanceTweaks.map((tweak, index) => (
+        {activeTweaks.map((tweak, index) => (
           <motion.div
             key={tweak.id}
             initial={{ y: 30, opacity: 0, scale: 0.95 }}
