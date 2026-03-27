@@ -3,357 +3,181 @@
 <head>
 <meta charset="utf-8" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
-<title>GS Center</title>
+<title>GS Center Startup</title>
 <style>
-  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    width: 100vw; height: 100vh; overflow: hidden;
-    background: #050508;
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    color: #c8d6e5;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    -webkit-app-region: drag;
-    user-select: none;
+  :root {
+    --primary: #00ff88;
+    --secondary: #00e5ff;
+    --bg: #030406;
   }
 
-  /* ── Animated background grid ── */
-  .bg-grid {
-    position: fixed; inset: 0; z-index: 0;
-    background-image:
-      linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    animation: gridPulse 4s ease-in-out infinite;
-  }
-  @keyframes gridPulse {
-    0%, 100% { opacity: 0.4; }
-    50% { opacity: 0.8; }
+  html, body {
+    margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+    background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif;
+    -webkit-app-region: drag; user-select: none; color: #fff;
   }
 
-  /* ── Radial glow behind logo ── */
-  .glow-orb {
-    position: fixed; z-index: 1;
-    width: 400px; height: 400px;
-    top: 50%; left: 50%; transform: translate(-50%, -55%);
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(0,255,136,0.08) 0%, rgba(0,200,255,0.04) 40%, transparent 70%);
-    animation: orbPulse 3s ease-in-out infinite;
-    filter: blur(40px);
-  }
-  @keyframes orbPulse {
-    0%, 100% { transform: translate(-50%, -55%) scale(1); opacity: 0.7; }
-    50% { transform: translate(-50%, -55%) scale(1.15); opacity: 1; }
+  /* Background Aesthetics */
+  .ambient-flare {
+    position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background: radial-gradient(circle at center 40%, rgba(0, 255, 136, 0.15) 0%, transparent 60%);
+    mix-blend-mode: screen;
   }
 
-  /* ── Scanning line ── */
-  .scan-line {
-    position: fixed; z-index: 2; left: 0; right: 0; height: 1px;
-    background: linear-gradient(90deg, transparent 0%, rgba(0,255,136,0.3) 30%, rgba(0,255,136,0.6) 50%, rgba(0,255,136,0.3) 70%, transparent 100%);
-    animation: scanDown 3s linear infinite;
-    box-shadow: 0 0 15px rgba(0,255,136,0.2), 0 0 40px rgba(0,255,136,0.1);
+  /* 3D Sweeping Floor Grid */
+  .grid-wrap {
+    position: absolute; inset: 0; z-index: 0; overflow: hidden; perspective: 800px;
   }
-  @keyframes scanDown {
-    0% { top: -2px; }
-    100% { top: 100%; }
+  .grid-plane {
+    position: absolute; left: -50%; right: -50%; bottom: -30%; height: 130%;
+    background-image: 
+      linear-gradient(rgba(0, 255, 136, 0.15) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 255, 136, 0.15) 1px, transparent 1px);
+    background-size: 35px 35px;
+    transform-origin: center top;
+    transform: rotateX(75deg) translateY(0);
+    animation: gridTravel 1.5s linear infinite;
+    mask-image: linear-gradient(to top, rgba(0,0,0,1) 10%, rgba(0,0,0,0) 70%);
+    -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1) 10%, rgba(0,0,0,0) 70%);
+  }
+  @keyframes gridTravel { from { transform: rotateX(75deg) translateY(0); } to { transform: rotateX(75deg) translateY(35px); } }
+
+  /* CRT Scan Lines */
+  .scan-overlay {
+    position: absolute; inset: 0; z-index: 99; pointer-events: none;
+    background: repeating-linear-gradient(to bottom, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px);
   }
 
-  /* ── Main content ── */
-  .splash-content {
+  /* Main Layout - Guarantees perfect bounds inside any Splash Dimension */
+  .splash-container {
     position: relative; z-index: 10;
-    display: flex; flex-direction: column; align-items: center; gap: 28px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    width: 100vw; height: 100vh; padding: 24px 32px; box-sizing: border-box;
   }
 
-  /* ── Logo container ── */
-  .logo-wrap {
-    position: relative;
-    width: 88px; height: 88px;
-    display: flex; align-items: center; justify-content: center;
+  /* Header */
+  .header { display: flex; justify-content: space-between; align-items: center; }
+  .status-badge {
+    display: flex; align-items: center; gap: 8px; font-family: 'Consolas', monospace;
+    font-size: 10px; color: rgba(255,255,255,0.6); letter-spacing: 2px;
+  }
+  .pulse-dot {
+    width: 6px; height: 6px; background: #ff3366; border-radius: 50%;
+    box-shadow: 0 0 10px #ff3366; animation: redPulse 1.5s infinite;
+  }
+  @keyframes redPulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+  .version { font-family: 'Consolas', monospace; font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 2px; }
+
+  /* Center Identity */
+  .identity { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; margin-top: -10px; }
+  
+  .hologram-wrap { position: relative; width: 64px; height: 64px; margin-bottom: 24px; }
+  .holo-icon { position: absolute; inset: 0; animation: floatHolo 4s ease-in-out infinite alternate; }
+  .holo-icon svg { width: 100%; height: 100%; filter: drop-shadow(0 0 15px rgba(0,255,136,0.6)); }
+  .holo-icon svg path {
+    stroke-dasharray: 120; stroke-dashoffset: 120;
+    animation: drawLine 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  }
+  @keyframes drawLine { to { stroke-dashoffset: 0; } }
+  @keyframes floatHolo { from { transform: translateY(-3px); } to { transform: translateY(3px); } }
+  
+  .hologram-base {
+    position: absolute; bottom: -8px; left: 10px; right: 10px; height: 6px;
+    background: rgba(0,255,136,0.5); border-radius: 50%; filter: blur(6px);
+    animation: shadowPulse 4s ease-in-out infinite alternate;
+  }
+  @keyframes shadowPulse { from { transform: scale(0.9); opacity: 0.3; } to { transform: scale(1.1); opacity: 0.8; } }
+
+  .title-wrap h1 {
+    font-size: 28px; font-weight: 800; letter-spacing: 12px; margin: 0; padding-left: 12px;
+    background: linear-gradient(to right, #ffffff, #88ffcc); -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-transform: uppercase; text-shadow: 0 0 25px rgba(0, 255, 136, 0.4);
   }
 
-  /* Outer ring */
-  .logo-ring {
-    position: absolute; inset: -10px;
-    border-radius: 50%;
-    border: 1.5px solid transparent;
-    border-top-color: rgba(0,255,136,0.6);
-    border-right-color: rgba(0,200,255,0.3);
-    animation: ringRotate 2.5s linear infinite;
-  }
-  .logo-ring-2 {
-    position: absolute; inset: -4px;
-    border-radius: 50%;
-    border: 1px solid transparent;
-    border-bottom-color: rgba(0,255,136,0.3);
-    border-left-color: rgba(0,200,255,0.15);
-    animation: ringRotate 3.5s linear infinite reverse;
-  }
-  @keyframes ringRotate {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
+  /* Loading Footer */
+  .loading-footer { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+  .loading-info { display: flex; justify-content: space-between; align-items: flex-end; width: 100%; }
+  .status-msg { font-family: 'Consolas', monospace; font-size: 10px; letter-spacing: 2px; color: #b4e0ca; text-transform: uppercase; }
+  .percentage { font-family: 'Consolas', monospace; font-size: 24px; font-weight: 700; color: #00ff88; text-shadow: 0 0 12px rgba(0,255,136,0.6); line-height: 1; }
 
-  /* Inner icon */
-  .logo-icon {
-    width: 44px; height: 44px;
-    display: flex; align-items: center; justify-content: center;
-    animation: logoBreath 2.5s ease-in-out infinite;
+  /* Glow Blade Engine */
+  .progress-blade {
+    width: 100%; height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px;
+    overflow: hidden; position: relative; box-shadow: inset 0 1px 3px rgba(0,0,0,0.8);
   }
-  .logo-icon svg {
-    width: 38px; height: 38px;
-    filter: drop-shadow(0 0 12px rgba(0,255,136,0.3));
+  .blade-fill {
+    height: 100%; width: 0%; background: linear-gradient(90deg, #008855, #00e5ff, var(--primary));
+    box-shadow: 0 0 12px var(--primary); transition: width 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+    position: relative; border-radius: 2px;
   }
-  @keyframes logoBreath {
-    0%, 100% { transform: scale(1); opacity: 0.9; }
-    50% { transform: scale(1.06); opacity: 1; }
+  .blade-glint {
+    position: absolute; right: 0; top: 0; bottom: 0; width: 60px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent);
+    mix-blend-mode: overlay; animation: glintSweep 1s linear infinite;
   }
+  @keyframes glintSweep { 0% { transform: translateX(-60px); } 100% { transform: translateX(60px); } }
 
-  /* ── Title ── */
-  .splash-title {
-    font-size: 16px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
-    background: linear-gradient(135deg, #00ff88 0%, #00c8ff 100%);
-    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-    text-shadow: none;
-  }
-
-  /* ── HUD Status Block (Mind-Blowing Tech Design) ── */
-  .hud-status {
-    display: flex; flex-direction: column; align-items: center; gap: 4px;
-    width: 280px; position: relative; margin-top: -6px;
-  }
-
-  /* Top micro details */
-  .hud-top-bar {
-    width: 100%; display: flex; justify-content: space-between; align-items: flex-end;
-    padding: 0 4px;
-  }
-  .hud-hex {
-    font-size: 8px; font-family: monospace; color: rgba(0,200,255,0.7);
-    letter-spacing: 1px;
-    text-shadow: 0 0 5px rgba(0,200,255,0.4);
-  }
-  .hud-dots { display: flex; gap: 3px; margin-bottom: 2px; }
-  .hud-dots span {
-    width: 4px; height: 4px; background: rgba(0,255,136,0.2);
-    animation: dotPulse 1.5s infinite; border-radius: 1px;
-  }
-  .hud-dots span:nth-child(2) { animation-delay: 0.2s; }
-  .hud-dots span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes dotPulse {
-    0%, 100% { background: rgba(0,255,136,0.2); box-shadow: none; }
-    50% { background: #00ff88; box-shadow: 0 0 6px #00ff88; }
-  }
-
-  /* Main Angled Container */
-  .splash-status-wrap {
-    width: 100%; height: 32px; position: relative; display: flex; align-items: center;
-    background: rgba(0, 255, 136, 0.04);
-    border: 1px solid rgba(0, 255, 136, 0.3);
-    clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
-    box-shadow: inset 0 0 20px rgba(0, 255, 136, 0.05);
-  }
-  .splash-status-wrap::before {
-    content: ''; position: absolute; inset: 0;
-    background-image: linear-gradient(90deg, rgba(0,255,136,0.08) 1px, transparent 1px);
-    background-size: 4px 100%; pointer-events: none; z-index: 0;
-  }
-  .splash-status-wrap::after {
-    content: ''; position: absolute; top: 0; bottom: 0; left: -20px; width: 40px;
-    background: linear-gradient(90deg, transparent, rgba(0,255,136,0.6), transparent);
-    animation: digitalScan 2s infinite linear; z-index: 1;
-    mix-blend-mode: overlay;
-  }
-  @keyframes digitalScan { 0% { left: -40px; } 100% { left: 100%; } }
-
-  /* Blinking Square Marker */
-  .status-marker {
-    width: 6px; height: 6px; background: #00ff88;
-    margin-left: 14px; margin-right: 12px;
-    box-shadow: 0 0 8px #00ff88;
-    animation: markerBlink 0.8s infinite steps(2); z-index: 2;
-  }
-  @keyframes markerBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.1; } }
-
-  /* Status Text */
-  .splash-status {
-    flex: 1;
-    font-size: 10.5px; font-family: 'Consolas', 'Courier New', monospace;
-    letter-spacing: 2.2px; text-transform: uppercase;
-    color: #e0f8e8; text-shadow: 0 0 6px rgba(0,255,136,0.6);
-    z-index: 2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-
-  /* Bottom micro details */
-  .hud-bottom-bar {
-    width: 100%; display: flex; justify-content: space-between; align-items: flex-start;
-    padding: 0 4px;
-  }
-  .hud-line {
-    flex: 1; height: 1px; background: rgba(0,255,136,0.25);
-    margin-top: 4px; margin-right: 12px; position: relative;
-  }
-  .hud-line::after {
-    content: ''; position: absolute; right: 0; top: -1px; width: 14px; height: 3px;
-    background: #00ff88; box-shadow: 0 0 5px #00ff88;
-  }
-  .hud-sys {
-    font-size: 8px; font-family: monospace; color: rgba(0,255,136,0.4); letter-spacing: 1.5px;
-  }
-
-  /* ── Progress bar ── */
-  .progress-track {
-    width: 220px; height: 2px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 2px;
-    overflow: hidden;
-    position: relative;
-  }
-  .progress-fill {
-    height: 100%; width: 0%;
-    background: linear-gradient(90deg, #00ff88, #00c8ff);
-    border-radius: 2px;
-    transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-    box-shadow: 0 0 10px rgba(0,255,136,0.4);
-  }
-  .progress-glow {
-    position: absolute; top: -3px; height: 8px; width: 30px; right: 0;
-    background: radial-gradient(ellipse, rgba(0,255,136,0.4), transparent);
-    border-radius: 50%;
-    animation: progressGlow 1.5s ease-in-out infinite;
-    pointer-events: none;
-  }
-  @keyframes progressGlow {
-    0%, 100% { opacity: 0.5; }
-    50% { opacity: 1; }
-  }
-
-  /* ── Corner accents ── */
-  .corner { position: fixed; z-index: 5; width: 24px; height: 24px; }
-  .corner--tl { top: 12px; left: 12px; border-top: 1.5px solid rgba(0,255,136,0.2); border-left: 1.5px solid rgba(0,255,136,0.2); }
-  .corner--tr { top: 12px; right: 12px; border-top: 1.5px solid rgba(0,255,136,0.2); border-right: 1.5px solid rgba(0,255,136,0.2); }
-  .corner--bl { bottom: 12px; left: 12px; border-bottom: 1.5px solid rgba(0,255,136,0.2); border-left: 1.5px solid rgba(0,255,136,0.2); }
-  .corner--br { bottom: 12px; right: 12px; border-bottom: 1.5px solid rgba(0,255,136,0.2); border-right: 1.5px solid rgba(0,255,136,0.2); }
-
-  /* ── Particle dots ── */
-  .particles {
-    position: fixed; inset: 0; z-index: 3; overflow: hidden; pointer-events: none;
-  }
-  .particle {
-    position: absolute;
-    width: 2px; height: 2px;
-    background: rgba(0,255,136,0.4);
-    border-radius: 50%;
-    animation: float 6s ease-in-out infinite;
-  }
-  @keyframes float {
-    0%, 100% { transform: translateY(0) scale(1); opacity: 0; }
-    10% { opacity: 1; }
-    90% { opacity: 1; }
-    100% { transform: translateY(-120px) scale(0.5); opacity: 0; }
-  }
-
-  /* ── Version tag ── */
-  .version {
-    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 10;
-    font-size: 10.5px; font-weight: 600; letter-spacing: 2px;
-    text-transform: uppercase;
-    color: rgba(0,255,136,0.7);
-    background: rgba(0,255,136,0.06);
-    border: 1px solid rgba(0,255,136,0.12);
-    padding: 4px 14px;
-    border-radius: 20px;
-    backdrop-filter: blur(6px);
-    text-shadow: 0 0 8px rgba(0,255,136,0.25);
-  }
-
-  /* ── Fade-out on finish ── */
-  .fade-out {
-    animation: fadeOut 0.5s ease-out forwards;
-  }
-  @keyframes fadeOut {
-    to { opacity: 0; transform: scale(1.02); }
-  }
+  /* Fade out */
+  .fade-out { animation: fadeFrame 0.6s forwards; }
+  @keyframes fadeFrame { to { opacity: 0; filter: blur(4px); transform: scale(1.02); } }
 </style>
 </head>
 <body>
-  <div class="bg-grid"></div>
-  <div class="glow-orb"></div>
-  <div class="scan-line"></div>
+  
+  <div class="ambient-flare"></div>
+  <div class="grid-wrap"><div class="grid-plane"></div></div>
+  <div class="scan-overlay"></div>
 
-  <div class="particles" id="particles"></div>
-
-  <div class="corner corner--tl"></div>
-  <div class="corner corner--tr"></div>
-  <div class="corner corner--bl"></div>
-  <div class="corner corner--br"></div>
-
-  <div class="splash-content" id="content">
-    <div class="logo-wrap">
-      <div class="logo-ring"></div>
-      <div class="logo-ring-2"></div>
-      <div class="logo-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:#00ff88">
-          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-          <path d="M2 17l10 5 10-5"/>
-          <path d="M2 12l10 5 10-5"/>
-        </svg>
-      </div>
+  <div class="splash-container" id="content">
+    
+    <div class="header">
+      <div class="status-badge"><span class="pulse-dot"></span> SYSTEM_BOOT</div>
+      <div class="version" id="versionTag">LOADING...</div>
     </div>
 
-    <div class="splash-title">GS Center</div>
-
-    <div class="hud-status">
-      <div class="hud-top-bar">
-        <span class="hud-hex" id="hudHex">0x00A1</span>
-        <div class="hud-dots">
-          <span></span><span></span><span></span>
+    <!-- Holographic Central Branding -->
+    <div class="identity">
+      <div class="hologram-wrap">
+        <div class="hologram-base"></div>
+        <div class="holo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="url(#cyan-green-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <defs>
+              <linearGradient id="cyan-green-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#00ff88" />
+                <stop offset="100%" stop-color="#00e5ff" />
+              </linearGradient>
+            </defs>
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
         </div>
       </div>
-      <div class="splash-status-wrap">
-        <div class="status-marker"></div>
-        <div class="splash-status" id="status">Initializing...</div>
-      </div>
-      <div class="hud-bottom-bar">
-        <div class="hud-line"></div>
-        <span class="hud-sys">SYS.CORE</span>
+      <div class="title-wrap">
+        <h1 class="main-title">GS CENTER</h1>
       </div>
     </div>
 
-    <div class="progress-track">
-      <div class="progress-fill" id="progressFill"></div>
-      <div class="progress-glow"></div>
+    <!-- Footer Progress Element -->
+    <div class="loading-footer">
+      <div class="loading-info">
+        <span class="status-msg" id="status">INITIALIZING CORE...</span>
+        <span class="percentage" id="progressPct">0%</span>
+      </div>
+      <div class="progress-blade">
+        <div class="blade-fill" id="progressFill">
+          <div class="blade-glint"></div>
+        </div>
+      </div>
     </div>
+
   </div>
 
-  <div class="version" id="versionTag">Loading...</div>
-
   <script>
-    // Generate floating particles
-    const particlesEl = document.getElementById('particles');
-    for (let i = 0; i < 18; i++) {
-      const p = document.createElement('div');
-      p.className = 'particle';
-      p.style.left = Math.random() * 100 + '%';
-      p.style.top = (40 + Math.random() * 50) + '%';
-      p.style.animationDelay = (Math.random() * 6) + 's';
-      p.style.animationDuration = (4 + Math.random() * 4) + 's';
-      p.style.width = p.style.height = (1.5 + Math.random() * 2) + 'px';
-      particlesEl.appendChild(p);
-    }
-
-    // Tech HUD Hex glitch effect
-    const hexEl = document.getElementById('hudHex');
-    setInterval(() => {
-      const hex = Math.floor(Math.random() * 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
-      hexEl.textContent = '0x' + hex;
-    }, 70);
-
-    // IPC listener for progress updates from main process
     const { ipcRenderer } = require('electron');
 
-    // Receive app version from main process
     ipcRenderer.on('splash:version', (_e, v) => {
-      document.getElementById('versionTag').textContent = 'v' + (v || '1.0.0');
+      document.getElementById('versionTag').textContent = 'V' + (v || '1.0.0');
     });
 
     ipcRenderer.on('splash:status', (_e, msg) => {
@@ -361,15 +185,20 @@
     });
 
     ipcRenderer.on('splash:progress', (_e, pct) => {
-      document.getElementById('progressFill').style.width = Math.min(pct, 100) + '%';
+      const fill = document.getElementById('progressFill');
+      const pctText = document.getElementById('progressPct');
+      fill.style.width = Math.min(pct, 100) + '%';
+      pctText.textContent = Math.floor(pct) + '%';
     });
 
     ipcRenderer.on('splash:done', () => {
       document.getElementById('progressFill').style.width = '100%';
-      document.getElementById('status').textContent = 'Ready';
+      document.getElementById('progressPct').textContent = '100%';
+      document.getElementById('status').textContent = 'READY. LAUNCHING...';
+      
       setTimeout(() => {
         document.getElementById('content').classList.add('fade-out');
-      }, 300);
+      }, 400);
     });
   </script>
 </body>
