@@ -17,6 +17,9 @@ Whether you're setting up a **new gaming rig**, optimizing your **streaming setu
 
 ---
 
+<img width="1919" height="1031" alt="image" src="https://github.com/user-attachments/assets/2b76ef15-08a5-4390-94a6-7a2ed321199e" />
+
+
 # Download
 
 Download the latest installer from the newest release:
