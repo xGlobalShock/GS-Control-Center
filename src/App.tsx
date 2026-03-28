@@ -11,6 +11,7 @@ import OBSPresets from './pages/OBSPresets';
 import Network from './pages/Network';
 import SoftwareUpdates from './pages/SoftwareUpdates';
 import AppsPage from './pages/AppsPage';
+import SpaceAnalyzer from './pages/SpaceAnalyzer';
 import { ToastProvider } from './contexts/ToastContext';
 import { ToastContainer } from './components/ToastContainer';
 import { useRealtimeHardware } from './hooks/useRealtimeHardware';
@@ -139,6 +140,13 @@ function App() {
     };
     fetchHardwareInfo();
 
+    // Trigger silent background preload for Space Analyzer
+    if (window.electron?.ipcRenderer) {
+       window.electron.ipcRenderer.invoke('space:scan', 'C:\\').catch(err => {
+           console.warn('Background space analyzer preload failed:', err);
+       });
+    }
+
     // Listen for slow background data (phase 2) and merge into state
     let unsub: (() => void) | undefined;
     if (window.electron?.ipcRenderer) {
@@ -189,6 +197,9 @@ function App() {
         </div>
         <div style={pageStyle('apps')}>
           <AppsPage isActive={currentPage === 'apps'} />
+        </div>
+        <div style={pageStyle('space')}>
+          <SpaceAnalyzer isActive={currentPage === 'space'} />
         </div>
       </>
     );

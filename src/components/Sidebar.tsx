@@ -10,6 +10,7 @@ import {
   Wifi,
   RefreshCw,
   Layers,
+  PieChart,
 } from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 import '../styles/Sidebar.css';
@@ -38,6 +39,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
     { id: 'softwareUpdates', label: 'Updates', icon: RefreshCw },
     { id: 'apps', label: 'Apps', icon: Layers },
     { id: 'cleaner', label: 'Cleanup', icon: Trash2 },
+    { id: 'space', label: 'Disk', icon: PieChart },
     { id: 'settings', label: 'Settings', icon: Settings },
   ], []);
 

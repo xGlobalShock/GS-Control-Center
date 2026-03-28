@@ -16,6 +16,7 @@ const appUninstaller      = require('../main-process/appUninstaller');
 const gameProfiles        = require('../main-process/gameProfiles');
 const network             = require('../main-process/network');
 const windowsDebloat      = require('../main-process/windowsDebloat');
+const spaceAnalyzer       = require('../main-process/spaceAnalyzer');
 const { execAsync }       = require('../main-process/utils');
 
 // ── Rendering Pipeline ──────────────────────────────────────────────────────
@@ -111,6 +112,7 @@ gameProfiles.registerIPC();
 network.registerIPC();
 autoUpdater.registerIPC();
 windowsDebloat.registerIPC();
+spaceAnalyzer.registerIPC();
 
 // ── Pre-warm scan caches (orchestrator) ─────────────────────────────────────
 async function _prewarmScanCaches() {

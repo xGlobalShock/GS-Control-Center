@@ -57,20 +57,28 @@
 
   /* Header */
   .header { display: flex; justify-content: space-between; align-items: center; }
+  
   .status-badge {
     display: flex; align-items: center; gap: 8px; font-family: 'Consolas', monospace;
-    font-size: 10px; color: rgba(255,255,255,0.6); letter-spacing: 2px;
+    font-size: 10px; color: rgb(255, 255, 255); letter-spacing: 2px;
   }
+  
   .pulse-dot {
     width: 6px; height: 6px; background: #ff3366; border-radius: 50%;
     box-shadow: 0 0 10px #ff3366; animation: redPulse 1.5s infinite;
   }
+  
   @keyframes redPulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
-  .version { font-family: 'Consolas', monospace; font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 2px; }
+
+  .version { 
+    font-family: 'Consolas', monospace; 
+    font-size: 10px; 
+    color: rgba(136, 255, 0, 1); 
+    letter-spacing: 2px; 
+  }
 
   /* Center Identity */
   .identity { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; margin-top: -10px; }
-  
   .hologram-wrap { position: relative; width: 64px; height: 64px; margin-bottom: 24px; }
   .holo-icon { position: absolute; inset: 0; animation: floatHolo 4s ease-in-out infinite alternate; }
   .holo-icon svg { width: 100%; height: 100%; filter: drop-shadow(0 0 15px rgba(0,255,136,0.6)); }
@@ -177,7 +185,7 @@
     const { ipcRenderer } = require('electron');
 
     ipcRenderer.on('splash:version', (_e, v) => {
-      document.getElementById('versionTag').textContent = 'V' + (v || '1.0.0');
+      document.getElementById('versionTag').textContent = 'v' + (v || '1.0.0');
     });
 
     ipcRenderer.on('splash:status', (_e, msg) => {
