@@ -5,10 +5,13 @@
 .wd {
   display: flex;
   flex-direction: column;
+  gap: 10px;
   height: 100%;
+  padding-bottom: 8px;
   overflow: hidden;
   contain: layout style;
 }
+
 
 .wd-content {
   display: flex;
@@ -102,47 +105,53 @@
 /* Search */
 .wd-search-wrap {
   position: relative;
-  display: flex;
-  align-items: center;
+  width: 185px;
 }
+
 
 .wd-search-icon {
   position: absolute;
-  left: 9px;
-  color: rgba(145, 168, 195, 0.4);
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(170, 192, 212, 0.22);
   pointer-events: none;
 }
 
 .wd-search {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 6px;
-  color: rgba(195, 215, 235, 0.85);
+  width: 100%;
+  padding: 6px 28px 6px 30px;
+  border: 1px solid rgba(255, 255, 255, 0.048);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  color: rgba(218, 233, 248, 0.88);
   font-size: 11.5px;
-  padding: 6px 28px 6px 28px;
   outline: none;
-  width: 220px;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.18s;
 }
 
+.wd-search::placeholder { color: rgba(155, 178, 200, 0.22); }
+
 .wd-search:focus {
-  border-color: rgba(99, 199, 255, 0.3);
-  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(96, 200, 255, 0.22);
+  background: rgba(0, 0, 0, 0.26);
 }
+
 
 .wd-search-x {
   position: absolute;
-  right: 7px;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
   background: none;
   border: none;
+  color: rgba(155, 178, 200, 0.28);
   cursor: pointer;
-  color: rgba(145, 168, 195, 0.45);
   padding: 2px;
   display: flex;
-  align-items: center;
-  border-radius: 3px;
-  transition: color 0.15s;
+  transition: color 0.14s;
 }
+
 
 .wd-search-x:hover {
   color: rgba(195, 215, 235, 0.8);

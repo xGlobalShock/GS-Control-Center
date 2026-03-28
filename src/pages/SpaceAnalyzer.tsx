@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   HardDrive, Play, Square, Folder, File, ChevronRight,
   Search, Activity, ChevronLeft, Cpu, Radar, Orbit,
-  AlertTriangle, Crosshair, Sparkles
+  AlertTriangle, Crosshair, Sparkles, Trash2, Copy, Zap, X
 } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
 import '../styles/SpaceAnalyzer.css';
 
 export interface SpaceChild {
@@ -42,6 +43,21 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
   const [progress, setProgress] = useState<SpaceProgress | null>(null);
   const [result, setResult] = useState<SpaceResult | null>(null);
   const [history, setHistory] = useState<string[]>([]);
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, item: SpaceChild } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Close context menu on any global click or escape
+  useEffect(() => {
+    const handleGlobalClick = () => setContextMenu(null);
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setContextMenu(null); };
+    window.addEventListener('click', handleGlobalClick);
+    window.addEventListener('keydown', handleEsc);
+    return () => {
+      window.removeEventListener('click', handleGlobalClick);
+      window.removeEventListener('keydown', handleEsc);
+    };
+  }, []);
 
   useEffect(() => {
     if (!window.electron?.ipcRenderer) return;
@@ -136,8 +152,88 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
     ? [...result.children].sort((a, b) => b.size - a.size).slice(0, 5)
     : [];
 
+  const handleRightClick = (e: React.MouseEvent, child: SpaceChild) => {
+    e.preventDefault();
+    setConfirmDelete(false);
+    setContextMenu({ x: e.clientX, y: e.clientY, item: child });
+  };
+
+  const handleDelete = async () => {
+    if (!contextMenu || !window.electron?.ipcRenderer) return;
+    
+    if (!confirmDelete) {
+        setConfirmDelete(true);
+        return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const res = await window.electron.ipcRenderer.invoke('space:delete', contextMenu.item.path);
+      if (res.success) {
+        // Remove item from local UI list instantly
+        setResult(prev => prev ? {
+          ...prev,
+          children: prev.children.filter(c => c.path !== contextMenu.item.path)
+        } : null);
+      } else {
+        alert(res.error || 'Deletion failed');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsDeleting(false);
+      setContextMenu(null);
+      setConfirmDelete(false);
+    }
+  };
+
+  const copyPath = () => {
+    if (contextMenu) {
+      navigator.clipboard.writeText(contextMenu.item.path);
+      setContextMenu(null);
+    }
+  };
+
   return (
-    <div className="sa-page">
+    <div className="sa-page" onContextMenu={(e) => e.preventDefault()}>
+      <PageHeader icon={<HardDrive size={16} />} title="Disk Space Analyzer" />
+      
+      {/* ── CONTEXT MENU ── */}
+      <AnimatePresence>
+        {contextMenu && (
+          <motion.div 
+            className="sa-context-menu"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.15 }}
+            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking menu itself
+          >
+            <div className="sa-menu-header">FRAGMENT ANALYSIS</div>
+            
+            <div className="sa-menu-item" onClick={() => { contextMenu.item.isDir ? handleScan(contextMenu.item.path) : copyPath(); }}>
+               {contextMenu.item.isDir ? <Search size={14} /> : <Copy size={14} />}
+               {contextMenu.item.isDir ? 'ANALYZE SECTOR' : 'COPY PATH'}
+            </div>
+
+            <div className="sa-menu-item" onClick={copyPath}>
+               <Zap size={14} /> COPY COORDINATES
+            </div>
+
+            <div className="sa-menu-divider" />
+
+            <div 
+              className={`sa-menu-item is-danger ${confirmDelete ? 'confirm-state' : ''}`} 
+              onClick={handleDelete}
+            >
+               <Trash2 size={14} /> 
+               {isDeleting ? 'ERASING...' : confirmDelete ? 'CONFIRM ERASURE?' : 'ERASE FRAGMENT'}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── COMMAND DECK ── */}
       <motion.div 
         className="sa-command-deck"
@@ -173,7 +269,7 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
           onClick={() => (isScanning ? handleCancel() : handleScan(undefined, true))}
         >
           {isScanning ? (
-            <><Square size={16} /> ABORT SCAN</>
+            <><X size={16} /> ABORT SCAN</>
           ) : (
             <><Play size={16} /> LAUNCH SCAN</>
           )}
@@ -257,6 +353,7 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: Math.min(idx * 0.015, 0.4), type: 'spring' }}
                     onClick={() => child.isDir && handleScan(child.path, false)}
+                    onContextMenu={(e) => handleRightClick(e, child)}
                   >
                     <div className="sa-row-name">
                       {child.isDir ? <Folder size={18} className="sa-icon-glow" /> : <File size={18} color="rgba(255,255,255,0.4)" />}

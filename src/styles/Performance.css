@@ -7,11 +7,11 @@
   flex-direction: column;
   gap: 20px;
   position: relative;
-  /* slight lift so header matches vertical position of other pages */
-  margin-top: -10px;
+  padding: 0;
   transform: translateZ(0);
   contain: layout style;
 }
+
 
 /* ——— HERO PANEL ——— */
 .perf-hero {
@@ -246,10 +246,11 @@
 /* ——— TWEAKS GRID ——— */
 .perf-tweaks-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
   width: 100%;
 }
+
 
 @media (max-width: 1280px) {
   .perf-tweaks-grid {
@@ -269,7 +270,7 @@
     align-items: flex-start;
     padding: 20px;
   }
-  
+
   .perf-hero-right {
     width: 100%;
     justify-content: flex-start;
@@ -284,14 +285,13 @@
   .perf-hero-title {
     font-size: 22px;
   }
-  
+
   .perf-hero-actions {
     width: 100%;
   }
-  
+
   .perf-action-btn {
     width: 100%;
     justify-content: center;
   }
 }
-

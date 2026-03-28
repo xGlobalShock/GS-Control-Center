@@ -61,3 +61,35 @@
   flex: 1;
   background: linear-gradient(90deg, rgba(0, 242, 255, 0.26), transparent) !important;
 }
+
+/* ── HUD Section Header (Used by PageHeader) ── */
+.hud-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.hud-section-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #00F2FF;
+  filter: drop-shadow(0 0 4px rgba(0, 242, 255, 0.4));
+}
+
+.hud-section-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.hud-section-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(0, 242, 255, 0.25), transparent);
+}

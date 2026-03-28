@@ -20,7 +20,7 @@
 /* Main Wrapper with Blueprint Grid Texture */
 .sa-page {
   height: 100%;
-  padding: 1.5rem;
+  padding: 0;
   color: var(--sa-text);
   font-family: 'Inter', 'Segoe UI', monospace, sans-serif;
   background-image:
@@ -42,6 +42,7 @@
   box-shadow: 0 0 20px rgba(0, 238, 255, 0.1), inset 0 0 10px rgba(0, 238, 255, 0.05);
   border-radius: 12px;
   padding: 0.65rem 1rem;
+  margin-top: 1.2rem;
   margin-bottom: 1.2rem;
   position: relative;
   overflow: hidden;
@@ -569,4 +570,90 @@
   .sa-dir-panel {
     height: 500px;
   }
+}
+
+/* ── CONTEXT MENU ── */
+.sa-context-menu {
+  position: fixed;
+  z-index: 1000;
+  background: rgba(8, 16, 26, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--sa-cyan);
+  box-shadow: 0 0 30px rgba(0, 238, 255, 0.2), inset 0 0 10px rgba(0, 238, 255, 0.1);
+  border-radius: 8px;
+  min-width: 220px;
+  padding: 0.5rem;
+  overflow: hidden;
+  animation: saMenuOpen 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
+}
+
+@keyframes saMenuOpen {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.sa-menu-header {
+  padding: 0.5rem 0.8rem;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--sa-cyan-dim);
+  border-bottom: 1px solid rgba(0, 238, 255, 0.1);
+  margin-bottom: 0.4rem;
+  font-weight: 800;
+}
+
+.sa-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.75rem;
+  color: var(--sa-text);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  position: relative;
+}
+
+.sa-menu-item:hover {
+  background: rgba(0, 238, 255, 0.1);
+  color: #fff;
+  padding-left: 1.2rem;
+}
+
+.sa-menu-item svg {
+  color: var(--sa-cyan);
+}
+
+.sa-menu-item.is-danger {
+  color: var(--sa-pink);
+}
+
+.sa-menu-item.is-danger:hover {
+  background: rgba(255, 42, 109, 0.15);
+  box-shadow: 0 0 15px rgba(255, 42, 109, 0.1);
+}
+
+.sa-menu-item.is-danger svg {
+  color: var(--sa-pink);
+}
+
+.sa-menu-item.is-danger.confirm-state {
+  background: rgba(255, 42, 109, 0.3);
+  animation: neonPulse 1s infinite;
+}
+
+.sa-menu-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.05);
+  margin: 0.4rem 0.2rem;
 }

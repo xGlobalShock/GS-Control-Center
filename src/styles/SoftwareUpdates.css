@@ -7,9 +7,11 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  padding: 0;
   transform: translateZ(0);
   contain: layout style;
 }
+
 
 /* ── Last-checked label ── */
 .su-last-checked {
@@ -49,6 +51,7 @@
   border-color: rgba(0, 242, 255, 0.15);
   color: #00F2FF;
 }
+
 .su-btn--scan:hover:not(:disabled) {
   background: rgba(0, 242, 255, 0.12);
   border-color: rgba(0, 242, 255, 0.35);
@@ -59,19 +62,23 @@
   border-color: rgba(0, 255, 136, 0.25);
   color: #00FF88;
 }
+
 .su-btn--update-all:hover:not(:disabled) {
   background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 242, 255, 0.14));
   border-color: rgba(0, 255, 136, 0.45);
 }
+
 .su-btn--cancel {
   background: rgba(255, 60, 60, 0.1);
   border-color: rgba(255, 60, 60, 0.25);
   color: #ff5c5c;
 }
+
 .su-btn--cancel:hover:not(:disabled) {
   background: rgba(255, 60, 60, 0.18);
   border-color: rgba(255, 60, 60, 0.45);
 }
+
 .su-btn--cancel:disabled {
   opacity: 0.5;
 }
@@ -80,9 +87,15 @@
 .su-spin {
   animation: su-rotate 1s linear infinite;
 }
+
 @keyframes su-rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ── Loading state ── */
@@ -94,6 +107,7 @@
   padding: 60px 20px;
   color: var(--text-muted);
 }
+
 .su-loading p {
   font-size: 13px;
   letter-spacing: 0.5px;
@@ -109,16 +123,19 @@
   color: var(--text-muted);
   text-align: center;
 }
+
 .su-empty svg {
   color: #00FF88;
   filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.3));
 }
+
 .su-empty h3 {
   font-size: 18px;
   color: var(--text-primary);
   font-weight: 700;
   margin: 0;
 }
+
 .su-empty p {
   font-size: 13px;
   margin: 0;
@@ -132,6 +149,7 @@
   overflow: hidden;
   position: relative;
 }
+
 .su-table-wrap::before {
   content: '';
   position: absolute;
@@ -166,6 +184,7 @@
   min-height: 42px;
   border-bottom: 1px solid rgba(0, 242, 255, 0.08);
 }
+
 .su-row--header .su-cell {
   font-size: 10px;
   font-weight: 700;
@@ -229,11 +248,13 @@
   cursor: pointer;
   transition: all 0.2s ease;
 }
+
 .su-btn--row-update:hover:not(:disabled) {
   background: rgba(0, 242, 255, 0.14);
   border-color: rgba(0, 242, 255, 0.35);
   box-shadow: 0 0 12px rgba(0, 242, 255, 0.1);
 }
+
 .su-btn--row-update:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -261,11 +282,13 @@
   font-size: 12px;
   color: var(--text-muted);
 }
+
 .su-info svg {
   flex-shrink: 0;
   color: #00F2FF;
   opacity: 0.6;
 }
+
 .su-info strong {
   color: var(--text-secondary);
 }
@@ -362,12 +385,29 @@
   gap: 6px;
 }
 
-.su-progress-status--preparing { color: rgba(0, 242, 255, 0.7); }
-.su-progress-status--downloading { color: #00F2FF; }
-.su-progress-status--verifying { color: #00D4AA; }
-.su-progress-status--installing { color: #00FF88; }
-.su-progress-status--done { color: #00FF88; }
-.su-progress-status--error { color: #FF4D6A; }
+.su-progress-status--preparing {
+  color: rgba(0, 242, 255, 0.7);
+}
+
+.su-progress-status--downloading {
+  color: #00F2FF;
+}
+
+.su-progress-status--verifying {
+  color: #00D4AA;
+}
+
+.su-progress-status--installing {
+  color: #00FF88;
+}
+
+.su-progress-status--done {
+  color: #00FF88;
+}
+
+.su-progress-status--error {
+  color: #FF4D6A;
+}
 
 .su-progress-percent {
   font-size: 12px;
@@ -402,11 +442,23 @@
 
 /* Animations */
 @keyframes su-pulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 @keyframes su-shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }

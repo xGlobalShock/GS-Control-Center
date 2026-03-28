@@ -1,4 +1,4 @@
-const { ipcMain } = require('electron');
+const { ipcMain, shell } = require('electron');
 const fs = require('fs/promises');
 const path = require('path');
 
@@ -9,6 +9,24 @@ let activeScanPromises = new Map();
 
 // Cache the last complete scan tree in memory for instant drill-down navigation
 let cachedTree = null; // { rootNode, scannedFiles, scannedDirs }
+
+// Hard-coded protection list to prevent common Windows breakage
+const PROTECTED_PATHS = [
+  'C:\\Windows', 'C:\\Program Files', 'C:\\Program Files (x86)',
+  'C:\\ProgramData', 'C:\\Users', 'C:\\$Recycle.Bin', 'C:\\System Volume Information',
+  'C:\\$WinREAgent', 'C:\\DumpStack.log.tmp', 'C:\\pagefile.sys', 'C:\\hiberfil.sys'
+];
+
+function isProtected(targetPath) {
+  const normalized = path.normalize(targetPath).toLowerCase();
+  // Don't allow deleting the root of any drive
+  if (normalized.length <= 3 && normalized.endsWith(':\\')) return true;
+  
+  return PROTECTED_PATHS.some(pp => {
+    const normPP = path.normalize(pp).toLowerCase();
+    return normalized === normPP || normalized.startsWith(normPP + path.sep);
+  });
+}
 
 /**
  * Searches the cached tree for a specific subdirectory node.
@@ -220,6 +238,44 @@ function registerIPC() {
   ipcMain.handle('space:cancel', (event, dirPath) => {
     activeScans.delete(dirPath);
     return true;
+  });
+
+  ipcMain.handle('space:delete', async (event, itemPath) => {
+    if (isProtected(itemPath)) {
+      return { success: false, error: 'PROTECTED_SYSTEM_PATH: Action blocked to prevent Windows instability.' };
+    }
+
+    try {
+      await shell.trashItem(itemPath);
+      
+      // If we have a cached tree, we should ideally remove this node from it
+      // For now, simpler and more robust to just clear the cache if the deleted item 
+      // was part of the currently explored branch to force a fresh view on next scan.
+      if (cachedTree) {
+         const node = findNodeByPath(cachedTree.rootNode, itemPath);
+         if (node) {
+            // Found it in cache! Remove it from parent
+            if (node.parent) {
+               node.parent.children.delete(node.name);
+               // Propagate size subtraction up the tree
+               const deletedSize = node.size;
+               let curr = node.parent;
+               while (curr) {
+                 curr.size -= deletedSize;
+                 curr = curr.parent;
+               }
+            } else {
+               // It's the root of the cache, just wipe cache
+               cachedTree = null;
+            }
+         }
+      }
+
+      return { success: true };
+    } catch (err) {
+      console.error('[Space] Deletion failed:', err);
+      return { success: false, error: err.message };
+    }
   });
 }
 

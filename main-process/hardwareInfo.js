@@ -109,12 +109,18 @@ try {
 # Section 3: Disk
 $s3 = '|||||||'
 try {
+  $cDrive = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"
+  $cSize = if ($cDrive) { [math]::Round($cDrive.Size/1GB) } else { 0 }
   $d = Get-PhysicalDisk | Select-Object -First 1
   if ($d) {
-    $s3 = "$($d.FriendlyName)|||$($d.MediaType)|||$($d.HealthStatus)|||$([math]::Round($d.Size/1GB))"
+    $pSize = [math]::Round($d.Size/1GB)
+    $finalSize = if ($cSize -gt $pSize) { $cSize } else { $pSize }
+    $s3 = "$($d.FriendlyName)|||$($d.MediaType)|||$($d.HealthStatus)|||$finalSize"
   } else {
     $d2 = Get-CimInstance Win32_DiskDrive | Select-Object -First 1
-    $s3 = "$($d2.Model)|||Unknown|||Unknown|||$([math]::Round($d2.Size/1GB))"
+    $pSize2 = [math]::Round($d2.Size/1GB)
+    $finalSize = if ($cSize -gt $pSize2) { $cSize } else { $pSize2 }
+    $s3 = "$($d2.Model)|||Unknown|||Unknown|||$finalSize"
   }
 } catch {}
 
