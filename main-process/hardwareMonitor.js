@@ -1,8 +1,3 @@
-/**
- * Hardware Monitoring Module
- * LHM service, performance counters, stats, polling, and real-time push.
- */
-
 const { ipcMain } = require('electron');
 const { app } = require('electron');
 const path = require('path');
