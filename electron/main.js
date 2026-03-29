@@ -332,11 +332,19 @@ app.on('ready', async () => {
 });
 
 // ── Lifecycle ───────────────────────────────────────────────────────────────
-app.on('window-all-closed', () => {
+function _cleanupAndExit() {
   hardwareMonitor._stopRealtimePush();
   hardwareMonitor.stopLHMService();
   hardwareMonitor._stopPerfCounterService();
   hardwareMonitor.clearDiskRefreshTimer();
+}
+
+app.on('before-quit', () => {
+  _cleanupAndExit();
+});
+
+app.on('window-all-closed', () => {
+  _cleanupAndExit();
   if (process.platform !== 'darwin') {
     app.quit();
   }

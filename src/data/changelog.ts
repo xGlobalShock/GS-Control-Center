@@ -9,6 +9,17 @@ export interface ChangelogEntry {
 }
 
 const changelog: ChangelogEntry[] = [
+    {
+    version: '1.5.3',
+    date: '2026-03-29',
+    highlights: 'Disk Analyzer & App Performance Improvement',
+    changes: [
+      { type: 'improved', text: 'Improved the performance of the Disk Analyzer for faster scanning and analysis.' },
+      { type: 'fixed', text: 'Resolved an issue where the Disk Analyzer would occasionally freeze during large scans.' },
+      { type: 'fixed', text: 'Addressed a bug that caused incorrect disk usage reporting in certain scenarios.' },
+      { type: 'fixed', text: 'Fixed an issue with Electron updater, failing to update.' },
+    ],
+  },
   {
     version: '1.5.2',
     date: '2026-03-29',

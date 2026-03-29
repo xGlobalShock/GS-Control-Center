@@ -142,9 +142,14 @@ function App() {
 
     // Trigger silent background preload for Space Analyzer
     if (window.electron?.ipcRenderer) {
-       window.electron.ipcRenderer.invoke('space:scan', 'C:\\').catch(err => {
-           console.warn('Background space analyzer preload failed:', err);
-       });
+      (async () => {
+        try {
+          const spaceData = await window.electron.ipcRenderer.invoke('space:scan', 'C:\\');
+          (window as any).__SPACE_ANALYZER_PRELOADED__ = spaceData;
+        } catch (err) {
+          console.warn('Background space analyzer preload failed:', err);
+        }
+      })();
     }
 
     // Listen for slow background data (phase 2) and merge into state

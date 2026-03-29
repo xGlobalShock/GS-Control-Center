@@ -109,7 +109,13 @@ function createWindow() {
         mainWindow?.maximize();
       }
     });
-    ipcMain.on('window-close', () => mainWindow?.close());
+    ipcMain.on('window-close', () => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.close();
+      }
+      // Force application shutdown so background processes are not left running.
+      app.quit();
+    });
     ipcMain.handle('window-is-maximized', () => mainWindow?.isMaximized());
 
     // Notify renderer when maximize state changes

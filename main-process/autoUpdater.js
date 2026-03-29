@@ -150,7 +150,7 @@ function registerIPC() {
 
     const mainWindow = windowManager.getMainWindow();
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.hide();
+      mainWindow.close();
     }
 
     // Keep splash visible so user sees the transition, then quit and update.

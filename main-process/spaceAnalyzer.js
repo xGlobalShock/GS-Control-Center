@@ -4,13 +4,7 @@ const fsSync = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-// Track active scans to allow cancellation
-let activeScans = new Set();
-// Track active internal promises to deduplicate identical concurrent scan requests
-let activeScanPromises = new Map();
 
-// Cache the last complete scan tree in memory for instant drill-down navigation
-let cachedTree = null; // { rootNode, scannedFiles, scannedDirs }
 
 // Hard-coded protection list to prevent common Windows breakage
 const PROTECTED_PATHS = [
@@ -35,11 +29,16 @@ function isProtected(targetPath) {
  * Uses path.relative to determine if the targetPath resides within a child.
  */
 function findNodeByPath(node, targetPath) {
-  if (node.path.toLowerCase() === targetPath.toLowerCase()) return node;
+  const normalizedTarget = normalizePath(targetPath).toLowerCase();
+  const normalizedNodePath = normalizePath(node.path).toLowerCase();
+
+  if (normalizedNodePath === normalizedTarget) return node;
 
   for (const child of node.children.values()) {
-    const rel = path.relative(child.path, targetPath);
-    // If targetPath is inside child.path, the relative path won't start with '..' and won't be an absolute path (different drive)
+    const normalizedChildPath = normalizePath(child.path);
+    const rel = path.relative(normalizedChildPath, normalizedTarget);
+
+    // If targetPath is inside child.path, relative path won't start with '..' and won't be absolute (different drive)
     if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
       return findNodeByPath(child, targetPath);
     }
@@ -75,7 +74,7 @@ function getDriveInfo(dirPath) {
 /**
  * Converts internal Node representation into the flat list array expected by React
  */
-function formatNodeResult(node, scannedFiles, scannedDirs) {
+function formatNodeResult(node, scannedFiles, scannedDirs, fromCache = false, driveInfoOverride = null) {
   let childrenList = Array.from(node.children.values()).map(c => ({
     name: c.name,
     path: c.path,
@@ -103,7 +102,7 @@ function formatNodeResult(node, scannedFiles, scannedDirs) {
   // Sort descending by size
   childrenList.sort((a, b) => b.size - a.size);
 
-  const driveInfo = getDriveInfo(node.path);
+  const driveInfo = driveInfoOverride || getDriveInfo(node.path);
 
   return {
     totalSize: node.size,
@@ -111,6 +110,7 @@ function formatNodeResult(node, scannedFiles, scannedDirs) {
     scannedFiles,
     scannedDirs,
     isCached: true,
+    fromCache,
     driveCapacity: driveInfo.driveCapacity,
     driveFree: driveInfo.driveFree
   };
@@ -239,109 +239,243 @@ async function getDirSizeConcurrency(startPath, isCancelled, onProgress) {
   };
 }
 
-function registerIPC() {
-  ipcMain.handle('space:scan', async (event, dirPath, arg3) => {
-    const forceRescan = !!arg3;
+// In-memory scan cache keyed by normalized root path (lowercase)
+const scanCache = new Map();
+let activeScan = {
+  path: null,
+  cancel: null,
+  promise: null,
+  inProgress: false
+};
 
-    // Check if we already have this directory inside our in-memory cached tree
-    if (!forceRescan && cachedTree) {
-      const cachedNode = findNodeByPath(cachedTree.rootNode, dirPath);
-      if (cachedNode) {
-        // Return instantly using the cached data
-        return formatNodeResult(cachedNode, cachedTree.scannedFiles, cachedTree.scannedDirs);
-      }
+function normalizePath(targetPath) {
+  try {
+    if (!targetPath || typeof targetPath !== 'string') {
+      return '';
     }
 
-    // If already scanning this path in the background, simply await the existing scan
-    // But if forceRescan is active, we should wait for it to finish and then rescan it?
-    // Let's just return the active promise for now to avoid double crawls.
-    if (!forceRescan && activeScanPromises.has(dirPath)) {
-      return await activeScanPromises.get(dirPath);
+    let resolved = path.resolve(targetPath);
+    resolved = path.normalize(resolved);
+
+    // Keep root drives in canonical form (C:\)
+    const driveRootMatch = resolved.match(/^([a-zA-Z]:)[\\/]*$/);
+    if (driveRootMatch) {
+      return `${driveRootMatch[1].toUpperCase()}\\`;
     }
 
-    // Only clear cache if we're switching to a different drive
-    const newDriveLetter = dirPath.match(/^([A-Z]):/i)?.[1]?.toUpperCase();
-    const cachedDriveLetter = cachedTree?.rootNode?.path?.match(/^([A-Z]):/i)?.[1]?.toUpperCase();
-    
-    if (newDriveLetter && cachedDriveLetter && newDriveLetter !== cachedDriveLetter) {
-      cachedTree = null;
-    }
+    // Trim trailing slashes while keeping non-root path normalization
+    return resolved.replace(/[\\/]+$/, '');
+  } catch {
+    return targetPath;
+  }
+}
 
-    // Create the background scanning promise
-    const scanPromise = (async () => {
-      activeScans.add(dirPath);
+function isDescendantPath(parentPath, childPath) {
+  const parent = normalizePath(parentPath).toLowerCase();
+  const child = normalizePath(childPath).toLowerCase();
 
-      const onProgress = (files, dirs, size) => {
-        if (event && event.sender && !event.sender.isDestroyed()) {
-          event.sender.send('space:progress', { dirPath, files, dirs, size });
-        }
+  if (parent === child) return false;
+
+  // root drive (C:\) should match all items on the same drive
+  const rootPath = parent.match(/^([a-z]):\\$/i);
+  if (rootPath) {
+    return child.startsWith(parent);
+  }
+
+  // Non-root parent must be followed by separator in child
+  return child.startsWith(parent + path.sep);
+}
+
+async function scanDirectory(targetPath, forceRescan = false) {
+  const normalizedPath = normalizePath(targetPath);
+
+  if (!forceRescan && scanCache.size > 0) {
+    for (const [cachedPath, cacheEntry] of scanCache.entries()) {
+      const driveInfo = {
+        driveCapacity: cacheEntry.driveCapacity || 0,
+        driveFree: cacheEntry.driveFree || 0
       };
 
-      const result = await getDirSizeConcurrency(
-        dirPath,
-        () => !activeScans.has(dirPath),
-        onProgress
-      );
-
-      activeScans.delete(dirPath);
-
-      // Save to cache for instant sub-folder navigation
-      if (result && result.rootNode) {
-        cachedTree = result;
-
-        const finalResult = formatNodeResult(result.rootNode, result.scannedFiles, result.scannedDirs);
-        finalResult.isCached = false;
-        return finalResult;
+      if (normalizedPath.toLowerCase() === cachedPath.toLowerCase()) {
+        return formatNodeResult(cacheEntry.rootNode, cacheEntry.scannedFiles, cacheEntry.scannedDirs, true, driveInfo);
       }
+      if (isDescendantPath(cachedPath, normalizedPath)) {
+        const node = findNodeByPath(cacheEntry.rootNode, normalizedPath);
+        if (node) {
+          return formatNodeResult(node, cacheEntry.scannedFiles, cacheEntry.scannedDirs, true, driveInfo);
+        }
+      }
+    }
+  }
+
+  if (activeScan.inProgress && activeScan.path) {
+    const activeNormalized = activeScan.path.toLowerCase();
+    const requestNormalized = normalizedPath.toLowerCase();
+
+    if (!forceRescan && activeScan.promise) {
+      if (activeNormalized === requestNormalized) {
+        return activeScan.promise;
+      }
+      if (isDescendantPath(activeScan.path, normalizedPath)) {
+        // parent path scan in progress; wait for it and then return cached child path
+        return activeScan.promise.then(() => scanDirectory(targetPath, forceRescan));
+      }
+    }
+
+    if (activeNormalized !== requestNormalized && activeScan.cancel) {
+      activeScan.cancel();
+    }
+  }
+
+  const cancelToken = { cancelled: false };
+  const mainWindow = require('./windowManager').getMainWindow();
+  const emitProgress = (files, dirs, size) => {
+    if (cancelToken.cancelled) return;
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.webContents.send('space:progress', {
+      dirPath: normalizedPath,
+      files,
+      dirs,
+      size
+    });
+  };
+
+  const scanPromise = (async () => {
+    try {
+      const stat = fsSync.existsSync(normalizedPath) && fsSync.statSync(normalizedPath);
+      if (!stat) {
+        throw new Error('Path does not exist');
+      }
+      if (!stat.isDirectory()) {
+        throw new Error('Path is not a directory');
+      }
+
+      const result = await getDirSizeConcurrency(normalizedPath, () => cancelToken.cancelled, emitProgress);
+      if (!result) {
+        return null;
+      }
+
+      const driveInfo = getDriveInfo(normalizedPath);
+
+      scanCache.set(normalizedPath.toLowerCase(), {
+        rootNode: result.rootNode,
+        scannedFiles: result.scannedFiles,
+        scannedDirs: result.scannedDirs,
+        driveCapacity: driveInfo.driveCapacity,
+        driveFree: driveInfo.driveFree,
+        ts: Date.now()
+      });
+
+      return formatNodeResult(result.rootNode, result.scannedFiles, result.scannedDirs, false, driveInfo);
+    } finally {
+      activeScan.inProgress = false;
+      activeScan.path = null;
+      activeScan.cancel = null;
+      activeScan.promise = null;
+    }
+  })();
+
+  activeScan = {
+    path: normalizedPath,
+    cancel: () => { cancelToken.cancelled = true; },
+    promise: scanPromise,
+    inProgress: true
+  };
+
+  return scanPromise;
+}
+
+function clearCacheForPath(targetPath) {
+  const tNorm = normalizePath(targetPath).toLowerCase();
+  for (const key of Array.from(scanCache.keys())) {
+    if (key === tNorm || key.startsWith(tNorm + path.sep) || tNorm.startsWith(key + path.sep)) {
+      scanCache.delete(key);
+    }
+  }
+}
+
+function getCachedNode(targetPath) {
+  const normalizedPath = normalizePath(targetPath);
+  if (!normalizedPath) return null;
+
+  for (const [cachedPath, cacheEntry] of scanCache.entries()) {
+    const driveInfo = {
+      driveCapacity: cacheEntry.driveCapacity || 0,
+      driveFree: cacheEntry.driveFree || 0
+    };
+
+    if (normalizedPath.toLowerCase() === cachedPath.toLowerCase()) {
+      return formatNodeResult(cacheEntry.rootNode, cacheEntry.scannedFiles, cacheEntry.scannedDirs, true, driveInfo);
+    }
+
+    if (isDescendantPath(cachedPath, normalizedPath)) {
+      const node = findNodeByPath(cacheEntry.rootNode, normalizedPath);
+      if (node) {
+        return formatNodeResult(node, cacheEntry.scannedFiles, cacheEntry.scannedDirs, true, driveInfo);
+      }
+    }
+  }
+
+  return null;
+}
+
+function registerIPC() {
+  ipcMain.handle('space:get-node', async (_event, targetPath) => {
+    try {
+      return getCachedNode(targetPath);
+    } catch (err) {
+      console.error('space:get-node error', err);
       return null;
-    })();
-
-    activeScanPromises.set(dirPath, scanPromise);
-    const resolvedResult = await scanPromise;
-    activeScanPromises.delete(dirPath);
-    return resolvedResult;
+    }
   });
 
-  ipcMain.handle('space:cancel', (event, dirPath) => {
-    activeScans.delete(dirPath);
-    return true;
+  ipcMain.handle('space:scan', async (_event, targetPath, forceRescan = false) => {
+    try {
+      const data = await scanDirectory(targetPath, forceRescan);
+      if (!data) return null;
+      return data;
+    } catch (err) {
+      console.error('space:scan error', err);
+      throw err;
+    }
   });
 
-  ipcMain.handle('space:delete', async (event, itemPath) => {
-    if (isProtected(itemPath)) {
-      return { success: false, error: 'PROTECTED_SYSTEM_PATH: Action blocked to prevent Windows instability.' };
+  ipcMain.handle('space:cancel', async (_event, targetPath) => {
+    const normalizedPath = normalizePath(targetPath);
+    if (activeScan.inProgress && activeScan.path && activeScan.path.toLowerCase() === normalizedPath.toLowerCase()) {
+      if (activeScan.cancel) activeScan.cancel();
+      activeScan.inProgress = false;
+      activeScan.path = null;
+      activeScan.cancel = null;
+      return { success: true };
+    }
+    return { success: false, error: 'No active scan for this path' };
+  });
+
+  ipcMain.handle('space:delete', async (_event, targetPath) => {
+    const normalizedPath = normalizePath(targetPath);
+
+    if (isProtected(normalizedPath)) {
+      return { success: false, error: 'Protected path cannot be deleted.' };
     }
 
     try {
-      await shell.trashItem(itemPath);
-      
-      // If we have a cached tree, we should ideally remove this node from it
-      // For now, simpler and more robust to just clear the cache if the deleted item 
-      // was part of the currently explored branch to force a fresh view on next scan.
-      if (cachedTree) {
-         const node = findNodeByPath(cachedTree.rootNode, itemPath);
-         if (node) {
-            // Found it in cache! Remove it from parent
-            if (node.parent) {
-               node.parent.children.delete(node.name);
-               // Propagate size subtraction up the tree
-               const deletedSize = node.size;
-               let curr = node.parent;
-               while (curr) {
-                 curr.size -= deletedSize;
-                 curr = curr.parent;
-               }
-            } else {
-               // It's the root of the cache, just wipe cache
-               cachedTree = null;
-            }
-         }
+      if (!fsSync.existsSync(normalizedPath)) {
+        return { success: false, error: 'Path does not exist.' };
       }
 
+      const stat = fsSync.statSync(normalizedPath);
+      if (stat.isDirectory()) {
+        await fs.rm(normalizedPath, { recursive: true, force: true });
+      } else {
+        await fs.unlink(normalizedPath);
+      }
+
+      clearCacheForPath(normalizedPath);
       return { success: true };
     } catch (err) {
-      console.error('[Space] Deletion failed:', err);
-      return { success: false, error: err.message };
+      console.error('space:delete error', err);
+      return { success: false, error: err?.message || 'Delete failed.' };
     }
   });
 }

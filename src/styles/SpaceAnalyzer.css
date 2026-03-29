@@ -28,12 +28,6 @@
   padding: 1.2rem 1.5rem;
   color: var(--sa-text);
   font-family: 'Inter', 'Segoe UI', monospace, sans-serif;
-  background: var(--sa-bg);
-  background-image:
-    linear-gradient(rgba(0, 242, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 242, 255, 0.02) 1px, transparent 1px);
-  background-size: 40px 40px;
-  background-position: center center;
   overflow-y: auto;
 }
 

@@ -26,6 +26,8 @@ export interface SpaceResult {
   scannedDirs: number;
   driveCapacity: number;
   driveFree: number;
+  isCached?: boolean;
+  fromCache?: boolean;
 }
 
 interface SpaceProgress {
@@ -52,6 +54,15 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, item: SpaceChild } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const cacheRef = React.useRef<Map<string, SpaceResult>>(new Map());
+
+  const normalizePath = (p: string) => {
+    let v = p.trim();
+    v = v.replace(/[\\/]+$/, '');
+    if (/^[A-Za-z]:$/.test(v)) v += '\\';
+    return v.toLowerCase();
+  };
 
   // Close context menu on any global click or escape
   useEffect(() => {
@@ -82,6 +93,19 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
     }
   }, [isActive, isScanning, targetPath]);
 
+  // Inject preloaded analyzer data from splash screen, if available
+  useEffect(() => {
+    if (!result && !isScanning && window && (window as any).__SPACE_ANALYZER_PRELOADED__) {
+      const preloaded = (window as any).__SPACE_ANALYZER_PRELOADED__ as SpaceResult;
+      if (preloaded) {
+        const initialPath = normalizePath('C:\\');
+        cacheRef.current.set(initialPath, preloaded);
+        setTargetPath('C:');
+        setResult(preloaded);
+      }
+    }
+  }, [result, isScanning]);
+
   // Clean auto-load logic to fetch background scanned items automatically correctly!
   useEffect(() => {
     if (isActive && !result && !isScanning && targetPath === 'C:\\') {
@@ -89,10 +113,19 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
     }
   }, [isActive]);
 
-  const handleScan = async (pathOverride?: string, forceRescan = false) => {
+  const handleScan = async (pathOverride?: string, forceRescan = false, updateHistory = true) => {
     const p = pathOverride || targetPath;
-    if (pathOverride) {
+    const normalizedPath = normalizePath(p);
+
+    // Avoid redundant scan if path already displayed and not forcing refresh
+    if (!forceRescan && p === targetPath && result) {
+      return;
+    }
+
+    if (pathOverride && updateHistory) {
       setHistory((prev) => [...prev, targetPath]);
+      setTargetPath(p);
+    } else if (pathOverride) {
       setTargetPath(p);
     }
 
@@ -100,18 +133,66 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
       await window.electron?.ipcRenderer?.invoke('space:cancel', targetPath);
     }
 
-    setIsScanning(true);
-    setProgress({ dirPath: p, files: 0, dirs: 0, size: 0 });
-    setResult(null);
+    // Use cached node from backend (e.g. root scanned during splash) before scanning.
+    if (!forceRescan && window.electron?.ipcRenderer) {
+      try {
+        const cachedNode = await window.electron.ipcRenderer.invoke('space:get-node', p);
+        if (cachedNode) {
+          setResult(cachedNode);
+          cacheRef.current.set(normalizedPath, cachedNode);
+          setIsScanning(false);
+          setProgress(null);
+          return;
+        }
+      } catch (err) {
+        console.error('space:get-node failed', err);
+      }
+    }
+
+    // Try local cache first to avoid rerun scan in UI when available
+    if (!forceRescan && cacheRef.current.has(normalizedPath)) {
+      const cached = cacheRef.current.get(normalizedPath)!;
+      setResult(cached);
+      setIsScanning(false);
+      setProgress(null);
+      return;
+    }
+
+    setProgress(null);
+
+    let showScanning = false;
+    const scanDelayed = setTimeout(() => {
+      showScanning = true;
+      setIsScanning(true);
+      setResult(null);
+      setProgress({ dirPath: p, files: 0, dirs: 0, size: 0 });
+    }, 420);
 
     try {
       const res = await window.electron?.ipcRenderer?.invoke('space:scan', p, forceRescan);
-      if (res) setResult(res);
+      if (res) {
+        setResult(res);
+        cacheRef.current.set(normalizedPath, res);
+      }
+
+      if (res?.fromCache) {
+        clearTimeout(scanDelayed);
+        setIsScanning(false);
+        setProgress(null);
+        return;
+      }
+
+      if (!showScanning) {
+        clearTimeout(scanDelayed);
+      }
     } catch (err) {
       console.error(err);
     } finally {
-      setIsScanning(false);
-      setProgress(null); // Critical: clear progress so stats revert to result values!
+      clearTimeout(scanDelayed);
+      if (showScanning) {
+        setIsScanning(false);
+      }
+      setProgress(null);
     }
   };
 
@@ -127,19 +208,8 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
     const newHistory = [...history];
     const prev = newHistory.pop()!;
     setHistory(newHistory);
-    setTargetPath(prev);
 
-    setIsScanning(true);
-    setProgress({ dirPath: prev, files: 0, dirs: 0, size: 0 });
-    setResult(null);
-
-    window.electron?.ipcRenderer?.invoke('space:scan', prev, false)
-      .then((res) => {
-        if (res) setResult(res);
-      }).catch(console.error).finally(() => {
-        setIsScanning(false);
-        setProgress(null);
-      });
+    handleScan(prev, false, false);
   };
 
   const percentage = (childSize: number) => {
