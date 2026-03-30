@@ -5,22 +5,70 @@
 
 const { ipcMain } = require('electron');
 const os = require('os');
+const si = require('systeminformation');
 const { execAsync, execFileAsync, runPSScript } = require('./utils');
 const windowManager = require('./windowManager');
 
 let _hwInfoResult = null;
 let _hwInfoPromise = null;
 
+function getDefaultHardwareInfo() {
+  return {
+    cpuName: 'Unknown CPU',
+    gpuName: 'Unknown GPU',
+    ramInfo: 'Unknown',
+    ramBrand: '',
+    ramPartNumber: '',
+    diskName: 'Unknown Disk',
+    cpuCores: 0,
+    cpuThreads: 0,
+    cpuMaxClock: '',
+    gpuVramTotal: '',
+    gpuDriverVersion: '',
+    ramTotalGB: 0,
+    ramUsedGB: 0,
+    ramSticks: '',
+    diskTotalGB: 0,
+    diskFreeGB: 0,
+    diskType: '',
+    diskHealth: '',
+    allDrives: [],
+    networkAdapter: '',
+    networkLinkSpeed: '',
+    networkAdapters: [],
+    ipAddress: '',
+    ipv6Address: '',
+    macAddress: '',
+    gateway: '',
+    dns: '',
+    motherboardManufacturer: '',
+    motherboardProduct: '',
+    motherboardSerial: '',
+    biosVersion: '',
+    biosDate: '',
+    windowsVersion: os.type(),
+    windowsBuild: os.release(),
+    systemUptime: `${Math.floor(os.uptime()/86400)}d ${Math.floor((os.uptime()%86400)/3600)}h ${Math.floor((os.uptime()%3600)/60)}m`,
+    powerPlan: '',
+    lastWindowsUpdate: '',
+    windowsActivation: '',
+    hasBattery: false,
+    batteryPercent: 0,
+    batteryStatus: '',
+  };
+}
+
 function initHardwareInfo() {
   _hwInfoPromise = _fetchHardwareInfoImpl().then(info => {
-    _hwInfoResult = info;
-    _fetchSlowHardwareInfo(info).catch(err => {
+    _hwInfoResult = info || getDefaultHardwareInfo();
+    _fetchSlowHardwareInfo(_hwInfoResult).catch(err => {
       console.error('[HW Info] slow fetch failed:', err.message);
     });
-    return info;
+    return _hwInfoResult;
   }).catch(err => {
     console.error('[HW Info] fetch failed:', err.message);
-    return null;
+    _hwInfoResult = getDefaultHardwareInfo();
+    return _hwInfoResult;
   });
 }
 
@@ -454,6 +502,51 @@ try {
     } catch { }
   }
 
+  // Fallback using systeminformation for low-end or restricted environments
+  try {
+    const [cpu, mem, graphics, disks, osInfo] = await Promise.all([
+      si.cpu().catch(() => null),
+      si.mem().catch(() => null),
+      si.graphics().catch(() => null),
+      si.diskLayout().catch(() => null),
+      si.osInfo().catch(() => null),
+    ]);
+
+    if ((!info.cpuName || info.cpuName === 'Unknown CPU') && cpu) {
+      info.cpuName = `${cpu.manufacturer || ''} ${cpu.brand || ''}`.trim() || info.cpuName;
+      info.cpuCores = info.cpuCores || cpu.cores || cpu.physicalCores || 0;
+      info.cpuThreads = info.cpuThreads || cpu.processors || cpu.cores || 0;
+      if (!info.cpuMaxClock && cpu.speedMax) info.cpuMaxClock = `${cpu.speedMax} GHz`;
+    }
+
+    if ((!info.gpuName || info.gpuName === 'Unknown GPU') && graphics && graphics.controllers && graphics.controllers.length > 0) {
+      const gpu = graphics.controllers[0];
+      info.gpuName = gpu.vendor && gpu.model ? `${gpu.vendor} ${gpu.model}` : gpu.model || info.gpuName;
+      info.gpuVramTotal = info.gpuVramTotal || (gpu.vram ? `${gpu.vram} MB` : '');
+      info.gpuDriverVersion = info.gpuDriverVersion || gpu.driverVersion || '';
+    }
+
+    if ((!info.ramInfo || info.ramInfo === 'Unknown') && mem) {
+      const totalGB = Math.round((mem.total || 0) / (1024 * 1024 * 1024));
+      info.ramInfo = `${totalGB || info.ramTotalGB || 0} GB`;
+      info.ramTotalGB = info.ramTotalGB || totalGB;
+      info.ramUsedGB = info.ramUsedGB || Math.round((mem.active || 0) / (1024 * 1024 * 1024));
+    }
+
+    if ((!info.diskName || info.diskName === 'Unknown Disk') && Array.isArray(disks) && disks.length > 0) {
+      info.diskName = disks[0].name || disks[0].model || info.diskName;
+      info.diskType = info.diskType || disks[0].type || '';
+      info.diskTotalGB = info.diskTotalGB || Math.round((disks[0].size || 0) / (1024 * 1024 * 1024));
+    }
+
+    if ((!info.windowsVersion || info.windowsVersion === 'Windows' || info.windowsVersion === 'Unknown') && osInfo) {
+      info.windowsVersion = osInfo.distro || osInfo.platform || info.windowsVersion;
+      info.windowsBuild = osInfo.release || info.windowsBuild;
+    }
+  } catch (err) {
+    console.error('[HW Info] systeminformation fallback failed:', err && err.message ? err.message : err);
+  }
+
   return info;
 }
 
@@ -643,8 +736,16 @@ Write-Output $lastUpd
 function registerIPC() {
   ipcMain.handle('system:get-hardware-info', async () => {
     if (_hwInfoResult) return _hwInfoResult;
-    if (_hwInfoPromise) return _hwInfoPromise;
-    return _fetchHardwareInfoImpl();
+    if (_hwInfoPromise) {
+      const result = await _hwInfoPromise;
+      if (result) return result;
+      const fallback = await _fetchHardwareInfoImpl();
+      _hwInfoResult = fallback || getDefaultHardwareInfo();
+      return _hwInfoResult;
+    }
+    const result = await _fetchHardwareInfoImpl();
+    _hwInfoResult = result || getDefaultHardwareInfo();
+    return _hwInfoResult;
   });
 }
 

@@ -10,6 +10,17 @@ export interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: '1.5.5',
+    date: '2026-04-01',
+    highlights: 'Minor Bug Fixes & Performance Improvements',
+    changes: [
+      { type: 'fixed', text: 'Fixed minor UI glitches in the Performance page.' },
+      { type: 'fixed', text: 'Resolved an issue with the software updater not recognizing certain updates.' },
+      { type: 'improved', text: 'Enhanced overall app performance and stability.' },
+      { type: 'improved', text: 'Optimized background processes for better overall performance.' },
+    ],
+  },
+  {
     version: '1.5.4',
     date: '2026-03-30',
     highlights: 'New Performance Tweaks & Registry Handling Fixes',

@@ -140,17 +140,8 @@ function App() {
     };
     fetchHardwareInfo();
 
-    // Trigger silent background preload for Space Analyzer
-    if (window.electron?.ipcRenderer) {
-      (async () => {
-        try {
-          const spaceData = await window.electron.ipcRenderer.invoke('space:scan', 'C:\\');
-          (window as any).__SPACE_ANALYZER_PRELOADED__ = spaceData;
-        } catch (err) {
-          console.warn('Background space analyzer preload failed:', err);
-        }
-      })();
-    }
+    // Do not auto-trigger Space Analyzer scan on app startup; scan begins explicitly with the Start Scan button.
+    // This behavior ensures system resources are saved for low-end PCs.
 
     // Listen for slow background data (phase 2) and merge into state
     let unsub: (() => void) | undefined;

@@ -106,12 +106,8 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
     }
   }, [result, isScanning]);
 
-  // Clean auto-load logic to fetch background scanned items automatically correctly!
-  useEffect(() => {
-    if (isActive && !result && !isScanning && targetPath === 'C:\\') {
-      handleScan('C:\\', false);
-    }
-  }, [isActive]);
+  // Intentionally do not auto-start scan on page activation.
+  // Users must click on the "Start Scan" button to begin.
 
   const handleScan = async (pathOverride?: string, forceRescan = false, updateHistory = true) => {
     const p = pathOverride || targetPath;

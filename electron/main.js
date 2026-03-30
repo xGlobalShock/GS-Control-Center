@@ -116,14 +116,22 @@ windowsDebloat.registerIPC();
 spaceAnalyzer.registerIPC();
 
 // ── Pre-warm scan caches (orchestrator) ─────────────────────────────────────
-async function _prewarmScanCaches() {
+async function _prewarmScanCaches({ updateSplash = false } = {}) {
+  const canUpdateSplash = () => {
+    if (!updateSplash) return false;
+    const splash = windowManager.getSplashWindow();
+    return splash && !splash.isDestroyed();
+  };
+
   // 1. Pre-warm registry display names
   // Fire and forget since it's very fast
   appInstaller.getRegistryDisplayNames().catch(() => new Set());
 
   // 3. Pre-warm winget list cache
-  windowManager.sendSplashStatus('Loading applications library...');
-  windowManager.sendSplashProgress(60);
+  if (canUpdateSplash()) {
+    windowManager.sendSplashStatus('Loading applications library...');
+    windowManager.sendSplashProgress(60);
+  }
   try {
     const { stdout } = await execAsync(
       'chcp 65001 >nul && winget list --accept-source-agreements 2>nul',
@@ -164,8 +172,10 @@ async function _prewarmScanCaches() {
   } catch { }
 
   // 4. Match local applications
-  windowManager.sendSplashStatus('Verifying application states...');
-  windowManager.sendSplashProgress(75);
+  if (canUpdateSplash()) {
+    windowManager.sendSplashStatus('Verifying application states...');
+    windowManager.sendSplashProgress(75);
+  }
   try {
     const result = await appInstaller.checkInstalledImpl(appInstaller.APP_CATALOG_APPS);
     const win = windowManager.getMainWindow();
@@ -175,8 +185,10 @@ async function _prewarmScanCaches() {
   } catch { }
 
   // 5. Pre-load Windows Debloat components
-  windowManager.sendSplashStatus('Loading Windows features...');
-  windowManager.sendSplashProgress(80);
+  if (canUpdateSplash()) {
+    windowManager.sendSplashStatus('Loading Windows features...');
+    windowManager.sendSplashProgress(80);
+  }
   try {
     const result = await windowsDebloat.handlePreloadAll();
     if (result && result.success && result.data) {
@@ -201,10 +213,9 @@ app.on('ready', async () => {
 
   windowManager.sendSplashStatus('Checking for updates...');
   windowManager.sendSplashProgress(5);
-  try {
-    const result = await softwareUpdates.checkSoftwareUpdatesImpl();
-    softwareUpdates.setSoftwareUpdatesCache(result);
-  } catch { }
+  const softwareUpdatesPromise = softwareUpdates.checkSoftwareUpdatesImpl()
+    .then(result => softwareUpdates.setSoftwareUpdatesCache(result))
+    .catch(() => { });
 
   windowManager.sendSplashStatus('Initializing core services...');
   windowManager.sendSplashProgress(10);
@@ -232,7 +243,9 @@ app.on('ready', async () => {
   hardwareInfo.initHardwareInfo();
   try {
     const hwPromise = hardwareInfo.getHwInfoPromise();
-    if (hwPromise) await hwPromise;
+    if (hwPromise) {
+      await hwPromise;
+    }
   } catch { }
 
   windowManager.sendSplashStatus('Preparing user interface...');
@@ -251,7 +264,6 @@ app.on('ready', async () => {
   }
 
   hardwareMonitor._startLatencyPoll();
-  const prewarmPromise = _prewarmScanCaches();
 
   autoUpdater.initAutoUpdater();
 
@@ -262,7 +274,9 @@ app.on('ready', async () => {
     setTimeout(resolve, 8000);
   });
 
-  await prewarmPromise;
+  // Start heavy prewarm work after main window is ready and splash is done.
+  _prewarmScanCaches({ updateSplash: false }).catch(() => { });
+  softwareUpdatesPromise.catch(() => { });
 
   windowManager.sendSplashStatus('Finalizing setup...');
   windowManager.sendSplashProgress(85);
