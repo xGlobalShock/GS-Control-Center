@@ -51,7 +51,7 @@ function initAutoUpdater() {
       transferred: progress.transferred,
       total: progress.total,
     });
-    windowManager.sendSplashStatus(`Downloading update... ${percent}%`);
+    windowManager.sendSplashStatus('Downloading update...');
     windowManager.sendSplashProgress(percent);
   });
 
