@@ -5,8 +5,6 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 
-
-// Hard-coded protection list to prevent common Windows breakage
 const PROTECTED_PATHS = [
   'C:\\Windows', 'C:\\Program Files', 'C:\\Program Files (x86)',
   'C:\\ProgramData', 'C:\\Users', 'C:\\$Recycle.Bin', 'C:\\System Volume Information',
@@ -15,7 +13,6 @@ const PROTECTED_PATHS = [
 
 function isProtected(targetPath) {
   const normalized = path.normalize(targetPath).toLowerCase();
-  // Don't allow deleting the root of any drive
   if (normalized.length <= 3 && normalized.endsWith(':\\')) return true;
   
   return PROTECTED_PATHS.some(pp => {
@@ -24,10 +21,7 @@ function isProtected(targetPath) {
   });
 }
 
-/**
- * Searches the cached tree for a specific subdirectory node.
- * Uses path.relative to determine if the targetPath resides within a child.
- */
+
 function findNodeByPath(node, targetPath) {
   const normalizedTarget = normalizePath(targetPath).toLowerCase();
   const normalizedNodePath = normalizePath(node.path).toLowerCase();
@@ -38,7 +32,6 @@ function findNodeByPath(node, targetPath) {
     const normalizedChildPath = normalizePath(child.path);
     const rel = path.relative(normalizedChildPath, normalizedTarget);
 
-    // If targetPath is inside child.path, relative path won't start with '..' and won't be absolute (different drive)
     if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
       return findNodeByPath(child, targetPath);
     }
@@ -46,18 +39,12 @@ function findNodeByPath(node, targetPath) {
   return null;
 }
 
-/**
- * Get drive capacity and free space using PowerShell
- */
 function getDriveInfo(dirPath) {
   try {
-    // Extract drive letter from path (e.g., "C" from "C:\\Users")
     const driveMatch = dirPath.match(/^([A-Z]):/i);
     if (!driveMatch) return { driveCapacity: 0, driveFree: 0 };
 
     const driveLetter = driveMatch[1].toUpperCase();
-    
-    // Use PowerShell to get disk info - returns two lines: total size, then free space
     const cmd = `powershell -Command "$disk = Get-Volume -DriveLetter ${driveLetter}; Write-Output $disk.Size; Write-Output $disk.SizeRemaining"`;
     const output = execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim().split('\n');
     
@@ -66,14 +53,11 @@ function getDriveInfo(dirPath) {
     
     return { driveCapacity, driveFree };
   } catch (err) {
-    // Silently fail - not critical
+
   }
   return { driveCapacity: 0, driveFree: 0 };
 }
 
-/**
- * Converts internal Node representation into the flat list array expected by React
- */
 function formatNodeResult(node, scannedFiles, scannedDirs, fromCache = false, driveInfoOverride = null) {
   let childrenList = Array.from(node.children.values()).map(c => ({
     name: c.name,
@@ -85,7 +69,6 @@ function formatNodeResult(node, scannedFiles, scannedDirs, fromCache = false, dr
     modified: c.modified.toISOString(),
     isDir: true
   }));
-  // Add individual files instead of a single aggregate
   if (node.files) {
     for (const f of node.files) {
       childrenList.push({ 
