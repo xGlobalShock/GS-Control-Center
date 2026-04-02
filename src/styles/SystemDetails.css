@@ -9,12 +9,12 @@
   transition: filter 0.25s ease;
 }
 .hud-blurred {
-  filter: blur(6px);
+  filter: blur(3px);
   user-select: none;
   cursor: pointer;
+  background-color: rgba(0, 242, 255, 0.07);
   display: inline-block;
-  padding: 2px 6px;
-  clip-path: inset(0 round 15px);
+  clip-path: inset(0 round 5px);
   transition: filter 0.25s ease, clip-path 0.25s ease;
 }
 
