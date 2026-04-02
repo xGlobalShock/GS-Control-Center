@@ -1,6 +1,6 @@
 {
   "name": "gs-center",
-  "version": "1.6.7",
+  "version": "1.6.8",
   "description": "GS Center - Advanced System Optimization Tool",
   "author": "GS Center Team",
   "main": "electron/main.js",
