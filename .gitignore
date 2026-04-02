@@ -15,6 +15,7 @@ V-Config/
 lib/
 public/
 scripts/
+V-Config/
 
 # ── Environment ──
 .env
