@@ -15,7 +15,7 @@ V-Config/
 lib/
 public/
 scripts/
-V-Config/
+V-Config\apex-legends/
 
 # ── Environment ──
 .env
