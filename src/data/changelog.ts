@@ -14,13 +14,9 @@ const changelog: ChangelogEntry[] = [
     date: '2026-04-02',
     highlights: 'PC Tweaks update with new features and improvements.',
     changes: [
-      { type: 'new', text: 'PC Tweaks: Add "Disable Network Throttling" (NetworkThrottlingIndex = 0xFFFFFFFF) to allow multimedia/network workloads to use full bandwidth.' },
-      { type: 'new', text: 'PC Tweaks: Add "Expand System File Cache" (LargeSystemCache = 1) to increase system file caching on systems with ample RAM.' },
-      { type: 'improved', text: 'Tweaks backend: added apply/check/reset IPC handlers for the new tweaks and improved registry check logic to handle unsigned DWORD values.' },
-      { type: 'improved', text: 'UI: Registered the new tweaks in the PC Tweaks page maps and categories so they appear and can be applied/reverted from the app.' },
-      { type: 'new', text: 'Docs: Added a new documentation file (Docs/PC_Tweaks.md) listing each tweak with registry path, value name and value.' },
-      { type: 'improved', text: 'Clarified the `TdrLevel` description to explain gamer impact and risks more succinctly.' },
-      { type: 'fixed', text: 'Fixed DWORD serialization for max unsigned values by casting to [uint32] in PowerShell checks to avoid signed-json mismatch.' },
+      { type: 'new', text: 'Added two PC tweaks and integrated them into the Performance page.' },
+      { type: 'improved', text: 'Clarified the TdrLevel description in the UI for clearer guidance.' },
+      { type: 'improved', text: 'Updated the Memory Compression tweak to more accurately reflect its function and benefits.' },
     ],
   },
   {
@@ -29,25 +25,23 @@ const changelog: ChangelogEntry[] = [
     highlights: 'Overlay & Hardware Acceleration updates with new features, UI improvements, and critical fixes.',
     changes: [
       // New Features
-      { type: 'new', text: 'Overlay: added font style picker with 5 options — Share Tech Mono, JetBrains Mono, Orbitron, Rajdhani, and Courier Prime.' },
       { type: 'new', text: 'Overlay: Visible Metrics and Font Style redesigned as toggle switches and placed side by side in a twin-column layout.' },
       { type: 'new', text: 'Overlay: FPS Overlay enable toggle moved into the section panel header, freeing the body for configuration controls.' },
       { type: 'new', text: 'Settings: Hardware Acceleration toggle added to the GPU card with full on/off support and per-boot persistence.' },
-      { type: 'new', text: 'Settings: toggling Hardware Acceleration shows a popup with Restart Now (saves + relaunches) and Dismiss (reverts toggle).' },
+      { type: 'new', text: 'Settings: toggling HW Acceleration shows a popup with Restart Now (saves + relaunches) and Dismiss (reverts toggle).' },
       { type: 'new', text: 'Settings: Rendering tab removed — Hardware Acceleration card consolidated into the About tab.' },
       { type: 'new', text: 'Settings: Check for Updates button moved inline into the About panel header next to the title.' },
 
       // Fixes
       { type: 'fixed', text: 'Fixed GPU card incorrectly displaying ACTIVE status when Hardware Acceleration was saved as disabled.' },
-      { type: 'fixed', text: 'Fixed disableHardwareAcceleration() being called after module requires — moved to top of main.js so it takes effect on boot.' },
+      { type: 'fixed', text: 'Fixed Hardware Acceleration being called after module requires — moved to top so it takes effect on boot.' },
       { type: 'fixed', text: 'Fixed SwiftShader (CPU renderer) being forced on all sessions regardless of the acceleration setting.' },
-      { type: 'fixed', text: 'Fixed GPU process crashes (exit code 0xC0000409 / STATUS_STACK_BUFFER_OVERRUN) caused by raw GPU sandbox access on Windows.' },
+      { type: 'fixed', text: 'Fixed GPU Hardware Acceleration process crashes caused by raw GPU sandbox access on Windows.' },
 
       // Improvements
-      { type: 'improved', text: 'Overlay position bounds corrected — window width matched to HUD content so the HUD sits flush with screen edges.' },
-      { type: 'improved', text: 'Hardware Acceleration enabled mode now uses ANGLE (Direct3D-backed OpenGL) for real GPU compositing instead of SwiftShader.' },
+      { type: 'improved', text: 'Overlay position bounds corrected — window width to HUD content so the HUD sits flush with screen edges.' },
       { type: 'improved', text: 'Hardware Acceleration disabled mode fully removes the GPU process — app runs 100% on CPU.' },
-      { type: 'improved', text: 'gpu:get-hw-accel IPC now reads from the settings file on every call, ensuring the UI always reflects the saved preference.' },
+      { type: 'improved', text: 'HW Acceleration IPC now reads from the settings file on every call.' },
     ],
   },
   {
