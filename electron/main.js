@@ -23,11 +23,16 @@ function _saveAppSettings(patch) {
 
 function _createTray() {
   if (_tray && !_tray.isDestroyed()) return;
-  const iconPath = app.isPackaged
-    ? path.join(process.resourcesPath, 'app-icons', 'gs-center.png')
-    : path.join(__dirname, '..', 'public', 'app-icons', 'gs-center.png');
+  // Prefer ICO on Windows — native format with embedded 16×16/32×32 sizes.
+  // Fall back to PNG if ICO is missing.
+  const iconBase = app.isPackaged
+    ? path.join(process.resourcesPath, 'app-icons')
+    : path.join(__dirname, '..', 'public', 'app-icons');
+  const icoPath = path.join(iconBase, 'GSC.ico');
+  const pngPath = path.join(iconBase, 'gs-center.png');
+  const iconPath = require('fs').existsSync(icoPath) ? icoPath : pngPath;
   try {
-    const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
+    const icon = nativeImage.createFromPath(iconPath);
     _tray = new Tray(icon);
     _tray.setToolTip('GS Center');
     const buildMenu = () => Menu.buildFromTemplate([

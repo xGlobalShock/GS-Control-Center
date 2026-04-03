@@ -73,6 +73,11 @@
     ],
     "extraResources": [
       {
+        "from": "public/app-icons",
+        "to": "app-icons",
+        "filter": ["**/*"]
+      },
+      {
         "from": "lib",
         "to": "lib",
         "filter": [
