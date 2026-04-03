@@ -29,9 +29,9 @@ const changelog: ChangelogEntry[] = [
       { type: 'new',      text: 'Dashboard: staggered Framer Motion entrance animations per card.' },
       { type: 'new',      text: 'Game Library: COMMANDS button with 3D gear design; Commands overlay with 3-column grid and search.' },
       { type: 'improved', text: 'Dashboard: glassmorphic cards with corner brackets, scanline overlay, and glowing accent bar.' },
-      { type: 'improved', text: 'App-wide color migration from cyan (#00F2FF) to green (#00CC6A) across 15+ CSS files.' },
+      { type: 'improved', text: 'App-wide color migration from green (#00CC6A) to cyan (#00F2FF) across 15+ CSS files.' },
       { type: 'improved', text: 'Unified dark glassmorphic card style (background, border, shadow) across all pages.' },
-      { type: 'improved', text: 'AdvisorPanel and HealthScore hover accents updated to green.' },
+      { type: 'improved', text: 'AdvisorPanel and HealthScore hover accents updated to cyan.' },
       { type: 'improved', text: 'Cache Flush overlay: single-column queue, width reduced to 540px, compact row padding.' },
       { type: 'fixed',    text: 'Fixed --border-color CSS variable still referencing cyan.' },
       { type: 'fixed',    text: 'Fixed Windows Debloat selected state and PerformanceTweakCard badges still using cyan/teal.' },
@@ -41,3 +41,4 @@ const changelog: ChangelogEntry[] = [
 ];
 
 export default changelog;
+

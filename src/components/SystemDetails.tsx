@@ -86,19 +86,19 @@ const HudGradients: React.FC = () => (
   <svg width="0" height="0" style={{ position: 'absolute' }}>
     <defs>
       <linearGradient id="hud-cyan-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stopColor="#00CC6A" />
-        <stop offset="100%" stopColor="#00CC6A" />
+        <stop offset="0%" stopColor="#00F2FF" />
+        <stop offset="100%" stopColor="#00F2FF" />
       </linearGradient>
       <linearGradient id="hud-emerald-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stopColor="#00FF88" />
-        <stop offset="100%" stopColor="#00CC6A" />
+        <stop offset="0%" stopColor="#00F2FF" />
+        <stop offset="100%" stopColor="#00F2FF" />
       </linearGradient>
       <linearGradient id="hud-heat-low" x1="0%" y1="100%" x2="0%" y2="0%">
-        <stop offset="0%" stopColor="#00CC6A" />
-        <stop offset="100%" stopColor="#00CC6A" />
+        <stop offset="0%" stopColor="#00F2FF" />
+        <stop offset="100%" stopColor="#00F2FF" />
       </linearGradient>
       <linearGradient id="hud-heat-mid" x1="0%" y1="100%" x2="0%" y2="0%">
-        <stop offset="0%" stopColor="#00CC6A" />
+        <stop offset="0%" stopColor="#00F2FF" />
         <stop offset="100%" stopColor="#FFD600" />
       </linearGradient>
       <linearGradient id="hud-heat-high" x1="0%" y1="100%" x2="0%" y2="0%">
@@ -122,14 +122,14 @@ const RadialGauge: React.FC<{
   const offset = arcLen - (pct / 100) * arcLen;
   const rotation = 135;
   const center = size / 2;
-  const color = pct > 80 ? '#FF2D55' : pct > 60 ? '#FFD600' : '#00CC6A';
+  const color = pct > 80 ? '#FF2D55' : pct > 60 ? '#FFD600' : '#00F2FF';
 
   return (
     <div className="hud-radial-gauge">
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         {/* bg track */}
         <circle cx={center} cy={center} r={r}
-          fill="none" stroke="rgba(0, 204, 106,0.08)" strokeWidth={3} strokeLinecap="round"
+          fill="none" stroke="rgba(0, 242, 255,0.08)" strokeWidth={3} strokeLinecap="round"
           strokeDasharray={`${arcLen} ${circ}`} strokeDashoffset={0}
           transform={`rotate(${rotation} ${center} ${center})`}
         />
@@ -156,7 +156,7 @@ const RadialGauge: React.FC<{
    Neon Bar Gauge — thin glowing horizontal bar
 ═══════════════════════════════════════════ */
 const NeonBar: React.FC<{ pct: number; label?: string; display?: string; color?: string }> = ({
-  pct, label, display, color = '#00CC6A',
+  pct, label, display, color = '#00F2FF',
 }) => (
   <div className="hud-neon-bar-wrap">
     {(label || display) && (
@@ -308,8 +308,8 @@ const CoreHeatMap: React.FC<{ cores: number[]; threadCount?: number; coreCount?:
   cores, threadCount, coreCount, loading,
 }) => {
   const getColor = (pct: number) => {
-    if (pct < 25) return '#00CC6A';
-    if (pct < 60) return '#00CC6A';
+    if (pct < 25) return '#00F2FF';
+    if (pct < 60) return '#00F2FF';
     if (pct < 85) return '#FFD600';
     return '#FF2D55';
   };
@@ -569,12 +569,12 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
                   pct={Math.min((gpuClock / 2800) * 100, 100)}
                   label="GPU Clock"
                   display={`${gpuClock} MHz`}
-                  color="#00FF88"
+                  color="#00F2FF"
                 />
               )}
               {gpuVramUsed >= 0 && gpuVramTotal > 0 ? (() => {
                 const pct = (gpuVramUsed / gpuVramTotal) * 100;
-                const c = pct > 90 ? '#FF2D55' : pct > 70 ? '#FFD600' : '#00CC6A';
+                const c = pct > 90 ? '#FF2D55' : pct > 70 ? '#FFD600' : '#00F2FF';
                 return (
                   <div className="hud-usage-rt">
                     <div className="hud-usage-rt-stat">
@@ -621,7 +621,7 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
           {hw?.ramSticks ? <Row label="RAM Sticks" value={hw.ramSticks} /> : hwLoading && <Row label="RAM Sticks" loading />}
           {ext && ext.ramTotalGB > 0 ? (() => {
             const pct = (ext.ramUsedGB / ext.ramTotalGB) * 100;
-            const c = pct > 90 ? '#FF2D55' : pct > 70 ? '#FFD600' : '#00CC6A';
+            const c = pct > 90 ? '#FF2D55' : pct > 70 ? '#FFD600' : '#00F2FF';
             const availPct = (ext.ramAvailableGB / ext.ramTotalGB) * 100;
             const cachedPct = (ext.ramCachedGB / ext.ramTotalGB) * 100;
             return (
@@ -640,14 +640,14 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
                 </div>
                 <div className="hud-net-rt-stat">
                   <div className="hud-net-rt-head">
-                    <span className="hud-net-rt-dot" style={{ background: '#00FF88', boxShadow: '0 0 5px #00FF88' }} />
+                    <span className="hud-net-rt-dot" style={{ background: '#00F2FF', boxShadow: '0 0 5px #00F2FF' }} />
                     <span className="hud-net-rt-key">Available</span>
                   </div>
-                  <span className="hud-net-rt-big" style={{ color: '#00FF88' }}>
+                  <span className="hud-net-rt-big" style={{ color: '#00F2FF' }}>
                     {ext.ramAvailableGB.toFixed(1)}<small> GB</small>
                   </span>
                   <div className="hud-usage-rt-track">
-                    <div className="hud-usage-rt-fill" style={{ width: `${Math.min(availPct, 100)}%`, background: 'linear-gradient(90deg, #00FF8800, #00FF88)', boxShadow: '0 0 6px #00FF8850' }} />
+                    <div className="hud-usage-rt-fill" style={{ width: `${Math.min(availPct, 100)}%`, background: 'linear-gradient(90deg, #00F2FF00, #00F2FF)', boxShadow: '0 0 6px #00F2FF50' }} />
                   </div>
                 </div>
                 {ext.ramCachedGB > 0 && (
@@ -689,10 +689,10 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
               ) : hw?.diskType && (
                 <div className="hud-stor-diag-cell">
                   <div className="hud-stor-diag-top">
-                    <span className="hud-stor-diag-dot" style={{ background: '#00CC6A', boxShadow: '0 0 6px #00CC6A88' }} />
+                    <span className="hud-stor-diag-dot" style={{ background: '#00F2FF', boxShadow: '0 0 6px #00F2FF88' }} />
                     <span className="hud-stor-diag-key">Type</span>
                   </div>
-                  <span className="hud-stor-diag-val" style={{ color: '#00CC6A' }}>{hw.diskType}</span>
+                  <span className="hud-stor-diag-val" style={{ color: '#00F2FF' }}>{hw.diskType}</span>
                   <span className="hud-stor-diag-sub">{hw.diskType === 'SSD' ? 'Solid State Drive' : hw.diskType === 'HDD' ? 'Hard Disk Drive' : 'Storage Device'}</span>
                 </div>
               )}
@@ -700,7 +700,7 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
                 <div className="hud-stor-diag-cell"><ValueLoader /></div>
               ) : hw?.diskHealth && (() => {
                 const ok = hw.diskHealth.toLowerCase() === 'healthy';
-                const c = ok ? '#00FF88' : '#FFD600';
+                const c = ok ? '#00F2FF' : '#FFD600';
                 return (
                   <div className="hud-stor-diag-cell">
                     <div className="hud-stor-diag-top">
@@ -748,7 +748,7 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
               {hw.allDrives.map((d) => {
                 const usedGB = d.totalGB - d.freeGB;
                 const pct = d.totalGB > 0 ? Math.round((usedGB / d.totalGB) * 100) : 0;
-                const color = pct > 90 ? '#FF2D55' : pct > 70 ? '#FFD600' : '#00CC6A';
+                const color = pct > 90 ? '#FF2D55' : pct > 70 ? '#FFD600' : '#00F2FF';
                 const SEGS = 12;
                 const litCount = Math.round((pct / 100) * SEGS);
                 return (
@@ -861,10 +861,10 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
               {ext ? (
                 ext.latencyMs != null && ext.latencyMs > 0 ? (() => {
                   const ms = ext.latencyMs;
-                  const c = ms <= 80 ? '#00FF88' : ms <= 180 ? '#FFD600' : '#FF2D55';
+                  const c = ms <= 80 ? '#00F2FF' : ms <= 180 ? '#FFD600' : '#FF2D55';
                   const q = ms <= 30 ? 'Excellent' : ms <= 80 ? 'Good' : ms <= 180 ? 'Fair' : 'Poor';
                   const pl = ext.packetLoss ?? -1;
-                  const plColor = pl <= 0 ? '#00FF88' : pl < 3 ? '#FFD600' : '#FF2D55';
+                  const plColor = pl <= 0 ? '#00F2FF' : pl < 3 ? '#FFD600' : '#FF2D55';
                   return (
                     <>
                       <div className="hud-net-rt-stat">
@@ -953,7 +953,7 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
               {/* Uptime */}
               <div className="hud-sys-rt-stat">
                 <div className="hud-sys-rt-head">
-                  <span className="hud-sys-rt-dot" style={{ background: '#00CC6A', boxShadow: '0 0 5px #00CC6A' }} />
+                  <span className="hud-sys-rt-dot" style={{ background: '#00F2FF', boxShadow: '0 0 5px #00F2FF' }} />
                   <span className="hud-sys-rt-key">Uptime</span>
                 </div>
                 <span className="hud-sys-rt-big">{ext?.systemUptime ?? hw?.systemUptime ?? '—'}</span>
@@ -962,7 +962,7 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
               {/* Power & Resources */}
               <div className="hud-sys-rt-stat">
                 <div className="hud-sys-rt-head">
-                  <span className="hud-sys-rt-dot" style={{ background: '#00CC6A', boxShadow: '0 0 5px #00CC6A' }} />
+                  <span className="hud-sys-rt-dot" style={{ background: '#00F2FF', boxShadow: '0 0 5px #00F2FF' }} />
                   <span className="hud-sys-rt-key">Power Plan</span>
                 </div>
                 <span className="hud-sys-rt-big">{hw?.powerPlan ?? '—'}</span>
@@ -983,4 +983,6 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
 };
 
 export default SystemDetails;
+
+
 

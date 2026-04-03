@@ -30,7 +30,7 @@ const TOOLS = [
     subtitle: 'SFC /scannow',
     icon: FileSearch,
     description: 'Scans all protected Windows system files and replaces corrupted or missing files with a cached copy from a compressed folder.',
-    color: '#00CC6A',
+    color: '#00F2FF',
     channel: 'repair:run-sfc',
   },
   {
@@ -437,3 +437,4 @@ const SystemRepairPanel: React.FC = () => {
 };
 
 export default React.memo(SystemRepairPanel);
+

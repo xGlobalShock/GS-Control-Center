@@ -196,7 +196,7 @@ const Network: React.FC = () => {
             transform-origin: top center !important;
             margin-top: 60px !important;
             background: rgba(255,255,255,0.05) !important;
-            border: 1px solid rgba(0, 204, 106,0.1) !important;
+            border: 1px solid rgba(0, 242, 255,0.1) !important;
             border-radius: 12px !important;
             box-shadow: none !important;
         }
@@ -356,3 +356,4 @@ const Network: React.FC = () => {
 };
 
 export default React.memo(Network);
+

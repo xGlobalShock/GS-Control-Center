@@ -213,7 +213,7 @@
   flex-shrink: 0;
   font-size: 7px;
   font-weight: 800;
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0.8px;
   padding: 1.5px 5px;
   border-radius: 3px;
@@ -342,3 +342,4 @@
   color: #68d9ff;
   text-decoration: underline;
 }
+

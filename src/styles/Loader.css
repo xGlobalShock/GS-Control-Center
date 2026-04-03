@@ -17,7 +17,7 @@
   font-size: 0.78rem;
   color: rgba(255, 255, 255, 0.4);
   letter-spacing: 0.5px;
-  text-transform: uppercase;
+  text-transform: none;
   margin-bottom: 18px;
 }
 
@@ -54,7 +54,7 @@
 .loader-skel-card {
   position: relative;
   background: rgba(6, 8, 16, 0.55);
-  border: 1px solid rgba(0, 204, 106, 0.07);
+  border: 1px solid rgba(0, 242, 255, 0.07);
   border-radius: 14px;
   padding: 18px 16px;
   min-height: 140px;
@@ -123,7 +123,7 @@
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 1.2px;
-  text-transform: uppercase;
+  text-transform: none;
   color: rgba(255, 255, 255, 0.25);
 }
 
@@ -197,3 +197,5 @@
     grid-template-columns: 1fr;
   }
 }
+
+

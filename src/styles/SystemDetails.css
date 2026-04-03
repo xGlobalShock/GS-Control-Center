@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    System Details — Glassmorphic Bento HUD
-   Deep Space (#050505) · Electric Cyan (#00CC6A) · Neon Emerald
+   Deep Space (#050505) · Electric Cyan (#00F2FF) · Neon Emerald
 ═══════════════════════════════════════════════════════════════ */
 
 /* ── Network info blur toggle ── */
@@ -12,7 +12,7 @@
   filter: blur(3px);
   user-select: none;
   cursor: pointer;
-  background-color: rgba(0, 204, 106, 0.07);
+  background-color: rgba(0, 242, 255, 0.07);
   display: inline-block;
   clip-path: inset(0 round 5px);
   transition: filter 0.25s ease, clip-path 0.25s ease;
@@ -68,15 +68,15 @@
   background: rgba(6, 8, 16, 0.55);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 204, 106, 0.07);
+  border: 1px solid rgba(0, 242, 255, 0.07);
   border-radius: 16px;
   overflow: hidden;
   transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.4s ease, box-shadow 0.4s ease;
   box-shadow:
     0 2px 20px rgba(0, 0, 0, 0.45),
-    0 0 1px rgba(0, 204, 106, 0.06),
-    inset 0 1px 0 rgba(0, 204, 106, 0.04),
-    inset 0 0 40px rgba(0, 204, 106, 0.008);
+    0 0 1px rgba(0, 242, 255, 0.06),
+    inset 0 1px 0 rgba(0, 242, 255, 0.04),
+    inset 0 0 40px rgba(0, 242, 255, 0.008);
   will-change: transform;
   transform: translateZ(0);
   contain: layout style paint;
@@ -87,7 +87,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(145deg, rgba(0, 204, 106, 0.025) 0%, transparent 45%, rgba(0, 255, 136, 0.01) 100%);
+  background: linear-gradient(145deg, rgba(0, 242, 255, 0.025) 0%, transparent 45%, rgba(0, 242, 255, 0.01) 100%);
   pointer-events: none;
   border-radius: inherit;
   z-index: 1;
@@ -95,12 +95,12 @@
 
 .hud-bento-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(0, 204, 106, 0.16);
+  border-color: rgba(0, 242, 255, 0.16);
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.55),
-    0 0 0 1px rgba(0, 204, 106, 0.05),
-    0 0 24px rgba(0, 204, 106, 0.03),
-    inset 0 0 40px rgba(0, 204, 106, 0.012);
+    0 0 0 1px rgba(0, 242, 255, 0.05),
+    0 0 24px rgba(0, 242, 255, 0.03),
+    inset 0 0 40px rgba(0, 242, 255, 0.012);
 }
 
 /* ── Breathing pulse for high-load cards ── */
@@ -158,8 +158,8 @@
     0deg,
     transparent,
     transparent 2px,
-    rgba(0, 204, 106, 0.005) 2px,
-    rgba(0, 204, 106, 0.005) 4px
+    rgba(0, 242, 255, 0.005) 2px,
+    rgba(0, 242, 255, 0.005) 4px
   );
   border-radius: inherit;
 }
@@ -173,9 +173,9 @@
   height: 1px;
   background: linear-gradient(90deg,
     transparent 0%,
-    rgba(0, 204, 106, 0.2) 35%,
-    rgba(0, 204, 106, 0.35) 50%,
-    rgba(0, 204, 106, 0.2) 65%,
+    rgba(0, 242, 255, 0.2) 35%,
+    rgba(0, 242, 255, 0.35) 50%,
+    rgba(0, 242, 255, 0.2) 65%,
     transparent 100%);
   animation: hud-live-scan 4s ease-in-out infinite;
   z-index: 10;
@@ -204,56 +204,56 @@
 
 .hud-corner-tl {
   top: 0; left: 0;
-  border-top: 1px solid rgba(0, 204, 106, 0.25);
-  border-left: 1px solid rgba(0, 204, 106, 0.25);
+  border-top: 1px solid rgba(0, 242, 255, 0.25);
+  border-left: 1px solid rgba(0, 242, 255, 0.25);
   border-radius: 16px 0 0 0;
 }
 
 .hud-corner-tr {
   top: 0; right: 0;
-  border-top: 1px solid rgba(0, 204, 106, 0.25);
-  border-right: 1px solid rgba(0, 204, 106, 0.25);
+  border-top: 1px solid rgba(0, 242, 255, 0.25);
+  border-right: 1px solid rgba(0, 242, 255, 0.25);
   border-radius: 0 16px 0 0;
 }
 
 .hud-corner-bl {
   bottom: 0; left: 0;
-  border-bottom: 1px solid rgba(0, 204, 106, 0.12);
-  border-left: 1px solid rgba(0, 204, 106, 0.12);
+  border-bottom: 1px solid rgba(0, 242, 255, 0.12);
+  border-left: 1px solid rgba(0, 242, 255, 0.12);
   border-radius: 0 0 0 16px;
 }
 
 .hud-corner-br {
   bottom: 0; right: 0;
-  border-bottom: 1px solid rgba(0, 204, 106, 0.12);
-  border-right: 1px solid rgba(0, 204, 106, 0.12);
+  border-bottom: 1px solid rgba(0, 242, 255, 0.12);
+  border-right: 1px solid rgba(0, 242, 255, 0.12);
   border-radius: 0 0 16px 0;
 }
 
 .hud-bento-card:hover .hud-corner-tl,
 .hud-bento-card:hover .hud-corner-tr {
-  border-color: rgba(0, 204, 106, 0.4);
+  border-color: rgba(0, 242, 255, 0.4);
 }
 
 .hud-bento-card:hover .hud-corner-bl,
 .hud-bento-card:hover .hud-corner-br {
-  border-color: rgba(0, 204, 106, 0.25);
+  border-color: rgba(0, 242, 255, 0.25);
 }
 
 /* ── Top accent line (usage fill) ── */
 .hud-card-accent-line {
   height: 2px;
   width: 100%;
-  background: rgba(0, 204, 106, 0.04);
+  background: rgba(0, 242, 255, 0.04);
   position: relative;
 }
 
 .hud-card-accent-fill {
   height: 100%;
-  background: linear-gradient(90deg, #00CC6A, #00FF88);
+  background: linear-gradient(90deg, #00F2FF, #00F2FF);
   border-radius: 0 2px 2px 0;
   transition: width 0.9s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 0 12px rgba(0, 204, 106, 0.5), 0 0 4px rgba(0, 255, 136, 0.3);
+  box-shadow: 0 0 12px rgba(0, 242, 255, 0.5), 0 0 4px rgba(0, 242, 255, 0.3);
 }
 
 /* ── Card inner padding ── */
@@ -274,7 +274,7 @@
   left: 10%;
   right: 10%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0, 204, 106, 0.08), transparent);
+  background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.08), transparent);
   pointer-events: none;
   z-index: 3;
 }
@@ -296,17 +296,17 @@
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: rgba(0, 204, 106, 0.05);
-  border: 1px solid rgba(0, 204, 106, 0.1);
-  color: #00CC6A;
+  background: rgba(0, 242, 255, 0.05);
+  border: 1px solid rgba(0, 242, 255, 0.1);
+  color: #00F2FF;
   flex-shrink: 0;
-  filter: drop-shadow(0 0 4px rgba(0, 204, 106, 0.25));
+  filter: drop-shadow(0 0 4px rgba(0, 242, 255, 0.25));
   transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .hud-bento-card:hover .hud-card-icon {
-  background: rgba(0, 204, 106, 0.08);
-  border-color: rgba(0, 204, 106, 0.18);
+  background: rgba(0, 242, 255, 0.08);
+  border-color: rgba(0, 242, 255, 0.18);
 }
 
 .hud-card-title-group {
@@ -318,7 +318,7 @@
   font-size: 12px;
   font-weight: 800;
   color: rgba(255, 255, 255, 0.92);
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 1.5px;
   line-height: 1;
   margin-bottom: 4px;
@@ -326,7 +326,7 @@
 
 .hud-card-subtitle {
   font-size: 10px;
-  color: rgba(0, 204, 106, 0.35);
+  color: rgba(0, 242, 255, 0.35);
   font-weight: 400;
   white-space: nowrap;
   overflow: hidden;
@@ -398,7 +398,7 @@
 }
 
 .hud-row:hover {
-  background: rgba(0, 204, 106, 0.015);
+  background: rgba(0, 242, 255, 0.015);
   border-radius: 4px;
 }
 
@@ -423,9 +423,9 @@
 }
 
 .hud-accent {
-  color: #00CC6A !important;
+  color: #00F2FF !important;
   font-weight: 700 !important;
-  text-shadow: 0 0 6px rgba(0, 204, 106, 0.25);
+  text-shadow: 0 0 6px rgba(0, 242, 255, 0.25);
 }
 
 /* ══════════════════════════════════════════════════════
@@ -441,8 +441,8 @@
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: rgba(0, 204, 106, 0.45);
+  text-transform: none;
+  color: rgba(0, 242, 255, 0.45);
 }
 
 .hud-skel-status-icon {
@@ -484,11 +484,11 @@
   height: 1px;
   background: linear-gradient(90deg,
     transparent 0%,
-    rgba(0, 204, 106, 0.35) 40%,
-    rgba(0, 204, 106, 0.5) 50%,
-    rgba(0, 204, 106, 0.35) 60%,
+    rgba(0, 242, 255, 0.35) 40%,
+    rgba(0, 242, 255, 0.5) 50%,
+    rgba(0, 242, 255, 0.35) 60%,
     transparent 100%);
-  box-shadow: 0 0 12px rgba(0, 204, 106, 0.3);
+  box-shadow: 0 0 12px rgba(0, 242, 255, 0.3);
   animation: hud-skel-scan 2.4s ease-in-out infinite;
   z-index: 10;
 }
@@ -505,7 +505,7 @@
   height: 8px;
   width: 80%;
   border-radius: 4px;
-  background: rgba(0, 204, 106, 0.06);
+  background: rgba(0, 242, 255, 0.06);
   animation: hud-skel-pulse 1.6s ease-in-out infinite;
 }
 
@@ -514,7 +514,7 @@
   width: 54px;
   height: 54px;
   border-radius: 50%;
-  border: 2px solid rgba(0, 204, 106, 0.08);
+  border: 2px solid rgba(0, 242, 255, 0.08);
   flex-shrink: 0;
   animation: hud-skel-pulse 1.6s ease-in-out infinite;
 }
@@ -539,7 +539,7 @@
   height: 8px;
   width: 45%;
   border-radius: 4px;
-  background: rgba(0, 204, 106, 0.06);
+  background: rgba(0, 242, 255, 0.06);
   animation: hud-skel-pulse 1.6s ease-in-out infinite 0.3s;
 }
 
@@ -555,7 +555,7 @@
   height: 10px;
   border-radius: 4px;
   overflow: hidden;
-  background: rgba(0, 204, 106, 0.04);
+  background: rgba(0, 242, 255, 0.04);
 }
 
 .hud-value-loader-bar {
@@ -565,9 +565,9 @@
   border-radius: 4px;
   background: linear-gradient(
     90deg,
-    rgba(0, 204, 106, 0.06) 0%,
-    rgba(0, 204, 106, 0.18) 50%,
-    rgba(0, 204, 106, 0.06) 100%
+    rgba(0, 242, 255, 0.06) 0%,
+    rgba(0, 242, 255, 0.18) 50%,
+    rgba(0, 242, 255, 0.06) 100%
   );
   background-size: 200% 100%;
   animation: hud-shimmer 1.4s ease-in-out infinite;
@@ -750,9 +750,9 @@
 }
 
 .hud-io-badge.down {
-  background: rgba(0, 204, 106, 0.06);
-  border: 1px solid rgba(0, 204, 106, 0.15);
-  color: #00CC6A;
+  background: rgba(0, 242, 255, 0.06);
+  border: 1px solid rgba(0, 242, 255, 0.15);
+  color: #00F2FF;
 }
 
 /* ══════════════════════════════════════════════════════
@@ -768,8 +768,8 @@
   gap: 1px;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(0, 204, 106, 0.05);
-  background: rgba(0, 204, 106, 0.03);
+  border: 1px solid rgba(0, 242, 255, 0.05);
+  background: rgba(0, 242, 255, 0.03);
   margin-top: 2px;
 }
 
@@ -805,7 +805,7 @@
   font-size: 9px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.2);
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 1px;
 }
 
@@ -814,7 +814,7 @@
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.3px;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .hud-stor-diag-sub {
@@ -828,7 +828,7 @@
   font-size: 9px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.18);
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 1.2px;
   padding-top: 25px;
 }
@@ -842,7 +842,7 @@
   padding: 6px 10px;
   border-radius: 6px;
   background: rgba(6, 8, 16, 0.5);
-  border: 1px solid rgba(0, 204, 106, 0.04);
+  border: 1px solid rgba(0, 242, 255, 0.04);
 }
 
 .hud-stor-speed-half {
@@ -865,7 +865,7 @@
   opacity: 0.55;
 }
 
-.hud-stor-speed-ic.read  { color: #00CC6A; }
+.hud-stor-speed-ic.read  { color: #00F2FF; }
 .hud-stor-speed-ic.write { color: #FFA800; }
 
 .hud-stor-speed-val {
@@ -875,7 +875,7 @@
   letter-spacing: -0.2px;
 }
 
-.hud-stor-speed-val.read  { color: #00CC6A; }
+.hud-stor-speed-val.read  { color: #00F2FF; }
 .hud-stor-speed-val.write { color: #FFA800; }
 
 /* ── Volume rows with segmented power cells ── */
@@ -890,7 +890,7 @@
   font-size: 9px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.18);
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 1.2px;
 }
 
@@ -963,10 +963,10 @@
 }
 
 .hud-chip.green {
-  background: rgba(0, 255, 136, 0.08);
-  border: 1px solid rgba(0, 255, 136, 0.25);
-  color: #00FF88;
-  text-shadow: 0 0 6px rgba(0, 255, 136, 0.3);
+  background: rgba(0, 242, 255, 0.08);
+  border: 1px solid rgba(0, 242, 255, 0.25);
+  color: #00F2FF;
+  text-shadow: 0 0 6px rgba(0, 242, 255, 0.3);
 }
 
 .hud-chip.yellow {
@@ -993,13 +993,13 @@
 }
 
 .hud-inline-row.wifi svg {
-  color: #00CC6A;
-  filter: drop-shadow(0 0 3px rgba(0, 204, 106, 0.4));
+  color: #00F2FF;
+  filter: drop-shadow(0 0 3px rgba(0, 242, 255, 0.4));
 }
 
 .hud-inline-row.batt svg {
-  color: #00FF88;
-  filter: drop-shadow(0 0 3px rgba(0, 255, 136, 0.4));
+  color: #00F2FF;
+  filter: drop-shadow(0 0 3px rgba(0, 242, 255, 0.4));
 }
 
 /* ── Note ── */
@@ -1031,18 +1031,18 @@
   gap: 7px;
   padding: 5px 8px;
   border-radius: 6px;
-  background: rgba(0, 204, 106, 0.02);
-  border: 1px solid rgba(0, 204, 106, 0.05);
+  background: rgba(0, 242, 255, 0.02);
+  border: 1px solid rgba(0, 242, 255, 0.05);
   transition: background 0.2s ease, border-color 0.2s ease;
 }
 
 .hud-net-adapter:hover {
-  background: rgba(0, 204, 106, 0.04);
-  border-color: rgba(0, 204, 106, 0.1);
+  background: rgba(0, 242, 255, 0.04);
+  border-color: rgba(0, 242, 255, 0.1);
 }
 
 .hud-net-adapter-icon {
-  color: #00CC6A;
+  color: #00F2FF;
   opacity: 0.5;
   display: flex;
   flex-shrink: 0;
@@ -1073,14 +1073,14 @@
 .hud-net-adapter-speed {
   font-size: 9px;
   font-weight: 700;
-  color: #00CC6A;
+  color: #00F2FF;
   white-space: nowrap;
   margin-left: auto;
   letter-spacing: 0.2px;
   padding: 1px 5px;
   border-radius: 3px;
-  background: rgba(0, 204, 106, 0.06);
-  border: 1px solid rgba(0, 204, 106, 0.1);
+  background: rgba(0, 242, 255, 0.06);
+  border: 1px solid rgba(0, 242, 255, 0.1);
 }
 
 .hud-net-adapter-lbl {
@@ -1111,8 +1111,8 @@
   margin-top: 6px;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(0, 204, 106, 0.05);
-  background: rgba(0, 204, 106, 0.03);
+  border: 1px solid rgba(0, 242, 255, 0.05);
+  background: rgba(0, 242, 255, 0.03);
 }
 
 .hud-net-rt-stat {
@@ -1149,7 +1149,7 @@
 }
 
 .hud-net-rt-pulse {
-  color: #00CC6A;
+  color: #00F2FF;
   opacity: 0.35;
   animation: hud-net-dot-pulse 2s ease-in-out infinite;
 }
@@ -1158,7 +1158,7 @@
   font-size: 9px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.2);
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 1px;
 }
 
@@ -1207,7 +1207,7 @@
 }
 
 .hud-net-bar-icon.dn {
-  color: #00CC6A;
+  color: #00F2FF;
 }
 
 .hud-net-bar-icon.up {
@@ -1229,8 +1229,8 @@
 }
 
 .hud-net-bar-fill.dn {
-  background: linear-gradient(90deg, rgba(0, 204, 106, 0), #00CC6A);
-  box-shadow: 0 0 6px rgba(0, 204, 106, 0.3);
+  background: linear-gradient(90deg, rgba(0, 242, 255, 0), #00F2FF);
+  box-shadow: 0 0 6px rgba(0, 242, 255, 0.3);
 }
 
 .hud-net-bar-fill.up {
@@ -1248,7 +1248,7 @@
 }
 
 .hud-net-bar-val.dn {
-  color: #00CC6A;
+  color: #00F2FF;
 }
 
 .hud-net-bar-val.up {
@@ -1264,8 +1264,8 @@
   margin-top: 6px;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(0, 204, 106, 0.05);
-  background: rgba(0, 204, 106, 0.03);
+  border: 1px solid rgba(0, 242, 255, 0.05);
+  background: rgba(0, 242, 255, 0.03);
 }
 
 .hud-sys-rt-stat {
@@ -1300,7 +1300,7 @@
   font-size: 9px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.2);
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 1px;
 }
 
@@ -1308,7 +1308,7 @@
   font-size: 14px;
   font-weight: 800;
   line-height: 1;
-  color: #00CC6A;
+  color: #00F2FF;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.3px;
 }
@@ -1336,7 +1336,7 @@
   margin-top: 2px;
   font-size: 10px;
   font-weight: 600;
-  color: #00FF88;
+  color: #00F2FF;
   opacity: 0.8;
 }
 
@@ -1347,8 +1347,8 @@
   margin-top: 6px;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(0, 204, 106, 0.05);
-  background: rgba(0, 204, 106, 0.03);
+  border: 1px solid rgba(0, 242, 255, 0.05);
+  background: rgba(0, 242, 255, 0.03);
 }
 
 .hud-usage-rt-stat {
@@ -1383,7 +1383,7 @@
   font-size: 9px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.2);
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 1px;
 }
 
@@ -1416,4 +1416,7 @@
   border-radius: 999px;
   transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+
+
 

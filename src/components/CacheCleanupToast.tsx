@@ -353,8 +353,8 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
               <svg width="120" height="120" viewBox="0 0 120 120" className="purge-ring-svg">
                 <defs>
                   <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#00CC6A" />
-                    <stop offset="100%" stopColor="#00CC6A" />
+                    <stop offset="0%" stopColor="#00F2FF" />
+                    <stop offset="100%" stopColor="#00F2FF" />
                   </linearGradient>
                   <filter id="ringGlow">
                     <feGaussianBlur stdDeviation="2.5" result="blur" />
@@ -365,11 +365,11 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
                   </filter>
                 </defs>
                 {/* Outer background track */}
-                <circle cx="60" cy="60" r={RING_R} fill="none" stroke="rgba(0, 204, 106,0.07)" strokeWidth="6" />
+                <circle cx="60" cy="60" r={RING_R} fill="none" stroke="rgba(0, 242, 255,0.07)" strokeWidth="6" />
                 {/* Outer decorative dashed ring */}
                 <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(0,212,170,0.1)" strokeWidth="1" strokeDasharray="3 8" />
                 {/* Inner decorative ring */}
-                <circle cx="60" cy="60" r="33" fill="none" stroke="rgba(0, 204, 106,0.06)" strokeWidth="1" strokeDasharray="2 6" />
+                <circle cx="60" cy="60" r="33" fill="none" stroke="rgba(0, 242, 255,0.06)" strokeWidth="1" strokeDasharray="2 6" />
                 {/* Progress arc */}
                 <circle
                   cx="60" cy="60" r={RING_R}
@@ -388,7 +388,7 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
                   <circle
                     cx="60" cy="60" r="52"
                     fill="none"
-                    stroke="rgba(0, 204, 106,0.22)"
+                    stroke="rgba(0, 242, 255,0.22)"
                     strokeWidth="1.5"
                     strokeLinecap="round"
                     strokeDasharray="20 307"
@@ -525,3 +525,4 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
 };
 
 export default CacheCleanupToast;
+

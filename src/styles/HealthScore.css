@@ -1,13 +1,13 @@
 .health-score-card {
   background: rgba(6, 8, 16, 0.55);
-  border: 1px solid rgba(0, 204, 106, 0.07);
+  border: 1px solid rgba(0, 242, 255, 0.07);
   border-radius: 12px;
   padding: 14px 16px;
   margin-bottom: 12px;
   transition: border-color 0.2s;
 }
 .health-score-card:hover {
-  border-color: rgba(0, 204, 106, 0.16);
+  border-color: rgba(0, 242, 255, 0.16);
 }
 .health-score-header {
   display: flex;
@@ -95,12 +95,12 @@
   height: 100%;
   border-radius: 2px;
 }
-.health-bar-good { background: #10b981; }
+.health-bar-good { background: #00F2FF; }
 .health-bar-warning { background: #f59e0b; }
 .health-bar-critical { background: #ef4444; }
 .health-bar-unknown { background: rgba(255, 255, 255, 0.2); }
 /* ── Status Icons ───────────────────────────────────────────────────── */
-.health-icon-good { color: #10b981; }
+.health-icon-good { color: #00F2FF; }
 .health-icon-warning { color: #f59e0b; }
 .health-icon-critical { color: #ef4444; }
 .health-icon-unknown { color: rgba(228, 228, 231, 0.3); }
@@ -165,3 +165,5 @@
   min-width: 46px;
   font-size: 10px;
 }
+
+

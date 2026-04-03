@@ -36,7 +36,7 @@ const statusIcon = (status: string) => {
 };
 
 const scoreColor = (score: number) => {
-  if (score >= 80) return '#10b981';
+  if (score >= 80) return '#00F2FF';
   if (score >= 60) return '#f59e0b';
   if (score >= 40) return '#f97316';
   return '#ef4444';
@@ -152,3 +152,4 @@ const HealthScore: React.FC<HealthScoreProps> = ({ systemStats, extendedStats, h
 };
 
 export default HealthScore;
+

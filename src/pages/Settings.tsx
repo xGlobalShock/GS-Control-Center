@@ -39,7 +39,7 @@ const Settings: React.FC = () => {
   // Overlay state
   const [overlayVisible, setOverlayVisible] = useState(false);
   const [overlayPosition, setOverlayPosition] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'>('top-right');
-  const [overlayColor, setOverlayColor] = useState('#00CC6A');
+  const [overlayColor, setOverlayColor] = useState('#00F2FF');
   const [overlayOpacity, setOverlayOpacity] = useState(0.85);
   const [overlayFont, setOverlayFont] = useState('Share Tech Mono');
   const [overlaySensors, setOverlaySensors] = useState({
@@ -58,8 +58,8 @@ const Settings: React.FC = () => {
   const ipc = (window as any).electron?.ipcRenderer;
 
   const OVERLAY_COLORS = [
-    { hex: '#00CC6A', label: 'Cyan'   },
-    { hex: '#00FF88', label: 'Green'  },
+    { hex: '#00F2FF', label: 'Cyan'   },
+    { hex: '#00F2FF', label: 'Green'  },
     { hex: '#FF8C00', label: 'Orange' },
     { hex: '#FF4444', label: 'Red'    },
     { hex: '#A855F7', label: 'Purple' },
@@ -724,3 +724,5 @@ const Settings: React.FC = () => {
 };
 
 export default React.memo(Settings);
+
+

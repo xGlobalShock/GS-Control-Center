@@ -78,14 +78,14 @@
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid rgba(255, 255, 255, 0.045);
 }
-.au-stat svg { color: #10b981; }
+.au-stat svg { color: #00F2FF; }
 
 .au-stat-label {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: rgba(170, 192, 212, 0.38);
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 /* ── Search ── */
@@ -193,7 +193,7 @@
   box-sizing: border-box;
   border-radius: 8px;
   background: rgba(6, 8, 16, 0.55);
-  border: 1px solid rgba(0, 204, 106, 0.07);
+  border: 1px solid rgba(0, 242, 255, 0.07);
   cursor: default;
   position: relative;
   overflow: hidden;
@@ -213,7 +213,7 @@
   transition: background 0.14s;
 }
 
-.au-card:hover { background: rgba(6, 8, 16, 0.7); border-color: rgba(0, 204, 106, 0.16); }
+.au-card:hover { background: rgba(6, 8, 16, 0.7); border-color: rgba(0, 242, 255, 0.16); }
 .au-card:hover::before { background: rgba(239, 68, 68, 0.45); }
 
 .au-card-icon {
@@ -381,7 +381,7 @@
   font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  text-transform: none;
   color: rgba(185, 205, 225, 0.2);
   transition: color 0.35s ease;
 }
@@ -398,9 +398,9 @@
 
 /* Completed step */
 .au-wiz-step--done .au-wiz-step-dot {
-  border-color: rgba(16, 185, 129, 0.4);
-  background: rgba(16, 185, 129, 0.14);
-  color: #10b981;
+  border-color: rgba(0, 242, 255, 0.4);
+  background: rgba(0, 242, 255, 0.14);
+  color: #00F2FF;
 }
 .au-wiz-step--done .au-wiz-step-label { color: rgba(52, 211, 153, 0.5); }
 
@@ -415,10 +415,10 @@
   position: relative;
 }
 .au-wiz-step-line--done {
-  background: rgba(16, 185, 129, 0.3);
+  background: rgba(0, 242, 255, 0.3);
 }
 .au-wiz-step-line--active {
-  background: linear-gradient(90deg, rgba(16, 185, 129, 0.3), rgba(34, 211, 238, 0.4));
+  background: linear-gradient(90deg, rgba(0, 242, 255, 0.3), rgba(34, 211, 238, 0.4));
 }
 
 @keyframes au-step-pulse {
@@ -524,11 +524,11 @@
 }
 .au-method:hover .au-method-glow { opacity: 1; }
 .au-method--safe .au-method-glow {
-  background: linear-gradient(90deg, rgba(16, 185, 129, 0.06) 0%, transparent 60%);
+  background: linear-gradient(90deg, rgba(0, 242, 255, 0.06) 0%, transparent 60%);
 }
 .au-method--safe:hover {
-  border-color: rgba(16, 185, 129, 0.18);
-  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.06), 0 8px 32px rgba(16, 185, 129, 0.05);
+  border-color: rgba(0, 242, 255, 0.18);
+  box-shadow: 0 0 0 1px rgba(0, 242, 255, 0.06), 0 8px 32px rgba(0, 242, 255, 0.05);
 }
 .au-method--deep .au-method-glow {
   background: linear-gradient(90deg, rgba(245, 158, 11, 0.06) 0%, transparent 60%);
@@ -550,11 +550,11 @@
 }
 .au-method:hover .au-method-icon { transform: scale(1.08); }
 .au-method--safe .au-method-icon {
-  background: rgba(16, 185, 129, 0.08);
+  background: rgba(0, 242, 255, 0.08);
   color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(0, 242, 255, 0.14);
 }
-.au-method--safe:hover .au-method-icon { box-shadow: 0 0 20px rgba(16, 185, 129, 0.15); }
+.au-method--safe:hover .au-method-icon { box-shadow: 0 0 20px rgba(0, 242, 255, 0.15); }
 .au-method--deep .au-method-icon {
   background: rgba(245, 158, 11, 0.08);
   color: #fbbf24;
@@ -583,15 +583,15 @@
   font-size: 8.5px;
   font-weight: 600;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  text-transform: none;
   padding: 3px 8px;
   border-radius: 6px;
   flex-shrink: 0;
 }
 .au-method--safe .au-method-tag {
-  background: rgba(16, 185, 129, 0.08);
+  background: rgba(0, 242, 255, 0.08);
   color: rgba(52, 211, 153, 0.7);
-  border: 1px solid rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(0, 242, 255, 0.12);
 }
 .au-method--deep .au-method-tag {
   background: rgba(245, 158, 11, 0.08);
@@ -870,14 +870,14 @@
   width: 68px;
   height: 68px;
   border-radius: 50%;
-  background: rgba(16, 185, 129, 0.05);
-  border: 1.5px solid rgba(16, 185, 129, 0.15);
+  background: rgba(0, 242, 255, 0.05);
+  border: 1.5px solid rgba(0, 242, 255, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 36px rgba(16, 185, 129, 0.1), 0 0 80px rgba(16, 185, 129, 0.04);
+  box-shadow: 0 0 36px rgba(0, 242, 255, 0.1), 0 0 80px rgba(0, 242, 255, 0.04);
 }
-.au-wiz-done-check { color: #10b981; }
+.au-wiz-done-check { color: #00F2FF; }
 .au-wiz-done-text {
   display: flex;
   flex-direction: column;
@@ -903,3 +903,6 @@
 /* ── Spinner ── */
 @keyframes au-spin { to { transform: rotate(360deg); } }
 .au-spin { animation: au-spin 0.85s linear infinite; }
+
+
+

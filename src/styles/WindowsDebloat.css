@@ -42,7 +42,7 @@
   color: rgba(255, 255, 255, 0.7);
   font-family: 'Rajdhani', sans-serif;
   letter-spacing: 2px;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .wd-lock-overlay svg {
@@ -192,7 +192,7 @@
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-transform: none;
   border: none;
   cursor: pointer;
   transition: background 0.15s, opacity 0.15s, transform 0.1s;
@@ -209,13 +209,13 @@
 }
 
 .wd-btn--install {
-  background: rgba(16, 185, 129, 0.15);
+  background: rgba(0, 242, 255, 0.15);
   color: #34d399;
   border: 1px solid rgba(52, 211, 153, 0.2);
 }
 
 .wd-btn--install:hover:not(:disabled) {
-  background: rgba(16, 185, 129, 0.25);
+  background: rgba(0, 242, 255, 0.25);
   border-color: rgba(52, 211, 153, 0.35);
 }
 
@@ -318,7 +318,7 @@
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  text-transform: none;
   transition: color 0.15s;
   white-space: nowrap;
 }
@@ -502,7 +502,7 @@
   gap: 10px;
   padding: 9px 12px;
   border-radius: 8px;
-  border: 1px solid rgba(0, 204, 106, 0.07);
+  border: 1px solid rgba(0, 242, 255, 0.07);
   background: rgba(6, 8, 16, 0.55);
   cursor: pointer;
   transition: background 0.13s, border-color 0.13s, transform 0.1s;
@@ -513,17 +513,17 @@
 
 .wd-card:hover {
   background: rgba(6, 8, 16, 0.7);
-  border-color: rgba(0, 204, 106, 0.16);
+  border-color: rgba(0, 242, 255, 0.16);
 }
 
 .wd-card--selected {
-  background: rgba(0, 204, 106, 0.06);
-  border-color: rgba(0, 204, 106, 0.22);
+  background: rgba(0, 242, 255, 0.06);
+  border-color: rgba(0, 242, 255, 0.22);
 }
 
 .wd-card--selected:hover {
-  background: rgba(0, 204, 106, 0.09);
-  border-color: rgba(0, 204, 106, 0.3);
+  background: rgba(0, 242, 255, 0.09);
+  border-color: rgba(0, 242, 255, 0.3);
 }
 
 .wd-card--non-removable {
@@ -770,3 +770,5 @@
   background: rgba(239, 68, 68, 0.25);
   border-color: rgba(248, 113, 113, 0.4);
 }
+
+

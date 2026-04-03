@@ -1,13 +1,13 @@
 .advisor-card {
   background: rgba(6, 8, 16, 0.55);
-  border: 1px solid rgba(0, 204, 106, 0.07);
+  border: 1px solid rgba(0, 242, 255, 0.07);
   border-radius: 12px;
   padding: 14px 16px;
   margin-bottom: 12px;
   transition: border-color 0.2s;
 }
 .advisor-card:hover {
-  border-color: rgba(0, 204, 106, 0.16);
+  border-color: rgba(0, 242, 255, 0.16);
 }
 .advisor-header {
   display: flex;
@@ -26,7 +26,7 @@
   background: rgba(139, 92, 246, 0.1);
   flex-shrink: 0;
 }
-.advisor-brain-good { color: #10b981; }
+.advisor-brain-good { color: #00F2FF; }
 .advisor-brain-active { color: #8b5cf6; }
 .advisor-title-area { flex: 1; min-width: 0; }
 .advisor-title {
@@ -61,7 +61,7 @@
 }
 .advisor-severity-critical { border-left-color: #ef4444; }
 .advisor-severity-warning { border-left-color: #f59e0b; }
-.advisor-severity-good { border-left-color: #10b981; }
+.advisor-severity-good { border-left-color: #00F2FF; }
 
 .advisor-insight-header {
   display: flex;
@@ -136,7 +136,7 @@
 }
 .advisor-upgrade-current { color: rgba(228, 228, 231, 0.4); }
 .advisor-upgrade-arrow { color: rgba(228, 228, 231, 0.2); }
-.advisor-upgrade-rec { color: #10b981; font-weight: 500; }
+.advisor-upgrade-rec { color: #00F2FF; font-weight: 500; }
 
 /* ── Compact variant (inside PageHeader actions) ────────────────────── */
 .advisor-card--compact {
@@ -200,3 +200,5 @@
   font-size: 9.5px;
   margin-top: 2px;
 }
+
+

@@ -24,7 +24,8 @@ export const OBS_PRESETS: ObsPreset[] = [
       'Twitch-optimized streaming configuration',
     ],
     iconName: 'gamepad',
-    color: '#00FF88',
+    color: '#00F2FF',
     difficulty: 'Intermediate',
   },
 ];
+

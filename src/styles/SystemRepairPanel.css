@@ -96,7 +96,7 @@
   color: var(--repair-color);
   opacity: 0.75;
   letter-spacing: 0.4px;
-  text-transform: uppercase;
+  text-transform: none;
   white-space: nowrap;
 }
 
@@ -121,15 +121,15 @@
 }
 
 .repair-status--running {
-  background: rgba(0, 204, 106, 0.07);
-  color: #00CC6A;
-  border-color: rgba(0, 204, 106, 0.18);
+  background: rgba(0, 242, 255, 0.07);
+  color: #00F2FF;
+  border-color: rgba(0, 242, 255, 0.18);
 }
 
 .repair-status--done {
-  background: rgba(0, 255, 136, 0.07);
-  color: #00ff88;
-  border-color: rgba(0, 255, 136, 0.18);
+  background: rgba(0, 242, 255, 0.07);
+  color: #00F2FF;
+  border-color: rgba(0, 242, 255, 0.18);
 }
 
 .repair-status--error {
@@ -210,7 +210,7 @@
 }
 
 .repair-log-line--progress {
-  color: var(--repair-color, #00CC6A);
+  color: var(--repair-color, #00F2FF);
   font-weight: 600;
 }
 
@@ -489,7 +489,7 @@
   font-weight: 600;
   color: var(--repair-color);
   opacity: 0.7;
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0.5px;
   margin-top: 2px;
 }
@@ -564,7 +564,7 @@
 
 .repair-progress-pct {
   font-weight: 700;
-  color: var(--repair-color, #00CC6A);
+  color: var(--repair-color, #00F2FF);
   font-size: 11px;
 }
 
@@ -577,10 +577,10 @@
 
 .repair-progress-fill {
   height: 100%;
-  background: var(--repair-color, #00CC6A);
+  background: var(--repair-color, #00F2FF);
   border-radius: 99px;
   transition: width 0.3s ease;
-  box-shadow: 0 0 8px color-mix(in srgb, var(--repair-color, #00CC6A) 50%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--repair-color, #00F2FF) 50%, transparent);
 }
 
 /* Modal Footer */
@@ -615,3 +615,6 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+
+

@@ -18,14 +18,14 @@
   gap: 3px;
   padding: 3px;
   background: rgba(6, 8, 16, 0.55);
-  border: 1px solid rgba(0, 204, 106, 0.4);
+  border: 1px solid rgba(0, 242, 255, 0.4);
   border-radius: 12px;
   width: fit-content;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   box-shadow:
     0 2px 12px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(0, 204, 106, 0.03);
+    inset 0 1px 0 rgba(0, 242, 255, 0.03);
 }
 
 .perf-tab {
@@ -50,17 +50,17 @@
 }
 
 .perf-tab--active {
-  color: #00CC6A;
-  background: rgba(0, 204, 106, 0.06);
-  border-color: rgba(0, 204, 106, 0.12);
+  color: #00F2FF;
+  background: rgba(0, 242, 255, 0.06);
+  border-color: rgba(0, 242, 255, 0.12);
   box-shadow:
-    0 0 20px rgba(0, 204, 106, 0.04),
-    inset 0 1px 0 rgba(0, 204, 106, 0.06);
+    0 0 20px rgba(0, 242, 255, 0.04),
+    inset 0 1px 0 rgba(0, 242, 255, 0.06);
 }
 
 .perf-tab--active:hover {
-  color: #00CC6A;
-  background: rgba(0, 204, 106, 0.08);
+  color: #00F2FF;
+  background: rgba(0, 242, 255, 0.08);
 }
 
 .perf-tab-label {
@@ -83,8 +83,8 @@
 }
 
 .perf-tab--active .perf-tab-count {
-  background: rgba(0, 204, 106, 0.12);
-  color: rgba(0, 204, 106, 0.9);
+  background: rgba(0, 242, 255, 0.12);
+  color: rgba(0, 242, 255, 0.9);
 }
 
 
@@ -93,7 +93,7 @@
   position: relative;
   border-radius: 16px;
   overflow: hidden;
-  border: 1px solid rgba(0, 204, 106, 0.07);
+  border: 1px solid rgba(0, 242, 255, 0.07);
   background: rgba(6, 8, 16, 0.55);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -103,8 +103,8 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 60% 50% at 80% 30%, rgba(0, 204, 106, 0.04) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 60% at 15% 70%, rgba(0, 255, 136, 0.025) 0%, transparent 70%);
+    radial-gradient(ellipse 60% 50% at 80% 30%, rgba(0, 242, 255, 0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 60% at 15% 70%, rgba(0, 242, 255, 0.025) 0%, transparent 70%);
   pointer-events: none;
 }
 
@@ -115,7 +115,7 @@
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent 0%, rgba(0, 204, 106, 0.35) 30%, rgba(0, 212, 170, 0.35) 70%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 242, 255, 0.35) 30%, rgba(0, 212, 170, 0.35) 70%, transparent 100%);
 }
 
 .perf-hero::after {
@@ -125,7 +125,7 @@
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent 0%, rgba(0, 204, 106, 0.1) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 242, 255, 0.1) 50%, transparent 100%);
 }
 
 .perf-hero-content {
@@ -154,12 +154,12 @@
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 3px;
-  color: rgba(0, 204, 106, 0.8);
-  text-transform: uppercase;
+  color: rgba(0, 242, 255, 0.8);
+  text-transform: none;
   padding: 4px 12px;
-  border: 1px solid rgba(0, 204, 106, 0.15);
+  border: 1px solid rgba(0, 242, 255, 0.15);
   border-radius: 4px;
-  background: rgba(0, 204, 106, 0.04);
+  background: rgba(0, 242, 255, 0.04);
   width: fit-content;
 }
 
@@ -169,7 +169,7 @@
   color: #ffffff;
   margin: 0;
   letter-spacing: -0.5px;
-  text-shadow: 0 0 30px rgba(0, 204, 106, 0.1);
+  text-shadow: 0 0 30px rgba(0, 242, 255, 0.1);
 }
 
 .perf-hero-subtitle {
@@ -216,11 +216,11 @@
 .perf-ring-fill {
   fill: none;
   stroke: url(#ringGradient);
-  stroke: rgba(0, 204, 106, 0.8);
+  stroke: rgba(0, 242, 255, 0.8);
   stroke-width: 3;
   stroke-linecap: round;
   transition: stroke-dasharray 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-  filter: drop-shadow(0 0 6px rgba(0, 204, 106, 0.4));
+  filter: drop-shadow(0 0 6px rgba(0, 242, 255, 0.4));
 }
 
 .perf-ring-label {
@@ -238,8 +238,8 @@
 .perf-hero-stat-text {
   font-size: 10px;
   font-weight: 600;
-  color: rgba(0, 204, 106, 0.6);
-  text-transform: uppercase;
+  color: rgba(0, 242, 255, 0.6);
+  text-transform: none;
   letter-spacing: 2px;
 }
 
@@ -255,25 +255,25 @@
   align-items: center;
   gap: 8px;
   padding: 7px 14px;
-  border: 1px solid rgba(0, 204, 106, 0.2);
+  border: 1px solid rgba(0, 242, 255, 0.2);
   border-radius: 8px;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.8px;
-  text-transform: uppercase;
+  text-transform: none;
   cursor: pointer;
   transition: all 0.25s ease;
   position: relative;
   overflow: hidden;
-  background: rgba(0, 204, 106, 0.04);
-  color: rgba(0, 204, 106, 0.9);
+  background: rgba(0, 242, 255, 0.04);
+  color: rgba(0, 242, 255, 0.9);
 }
 
 .perf-action-btn::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(0, 204, 106, 0.08) 0%, transparent 60%);
+  background: linear-gradient(135deg, rgba(0, 242, 255, 0.08) 0%, transparent 60%);
   opacity: 0;
   transition: opacity 0.25s ease;
 }
@@ -283,8 +283,8 @@
 }
 
 .perf-action-btn:hover {
-  border-color: rgba(0, 204, 106, 0.4);
-  box-shadow: 0 0 20px rgba(0, 204, 106, 0.08), inset 0 0 20px rgba(0, 204, 106, 0.02);
+  border-color: rgba(0, 242, 255, 0.4);
+  box-shadow: 0 0 20px rgba(0, 242, 255, 0.08), inset 0 0 20px rgba(0, 242, 255, 0.02);
   transform: translateY(-1px);
 }
 
@@ -299,14 +299,14 @@
 }
 
 .perf-action-refresh {
-  border-color: rgba(0, 204, 106, 0.2);
-  background: rgba(0, 204, 106, 0.04);
-  color: rgba(0, 204, 106, 0.9);
+  border-color: rgba(0, 242, 255, 0.2);
+  background: rgba(0, 242, 255, 0.04);
+  color: rgba(0, 242, 255, 0.9);
 }
 
 .perf-action-refresh:hover {
-  border-color: rgba(0, 204, 106, 0.4);
-  box-shadow: 0 0 20px rgba(0, 204, 106, 0.08), inset 0 0 20px rgba(0, 204, 106, 0.02);
+  border-color: rgba(0, 242, 255, 0.4);
+  box-shadow: 0 0 20px rgba(0, 242, 255, 0.08), inset 0 0 20px rgba(0, 242, 255, 0.02);
 }
 
 .perf-restore-info {
@@ -338,3 +338,6 @@
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   }
 }
+
+
+
