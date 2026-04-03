@@ -212,8 +212,8 @@
   height: 50px;
   box-sizing: border-box;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.015);
-  border: 1px solid rgba(255, 255, 255, 0.035);
+  background: rgba(6, 8, 16, 0.55);
+  border: 1px solid rgba(0, 204, 106, 0.07);
   cursor: pointer;
   position: relative;
   overflow: hidden;
@@ -235,8 +235,8 @@
 }
 
 .ai-card:hover:not(.ai-card--done):not(.ai-card--busy) {
-  background: rgba(255, 255, 255, 0.038);
-  border-color: rgba(255, 255, 255, 0.065);
+  background: rgba(6, 8, 16, 0.7);
+  border-color: rgba(0, 204, 106, 0.16);
 }
 .ai-card:hover:not(.ai-card--done):not(.ai-card--busy)::before { background: rgba(16, 185, 129, 0.5); }
 

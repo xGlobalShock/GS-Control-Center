@@ -4,17 +4,17 @@
 ═══════════════════════════════════════════════════════════════ */
 
 :root {
-  --nv-cyan: #00F2FF;
+  --nv-cyan: #00CC6A;
   --nv-green: #00FF88;
   --nv-amber: #FFD600;
   --nv-orange: #FF8000;
   --nv-red: #FF4D4D;
-  --nv-glow-cyan: rgba(0, 242, 255, 0.4);
+  --nv-glow-cyan: rgba(0, 204, 106, 0.4);
   --nv-glow-green: rgba(0, 255, 136, 0.4);
   --nv-glow-amber: rgba(255, 214, 0, 0.4);
   --nv-bg-main: #0B0E14;
-  --nv-panel-bg: rgba(16, 20, 28, 0.85);
-  --nv-border: rgba(0, 242, 255, 0.12);
+  --nv-panel-bg: rgba(6, 8, 16, 0.55);
+  --nv-border: rgba(0, 204, 106, 0.07);
 }
 
 .font-mono {
@@ -42,8 +42,8 @@
   inset: 0;
   z-index: 0;
   background-image:
-    linear-gradient(rgba(0, 242, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 242, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(0, 204, 106, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 204, 106, 0.03) 1px, transparent 1px);
   background-size: 30px 30px;
   pointer-events: none;
   mask-image: radial-gradient(ellipse at top, black 30%, transparent 80%);
@@ -90,7 +90,7 @@
   background: rgba(0, 0, 0, 0.5);
   padding: 6px 12px;
   border-radius: 6px;
-  border: 1px solid rgba(0, 242, 255, 0.08);
+  border: 1px solid rgba(0, 204, 106, 0.08);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 1px;
@@ -138,7 +138,7 @@
   background: var(--nv-panel-bg);
   border: 1px solid var(--nv-border);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(0, 242, 255, 0.02);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(0, 204, 106, 0.02);
   backdrop-filter: blur(12px);
   display: flex;
   flex-direction: column;
@@ -155,7 +155,7 @@
   font-weight: 800;
   letter-spacing: 3px;
   color: rgba(255, 255, 255, 0.8);
-  background: rgba(0, 242, 255, 0.03);
+  background: rgba(0, 204, 106, 0.03);
   border-bottom: 1px solid var(--nv-border);
 }
 
@@ -184,15 +184,15 @@
 }
 
 .nv-p-btn:hover:not(:disabled) {
-  background: rgba(0, 242, 255, 0.03);
-  border-color: rgba(0, 242, 255, 0.2);
+  background: rgba(0, 204, 106, 0.03);
+  border-color: rgba(0, 204, 106, 0.2);
   transform: translateX(4px);
 }
 
 .nv-p-btn.active {
-  background: rgba(0, 242, 255, 0.08);
+  background: rgba(0, 204, 106, 0.08);
   border-color: var(--nv-cyan);
-  box-shadow: 0 0 15px rgba(0, 242, 255, 0.1), inset 0 0 10px rgba(0, 242, 255, 0.05);
+  box-shadow: 0 0 15px rgba(0, 204, 106, 0.1), inset 0 0 10px rgba(0, 204, 106, 0.05);
   transform: translateX(6px);
 }
 
@@ -272,7 +272,7 @@
 
 .nv-scan-control {
   padding: 20px;
-  background: rgba(0, 242, 255, 0.02);
+  background: rgba(0, 204, 106, 0.02);
   border-top: 1px solid var(--nv-border);
   display: flex;
   flex-direction: column;
@@ -320,7 +320,7 @@
   justify-content: center;
   gap: 10px;
   padding: 14px;
-  background: rgba(0, 242, 255, 0.1);
+  background: rgba(0, 204, 106, 0.1);
   border: 1px solid var(--nv-cyan);
   color: var(--nv-cyan);
   font-size: 12px;
@@ -358,7 +358,7 @@
 
 .nv-webview-wrapper {
   width: 100%;
-  height: 100%;
+  flex: 1;
   position: relative;
   overflow: visible;
   /* Prevent cropping of scaled content */
@@ -379,7 +379,6 @@
   width: 100%;
   height: 100%;
   z-index: 10;
-  background: rgba(0, 0, 0, 0.4);
 }
 
 .nv-wv-placeholder .nv-cyan-accent {
@@ -444,18 +443,18 @@
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  border: 2px solid rgba(0, 242, 255, 0.1);
+  border: 2px solid rgba(0, 204, 106, 0.1);
   border-top-color: var(--nv-cyan);
   animation: nvSpin 1.2s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite;
   position: relative;
-  box-shadow: 0 0 20px rgba(0, 242, 255, 0.1);
+  box-shadow: 0 0 20px rgba(0, 204, 106, 0.1);
 }
 
 .nv-loader-ring-inner {
   position: absolute;
   inset: 8px;
   border-radius: 50%;
-  border: 1px solid rgba(0, 242, 255, 0.05);
+  border: 1px solid rgba(0, 204, 106, 0.05);
   border-bottom-color: var(--nv-cyan);
   animation: nvSpin 2s linear infinite reverse;
 }
@@ -535,7 +534,7 @@ webview {
   transform: translate(-50%, -50%);
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle, rgba(0, 242, 255, 0.03) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(0, 204, 106, 0.03) 0%, transparent 70%);
   pointer-events: none;
   z-index: 5;
 }
@@ -555,7 +554,7 @@ webview {
 }
 
 .nv-target-list::-webkit-scrollbar-thumb {
-  background: rgba(0, 242, 255, 0.2);
+  background: rgba(0, 204, 106, 0.2);
   border-radius: 2px;
 }
 

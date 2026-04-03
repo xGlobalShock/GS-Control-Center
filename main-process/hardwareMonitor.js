@@ -16,6 +16,9 @@ let _lhmGpuTemp = -1;
 let _lhmGpuUsage = -1;
 let _lhmGpuVramUsed = -1;
 let _lhmGpuVramTotal = -1;
+let _lhmGpuClock = -1;
+let _lhmGpuFan = -1;
+let _lhmGpuFanRpm = -1;
 let _lhmDiskRead = 0;
 let _lhmDiskWrite = 0;
 let _lhmProcessCount = 0;
@@ -192,7 +195,7 @@ function startLHMService() {
     '    if ($visitor) { $computer.Accept($visitor) }',
     '    else { foreach ($hw in $computer.Hardware) { $hw.Update(); foreach ($sub in $hw.SubHardware) { $sub.Update() } } }',
     '',
-    '    $cpuTemp = $null; $cpuMaxClock = $null; $gpuTemp = $null; $gpuLoad = $null; $gpuVramUsed = $null; $gpuVramTotal = $null',
+    '    $cpuTemp = $null; $cpuMaxClock = $null; $gpuTemp = $null; $gpuLoad = $null; $gpuVramUsed = $null; $gpuVramTotal = $null; $gpuClock = $null; $gpuFan = $null; $gpuFanRpm = $null',
     '    $mbCpuTemp = $null; $netRxTotal = 0; $netTxTotal = 0',
     '    foreach ($hw in $computer.Hardware) {',
     '      $hwType = $hw.HardwareType.ToString()',
@@ -247,6 +250,9 @@ function startLHMService() {
     '          if ($st -eq "Load" -and $sensor.Name -eq "GPU Core") { $gpuLoad = $sv }',
     '          if ($st -eq "SmallData" -and ($sensor.Name -eq "GPU Memory Used" -or ($sensor.Name -eq "D3D Dedicated Memory Used" -and $gpuVramUsed -eq $null))) { $gpuVramUsed = $sv }',
     '          if ($st -eq "SmallData" -and ($sensor.Name -eq "GPU Memory Total" -or ($sensor.Name -eq "D3D Dedicated Memory Limit" -and $gpuVramTotal -eq $null))) { $gpuVramTotal = $sv }',
+    '          if ($st -eq "Clock" -and ($sensor.Name -eq "GPU Core" -or $sensor.Name -like "*Core*" -or ($gpuClock -eq $null -and $sv -gt 100 -and $sv -lt 5000))) { if ($gpuClock -eq $null) { $gpuClock = $sv } }',
+    '          if ($st -eq "Control" -and ($sensor.Name -like "GPU Fan*" -or $sensor.Name -eq "GPU Fan")) { if ($gpuFan -eq $null -and $sv -ge 0 -and $sv -le 100) { $gpuFan = $sv } }',
+    '          if ($st -eq "Fan" -and ($sensor.Name -like "GPU Fan*" -or $sensor.Name -eq "GPU Fan")) { if ($gpuFanRpm -eq $null -and $sv -ge 0) { $gpuFanRpm = $sv } }',
     '        }',
     '      }',
     '    }',
@@ -299,6 +305,14 @@ function startLHMService() {
     '            }',
     '          }',
     '        }',
+    '        if ($hwType -match "Gpu") {',
+    '          $allSFull = @($hw.Sensors); foreach ($sub in $hw.SubHardware) { $allSFull += $sub.Sensors }',
+    '          foreach ($s in $allSFull) {',
+    '            $sv2 = if ($null -ne $s.Value) { [math]::Round($s.Value, 2) } else { "NULL" }',
+    '            $st2 = $s.SensorType.ToString()',
+    '            if ($st2 -in "Clock","Fan","Control","Load","SmallData") { $sensorInfo += "  GPU_$($st2):$($s.Name)=$sv2" }',
+    '          }',
+    '        }',
     '      }',
     '      [Console]::Error.WriteLine("LHMSENSORS:" + ($sensorInfo -join "|"))',
     '      [Console]::Error.WriteLine("LHMINFO:CPUTEMP=" + $(if ($cpuTemp -ne $null) { $cpuTemp } else { "NONE" }) + ",VISITOR=" + $(if ($visitor) { "YES" } else { "NO" }) + ",MBTEMP=" + $(if ($mbCpuTemp -ne $null) { $mbCpuTemp } else { "NONE" }))',
@@ -336,6 +350,9 @@ function startLHMService() {
     '    if ($gpuLoad -ne $null) { $parts += "GPUL:" + [math]::Round($gpuLoad, 1) }',
     '    if ($gpuVramUsed -ne $null) { $parts += "GPUVRU:" + [math]::Round($gpuVramUsed) }',
     '    if ($gpuVramTotal -ne $null) { $parts += "GPUVRT:" + [math]::Round($gpuVramTotal) }',
+    '    if ($gpuClock -ne $null) { $parts += "GPUCLK:" + [math]::Round($gpuClock, 0) }',
+    '    if ($gpuFan -ne $null) { $parts += "GPUFAN:" + [math]::Round($gpuFan, 1) }',
+    '    if ($gpuFanRpm -ne $null) { $parts += "GPUFANRPM:" + [math]::Round($gpuFanRpm, 0) }',
     '    try { $dc = Get-CimInstance Win32_PerfFormattedData_PerfDisk_PhysicalDisk -Filter "Name=\'_Total\'" -EA 0; if ($dc) { $parts += "DR:" + [math]::Round($dc.DiskReadBytesPersec); $parts += "DW:" + [math]::Round($dc.DiskWriteBytesPersec) } } catch {}',
     '    try { $psc = Get-CimInstance Win32_PerfFormattedData_PerfOS_System -EA 0; if ($psc -and $psc.Processes -gt 0) { $parts += "PROCS:" + [math]::Round($psc.Processes) } } catch {}',
     '    if ($netRxTotal -eq 0 -and $netTxTotal -eq 0) {',
@@ -396,6 +413,9 @@ function startLHMService() {
           case 'GPUL': if (v >= 0 && v <= 100) { _lhmGpuUsage = Math.round(v); } break;
           case 'GPUVRU': if (v >= 0) _lhmGpuVramUsed = Math.round(v); break;
           case 'GPUVRT': if (v > 0) _lhmGpuVramTotal = Math.round(v); break;
+          case 'GPUCLK': if (v > 0 && v < 5000) _lhmGpuClock = Math.round(v); break;
+          case 'GPUFAN': if (v >= 0 && v <= 100) _lhmGpuFan = Math.round(v * 10) / 10; break;
+          case 'GPUFANRPM': if (v >= 0 && v < 10000) _lhmGpuFanRpm = Math.round(v); break;
           case 'DR': if (v >= 0) _lhmDiskRead = Math.round(v); break;
           case 'DW': if (v >= 0) _lhmDiskWrite = Math.round(v); break;
           case 'PROCS': if (v > 0) _lhmProcessCount = Math.round(v); break;
@@ -870,6 +890,9 @@ async function _startRealtimePush() {
         gpuUsage: _lhmGpuUsage >= 0 ? _lhmGpuUsage : (_nvGpuUsage >= 0 ? _nvGpuUsage : -1),
         gpuVramUsed: _lhmGpuVramUsed >= 0 ? _lhmGpuVramUsed : (_nvGpuVramUsed >= 0 ? _nvGpuVramUsed : -1),
         gpuVramTotal: _lhmGpuVramTotal > 0 ? _lhmGpuVramTotal : (_nvGpuVramTotal > 0 ? _nvGpuVramTotal : -1),
+        gpuClock: _lhmGpuClock >= 0 ? _lhmGpuClock : -1,
+        gpuFan: _lhmGpuFan >= 0 ? _lhmGpuFan : -1,
+        gpuFanRpm: _lhmGpuFanRpm >= 0 ? _lhmGpuFanRpm : -1,
         ram: mem ? Math.round((mem.active / mem.total) * 1000) / 10 : 0,
         ramUsedGB: mem ? Math.round(mem.active / (1024 * 1024 * 1024) * 10) / 10 : 0,
         ramTotalGB: mem ? Math.round(mem.total / (1024 * 1024 * 1024) * 10) / 10 : 0,

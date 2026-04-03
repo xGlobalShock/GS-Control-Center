@@ -86,19 +86,19 @@ const HudGradients: React.FC = () => (
   <svg width="0" height="0" style={{ position: 'absolute' }}>
     <defs>
       <linearGradient id="hud-cyan-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stopColor="#00F2FF" />
-        <stop offset="100%" stopColor="#00D4AA" />
+        <stop offset="0%" stopColor="#00CC6A" />
+        <stop offset="100%" stopColor="#00CC6A" />
       </linearGradient>
       <linearGradient id="hud-emerald-grad" x1="0%" y1="0%" x2="100%" y2="0%">
         <stop offset="0%" stopColor="#00FF88" />
-        <stop offset="100%" stopColor="#00F2FF" />
+        <stop offset="100%" stopColor="#00CC6A" />
       </linearGradient>
       <linearGradient id="hud-heat-low" x1="0%" y1="100%" x2="0%" y2="0%">
-        <stop offset="0%" stopColor="#00F2FF" />
-        <stop offset="100%" stopColor="#00D4AA" />
+        <stop offset="0%" stopColor="#00CC6A" />
+        <stop offset="100%" stopColor="#00CC6A" />
       </linearGradient>
       <linearGradient id="hud-heat-mid" x1="0%" y1="100%" x2="0%" y2="0%">
-        <stop offset="0%" stopColor="#00F2FF" />
+        <stop offset="0%" stopColor="#00CC6A" />
         <stop offset="100%" stopColor="#FFD600" />
       </linearGradient>
       <linearGradient id="hud-heat-high" x1="0%" y1="100%" x2="0%" y2="0%">
@@ -122,14 +122,14 @@ const RadialGauge: React.FC<{
   const offset = arcLen - (pct / 100) * arcLen;
   const rotation = 135;
   const center = size / 2;
-  const color = pct > 80 ? '#FF2D55' : pct > 60 ? '#FFD600' : '#00F2FF';
+  const color = pct > 80 ? '#FF2D55' : pct > 60 ? '#FFD600' : '#00CC6A';
 
   return (
     <div className="hud-radial-gauge">
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         {/* bg track */}
         <circle cx={center} cy={center} r={r}
-          fill="none" stroke="rgba(0,242,255,0.08)" strokeWidth={3} strokeLinecap="round"
+          fill="none" stroke="rgba(0, 204, 106,0.08)" strokeWidth={3} strokeLinecap="round"
           strokeDasharray={`${arcLen} ${circ}`} strokeDashoffset={0}
           transform={`rotate(${rotation} ${center} ${center})`}
         />
@@ -156,7 +156,7 @@ const RadialGauge: React.FC<{
    Neon Bar Gauge — thin glowing horizontal bar
 ═══════════════════════════════════════════ */
 const NeonBar: React.FC<{ pct: number; label?: string; display?: string; color?: string }> = ({
-  pct, label, display, color = '#00F2FF',
+  pct, label, display, color = '#00CC6A',
 }) => (
   <div className="hud-neon-bar-wrap">
     {(label || display) && (
@@ -308,8 +308,8 @@ const CoreHeatMap: React.FC<{ cores: number[]; threadCount?: number; coreCount?:
   cores, threadCount, coreCount, loading,
 }) => {
   const getColor = (pct: number) => {
-    if (pct < 25) return '#00F2FF';
-    if (pct < 60) return '#00D4AA';
+    if (pct < 25) return '#00CC6A';
+    if (pct < 60) return '#00CC6A';
     if (pct < 85) return '#FFD600';
     return '#FF2D55';
   };
@@ -447,6 +447,8 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
   const gpuTemp = ext?.gpuTemp != null && ext.gpuTemp >= 0 ? ext.gpuTemp : (s?.gpuTemp ?? -1);
   const gpuVramUsed = ext?.gpuVramUsed != null && ext.gpuVramUsed >= 0 ? ext.gpuVramUsed : (s?.gpuVramUsed ?? -1);
   const gpuVramTotal = ext?.gpuVramTotal != null && ext.gpuVramTotal > 0 ? ext.gpuVramTotal : (s?.gpuVramTotal ?? -1);
+  const gpuClock = ext?.gpuClock != null && ext.gpuClock > 0 ? ext.gpuClock : -1;
+  const gpuFan = ext?.gpuFan != null && ext.gpuFan >= 0 ? ext.gpuFan : -1;
   // hasGpu: true if ANY live GPU metric is available (usage, temp, or VRAM)
   const hasGpu = gpuUsage >= 0 || gpuTemp >= 0 || gpuVramUsed >= 0 || gpuVramTotal > 0;
   // gpuInitializing: LHM + nvidia-smi haven't provided data yet (show shimmers, not "no drivers")
@@ -559,9 +561,20 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
           {hasGpu ? (
             <>
               <Row label="GPU Temp" value={gpuTemp >= 0 ? `${Math.trunc(gpuTemp)}°C` : undefined} accent loading={gpuTemp < 0} />
+              {gpuFan >= 0 && (
+                <Row label="Fan Speed" value={`${gpuFan}%`} accent />
+              )}
+              {gpuClock > 0 && (
+                <NeonBar
+                  pct={Math.min((gpuClock / 2800) * 100, 100)}
+                  label="GPU Clock"
+                  display={`${gpuClock} MHz`}
+                  color="#00FF88"
+                />
+              )}
               {gpuVramUsed >= 0 && gpuVramTotal > 0 ? (() => {
                 const pct = (gpuVramUsed / gpuVramTotal) * 100;
-                const c = pct > 90 ? '#FF2D55' : pct > 70 ? '#FFD600' : '#00D4AA';
+                const c = pct > 90 ? '#FF2D55' : pct > 70 ? '#FFD600' : '#00CC6A';
                 return (
                   <div className="hud-usage-rt">
                     <div className="hud-usage-rt-stat">
@@ -608,7 +621,7 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
           {hw?.ramSticks ? <Row label="RAM Sticks" value={hw.ramSticks} /> : hwLoading && <Row label="RAM Sticks" loading />}
           {ext && ext.ramTotalGB > 0 ? (() => {
             const pct = (ext.ramUsedGB / ext.ramTotalGB) * 100;
-            const c = pct > 90 ? '#FF2D55' : pct > 70 ? '#FFD600' : '#00F2FF';
+            const c = pct > 90 ? '#FF2D55' : pct > 70 ? '#FFD600' : '#00CC6A';
             const availPct = (ext.ramAvailableGB / ext.ramTotalGB) * 100;
             const cachedPct = (ext.ramCachedGB / ext.ramTotalGB) * 100;
             return (
@@ -676,10 +689,10 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
               ) : hw?.diskType && (
                 <div className="hud-stor-diag-cell">
                   <div className="hud-stor-diag-top">
-                    <span className="hud-stor-diag-dot" style={{ background: '#00F2FF', boxShadow: '0 0 6px #00F2FF88' }} />
+                    <span className="hud-stor-diag-dot" style={{ background: '#00CC6A', boxShadow: '0 0 6px #00CC6A88' }} />
                     <span className="hud-stor-diag-key">Type</span>
                   </div>
-                  <span className="hud-stor-diag-val" style={{ color: '#00F2FF' }}>{hw.diskType}</span>
+                  <span className="hud-stor-diag-val" style={{ color: '#00CC6A' }}>{hw.diskType}</span>
                   <span className="hud-stor-diag-sub">{hw.diskType === 'SSD' ? 'Solid State Drive' : hw.diskType === 'HDD' ? 'Hard Disk Drive' : 'Storage Device'}</span>
                 </div>
               )}
@@ -735,7 +748,7 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
               {hw.allDrives.map((d) => {
                 const usedGB = d.totalGB - d.freeGB;
                 const pct = d.totalGB > 0 ? Math.round((usedGB / d.totalGB) * 100) : 0;
-                const color = pct > 90 ? '#FF2D55' : pct > 70 ? '#FFD600' : '#00F2FF';
+                const color = pct > 90 ? '#FF2D55' : pct > 70 ? '#FFD600' : '#00CC6A';
                 const SEGS = 12;
                 const litCount = Math.round((pct / 100) * SEGS);
                 return (
@@ -940,7 +953,7 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
               {/* Uptime */}
               <div className="hud-sys-rt-stat">
                 <div className="hud-sys-rt-head">
-                  <span className="hud-sys-rt-dot" style={{ background: '#00F2FF', boxShadow: '0 0 5px #00F2FF' }} />
+                  <span className="hud-sys-rt-dot" style={{ background: '#00CC6A', boxShadow: '0 0 5px #00CC6A' }} />
                   <span className="hud-sys-rt-key">Uptime</span>
                 </div>
                 <span className="hud-sys-rt-big">{ext?.systemUptime ?? hw?.systemUptime ?? '—'}</span>
@@ -949,7 +962,7 @@ const SystemDetails: React.FC<SystemDetailsProps> = ({ systemStats, hardwareInfo
               {/* Power & Resources */}
               <div className="hud-sys-rt-stat">
                 <div className="hud-sys-rt-head">
-                  <span className="hud-sys-rt-dot" style={{ background: '#00F2FF', boxShadow: '0 0 5px #00F2FF' }} />
+                  <span className="hud-sys-rt-dot" style={{ background: '#00CC6A', boxShadow: '0 0 5px #00CC6A' }} />
                   <span className="hud-sys-rt-key">Power Plan</span>
                 </div>
                 <span className="hud-sys-rt-big">{hw?.powerPlan ?? '—'}</span>

@@ -382,7 +382,10 @@ const description = release.body?.trim() || undefined;
     <header className="header">
       <div className="header-left header-drag-region">
         <div className="header-title-row">
-          <h1 className="header-title">GS Center</h1>
+          <h1 className="header-title">
+            <span className="header-title-gs">GS</span>
+            <span className="header-title-word">Center</span>
+          </h1>
           {appVersion && <span className="header-version">v{appVersion}</span>}
         </div>
         <p className="header-subtitle">System Performance Control Center</p>

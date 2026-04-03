@@ -30,7 +30,7 @@ const TOOLS = [
     subtitle: 'SFC /scannow',
     icon: FileSearch,
     description: 'Scans all protected Windows system files and replaces corrupted or missing files with a cached copy from a compressed folder.',
-    color: '#00F2FF',
+    color: '#00CC6A',
     channel: 'repair:run-sfc',
   },
   {

@@ -52,6 +52,8 @@ function getDefaultHardwareInfo() {
     powerPlan: '',
     lastWindowsUpdate: '',
     windowsActivation: '',
+    secureBoot: '',
+    keyboardName: '',
     hasBattery: false,
     batteryPercent: 0,
     batteryStatus: '',
@@ -84,7 +86,7 @@ async function _fetchHardwareInfoImpl() {
     ramSticks: '', diskTotalGB: 0, diskFreeGB: 0, diskType: '', diskHealth: '',
     allDrives: [], networkAdapter: '', ipAddress: '',
     motherboardManufacturer: '', motherboardProduct: '', motherboardSerial: '',
-    biosVersion: '', biosDate: '', lastWindowsUpdate: '', windowsActivation: '',
+    biosVersion: '', biosDate: '', lastWindowsUpdate: '', windowsActivation: '', secureBoot: '', keyboardName: '',
     windowsVersion: '', windowsBuild: '', systemUptime: '', powerPlan: '',
     hasBattery: false, batteryPercent: 0, batteryStatus: '',
   };
@@ -152,7 +154,34 @@ try {
   $mem = Get-CimInstance Win32_PhysicalMemory
   $totalGB = [math]::Round(($mem | Measure-Object -Property Capacity -Sum).Sum / 1GB)
   $first = $mem | Select-Object -First 1
-  $s2 = "$totalGB|||$($first.Speed)|||$($first.ConfiguredClockSpeed)|||$($mem.Count) stick(s)|||$($first.Manufacturer)|||$($first.PartNumber)"
+  # Slot map — normalize DeviceLocator to short A1/A2/B1/B2 labels
+  $slots = ($mem | ForEach-Object {
+    $loc = ($_.DeviceLocator -replace '\s','').ToUpper()
+    if    ($loc -match 'CHANNELA.*DIMM0') { 'A1' }
+    elseif ($loc -match 'CHANNELA.*DIMM1') { 'A2' }
+    elseif ($loc -match 'CHANNELB.*DIMM0') { 'B1' }
+    elseif ($loc -match 'CHANNELB.*DIMM1') { 'B2' }
+    elseif ($loc -match 'CHANNELC.*DIMM0') { 'C1' }
+    elseif ($loc -match 'CHANNELC.*DIMM1') { 'C2' }
+    elseif ($loc -match 'CHANNELD.*DIMM0') { 'D1' }
+    elseif ($loc -match 'CHANNELD.*DIMM1') { 'D2' }
+    elseif ($loc -match '^([A-D])([12])') { "$($Matches[1])$($Matches[2])" }
+    else { ($loc -replace 'DIMM_?','') -replace '[^A-D0-9]','' }
+  }) -join ' / '
+  # DRAM chip brand via JEDEC manufacturer ID
+  $mfrRaw = ($first.Manufacturer -replace '\s','').ToUpper()
+  $dramBrand = if     ($mfrRaw -match '80CE|CE00|SAMSUNG')    { 'Samsung' }
+               elseif ($mfrRaw -match '80AD|AD00|HYNIX|SKHY') { 'SK Hynix' }
+               elseif ($mfrRaw -match '802C|2C00|MICRON|MT')   { 'Micron' }
+               elseif ($mfrRaw -match 'KINGSTON|04F4')          { 'Kingston' }
+               elseif ($mfrRaw -match 'CRUCIAL')                { 'Crucial' }
+               elseif ($mfrRaw -match 'CORSAIR|029E')           { 'Corsair' }
+               elseif ($mfrRaw -match 'GSKILL|G\.SKILL|04CD')   { 'G.Skill' }
+               elseif ($mfrRaw -match 'TEAMGROUP|04CB')         { 'TeamGroup' }
+               elseif ($mfrRaw -match 'PATRIOT|04C8')           { 'Patriot' }
+               elseif ($mfrRaw -match 'ADATA|04F1')             { 'ADATA' }
+               else { '' }
+  $s2 = "$totalGB|||$($first.Speed)|||$($first.ConfiguredClockSpeed)|||$($mem.Count) stick(s)|||$($first.Manufacturer)|||$($first.PartNumber)|||$slots|||$dramBrand"
 } catch {}
 
 # Section 3: Disk
@@ -292,7 +321,68 @@ try {
   }
 } catch {}
 
-Write-Output ($s0 + '@@' + $s1 + '@@' + $s2 + '@@' + $s3 + '@@' + $s4 + '@@' + $s5 + '@@' + $s6 + '@@' + $s7 + '@@' + $s8 + '@@' + $s9 + '@@' + $s10 + '@@' + $s11 + '@@' + $s12 + '@@' + $s13 + '@@' + $s14)
+# Section 15: Secure Boot
+$s15 = 'Unknown'
+try {
+  $regVal = (Get-ItemProperty 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\SecureBoot\\State' -ErrorAction SilentlyContinue).UEFISecureBootEnabled
+  if ($regVal -eq 1) { $s15 = 'Enabled' }
+  elseif ($regVal -eq 0) { $s15 = 'Disabled' }
+  else {
+    $sb = Confirm-SecureBootUEFI -ErrorAction SilentlyContinue
+    if ($sb -eq $true) { $s15 = 'Enabled' } elseif ($sb -eq $false) { $s15 = 'Disabled' }
+  }
+} catch { $s15 = 'Unknown' }
+
+# Section 16: Keyboard
+$s16 = ''
+try {
+  $kbVidPids = @(Get-PnpDevice -Class 'Keyboard' -Status 'OK' -ErrorAction SilentlyContinue |
+    ForEach-Object { if ($_.InstanceId -match '(VID_[0-9A-Fa-f]+&PID_[0-9A-Fa-f]+)') { $matches[1] } } |
+    Sort-Object -Unique)
+  if ($kbVidPids.Count -gt 0) {
+    $allDevices = Get-PnpDevice -Status 'OK' -ErrorAction SilentlyContinue
+    foreach ($vp in $kbVidPids) {
+      $named = $allDevices | Where-Object {
+        $_.InstanceId -like "*$vp*" -and
+        $_.Class -eq 'HIDClass' -and
+        $_.FriendlyName -notmatch '^HID |^USB Input|^HID-compliant|^Standard|^PS/2'
+      } | Select-Object -First 1
+      if ($named) { $s16 = $named.FriendlyName; break }
+    }
+  }
+  if (-not $s16) {
+    $kb = Get-CimInstance Win32_Keyboard -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($kb) { $s16 = if ($kb.Description) { $kb.Description } else { $kb.Name } }
+  }
+} catch {}
+
+# Section 17: Memory usage stats (page file, non-paged pool, standby/modified)
+$s17 = ''
+try {
+  $pf = Get-CimInstance Win32_PageFileUsage -ErrorAction SilentlyContinue | Select-Object -First 1
+  $pfUsed  = if ($pf) { $pf.CurrentUsage } else { 0 }
+  $pfTotal = if ($pf) { $pf.AllocatedBaseSize } else { 0 }
+  $npRaw  = (Get-Counter '\Memory\Pool Nonpaged Bytes' -ErrorAction SilentlyContinue).CounterSamples[0].CookedValue
+  $npMB   = [math]::Round($npRaw / 1MB)
+  $stRaw  = (Get-Counter '\Memory\Standby Cache Normal Priority Bytes' -ErrorAction SilentlyContinue).CounterSamples[0].CookedValue
+  $stMB   = [math]::Round($stRaw / 1MB)
+  $modRaw = (Get-Counter '\Memory\Modified Page List Bytes' -ErrorAction SilentlyContinue).CounterSamples[0].CookedValue
+  $modMB  = [math]::Round($modRaw / 1MB)
+  $s17 = "$pfUsed|||$pfTotal|||$npMB|||$stMB|||$modMB"
+} catch {}
+
+# Section 18: Top 4 RAM-consuming processes (grouped by name)
+$s18 = ''
+try {
+  $top4 = Get-Process -ErrorAction SilentlyContinue |
+    Group-Object Name |
+    ForEach-Object { [PSCustomObject]@{ Name = $_.Name; TotalWS = ($_.Group | Measure-Object WorkingSet64 -Sum).Sum } } |
+    Sort-Object TotalWS -Descending |
+    Select-Object -First 4
+  $s18 = ($top4 | ForEach-Object { "$($_.Name)|||$([math]::Round($_.TotalWS/1MB))" }) -join '~~'
+} catch {}
+
+Write-Output ($s0 + '@@' + $s1 + '@@' + $s2 + '@@' + $s3 + '@@' + $s4 + '@@' + $s5 + '@@' + $s6 + '@@' + $s7 + '@@' + $s8 + '@@' + $s9 + '@@' + $s10 + '@@' + $s11 + '@@' + $s12 + '@@' + $s13 + '@@' + $s14 + '@@' + $s15 + '@@' + $s16 + '@@' + $s17 + '@@' + $s18)
     `, 15000),
 
     execFileAsync('nvidia-smi', ['--query-gpu=driver_version,memory.total', '--format=csv,noheader,nounits'], { timeout: 3000, windowsHide: true })
@@ -365,9 +455,12 @@ try {
     const speed = configSpeed && configSpeed !== '0' ? configSpeed : jedecSpeed;
     info.ramInfo = speed ? `${totalGB} GB @ ${speed} MHz` : `${totalGB} GB`;
     info.ramTotalGB = totalGB;
+    info.ramSpeed = speed ? `${speed} MT/s` : '';
     info.ramSticks = parts[3] || '';
     info.ramBrand = resolveRamBrand(parts[4], parts[5]);
     info.ramPartNumber = (parts[5] || '').trim();
+    info.ramSlotMap = (parts[6] || '').trim();
+    info.ramDramBrand = (parts[7] || '').trim();
   } catch {
     const totalGB = Math.round(os.totalmem() / (1024 * 1024 * 1024));
     info.ramInfo = `${totalGB} GB`;
@@ -522,6 +615,39 @@ try {
       const parts = bioRaw.split('|||').map(s => s.trim());
       info.biosVersion = parts[0] || '';
       info.biosDate = parts[1] || '';
+    }
+  } catch { }
+
+  // 15: Secure Boot
+  try {
+    const sbRaw = get(15).trim();
+    if (sbRaw === 'Enabled' || sbRaw === 'Disabled' || sbRaw === 'Unknown') info.secureBoot = sbRaw;
+  } catch { }
+
+  // 16: Keyboard
+  try {
+    const kbRaw = get(16).trim();
+    if (kbRaw) info.keyboardName = kbRaw;
+  } catch { }
+
+  // 17: Memory usage stats
+  try {
+    const parts = get(17).split('|||').map(s => s.trim());
+    info.ramPageFileUsed  = parseInt(parts[0]) || 0;
+    info.ramPageFileTotal = parseInt(parts[1]) || 0;
+    info.ramNonPagedPool  = parseInt(parts[2]) || 0;
+    info.ramStandby       = parseInt(parts[3]) || 0;
+    info.ramModified      = parseInt(parts[4]) || 0;
+  } catch { }
+
+  // 18: Top 3 RAM processes
+  try {
+    const raw = get(18);
+    if (raw) {
+      info.ramTopProcesses = raw.split('~~').filter(l => l.trim()).map(line => {
+        const [name, mb] = line.split('|||');
+        return { name: (name || '').trim(), mb: parseInt(mb) || 0 };
+      });
     }
   } catch { }
 

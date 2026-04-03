@@ -25,13 +25,13 @@
   position: relative;
   overflow: hidden;
 
-  border: 1px solid rgba(0, 242, 255, 0.06);
+  border: 1px solid rgba(0, 204, 106, 0.06);
   border-radius: 14px;
   background: transparent;
 
   box-shadow:
     0 -2px 30px rgba(0, 0, 0, 0.25),
-    0 0 24px rgba(0, 242, 255, 0.03),
+    0 0 24px rgba(0, 204, 106, 0.03),
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
 
   transform: translateZ(0);
@@ -61,9 +61,9 @@
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(0, 242, 255, 0.15) 15%,
-    rgba(0, 242, 255, 0.3) 50%,
-    rgba(0, 242, 255, 0.15) 85%,
+    rgba(0, 204, 106, 0.15) 15%,
+    rgba(0, 204, 106, 0.3) 50%,
+    rgba(0, 204, 106, 0.15) 85%,
     transparent
   );
   z-index: 1;
@@ -106,7 +106,7 @@
   border-radius: 8px;
   background: radial-gradient(
     ellipse 80% 70% at 50% 40%,
-    rgba(0, 242, 255, 0.08) 0%,
+    rgba(0, 204, 106, 0.08) 0%,
     transparent 70%
   );
   opacity: 0;
@@ -124,8 +124,8 @@
   position: absolute;
   inset: 3px;
   border-radius: 8px;
-  background: rgba(0, 242, 255, 0.06);
-  border: 1px solid rgba(0, 242, 255, 0.08);
+  background: rgba(0, 204, 106, 0.06);
+  border: 1px solid rgba(0, 204, 106, 0.08);
   z-index: -1;
   pointer-events: none;
 }
@@ -138,11 +138,11 @@
   right: 16%;
   height: 2px;
   border-radius: 0 0 2px 2px;
-  background: #00F2FF;
+  background: #00CC6A;
   box-shadow:
-    0 0 8px rgba(0, 242, 255, 0.6),
-    0 0 24px rgba(0, 242, 255, 0.15),
-    0 2px 12px rgba(0, 242, 255, 0.1);
+    0 0 8px rgba(0, 204, 106, 0.6),
+    0 0 24px rgba(0, 204, 106, 0.15),
+    0 2px 12px rgba(0, 204, 106, 0.1);
   z-index: 2;
 }
 
@@ -163,14 +163,14 @@
 }
 
 .ks-bottom-item:hover .ks-bottom-icon {
-  color: rgba(0, 242, 255, 0.75);
-  filter: drop-shadow(0 0 5px rgba(0, 242, 255, 0.25));
+  color: rgba(0, 204, 106, 0.75);
+  filter: drop-shadow(0 0 5px rgba(0, 204, 106, 0.25));
   transform: scale(1.1);
 }
 
 .ks-bottom-item.ks-active .ks-bottom-icon {
-  color: #00F2FF;
-  filter: drop-shadow(0 0 6px rgba(0, 242, 255, 0.5));
+  color: #00CC6A;
+  filter: drop-shadow(0 0 6px rgba(0, 204, 106, 0.5));
 }
 
 .ks-bottom-item.ks-active:hover .ks-bottom-icon {
@@ -191,10 +191,10 @@
 }
 
 .ks-bottom-item:hover .ks-bottom-label {
-  color: rgba(0, 242, 255, 0.6);
+  color: rgba(0, 204, 106, 0.6);
 }
 
 .ks-bottom-item.ks-active .ks-bottom-label {
-  color: rgba(0, 242, 255, 0.9);
+  color: rgba(0, 204, 106, 0.9);
   font-weight: 600;
 }

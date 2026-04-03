@@ -502,8 +502,8 @@
   gap: 10px;
   padding: 9px 12px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(255, 255, 255, 0.022);
+  border: 1px solid rgba(0, 204, 106, 0.07);
+  background: rgba(6, 8, 16, 0.55);
   cursor: pointer;
   transition: background 0.13s, border-color 0.13s, transform 0.1s;
   user-select: none;
@@ -512,18 +512,18 @@
 }
 
 .wd-card:hover {
-  background: rgba(255, 255, 255, 0.042);
-  border-color: rgba(255, 255, 255, 0.09);
+  background: rgba(6, 8, 16, 0.7);
+  border-color: rgba(0, 204, 106, 0.16);
 }
 
 .wd-card--selected {
-  background: rgba(96, 200, 255, 0.06);
-  border-color: rgba(96, 200, 255, 0.22);
+  background: rgba(0, 204, 106, 0.06);
+  border-color: rgba(0, 204, 106, 0.22);
 }
 
 .wd-card--selected:hover {
-  background: rgba(96, 200, 255, 0.09);
-  border-color: rgba(96, 200, 255, 0.3);
+  background: rgba(0, 204, 106, 0.09);
+  border-color: rgba(0, 204, 106, 0.3);
 }
 
 .wd-card--non-removable {

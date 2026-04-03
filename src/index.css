@@ -1,14 +1,14 @@
 :root {
-  --color-primary: #00F2FF;
-  --color-secondary: #00D4AA;
+  --color-primary: #00CC6A;
+  --color-secondary: #00CC6A;
   --color-accent: #FF2D55;
-  --color-good: #00FF88;
+  --color-good: #00CC6A;
   --color-warning: #FFD600;
   --color-critical: #FF2D55;
   --bg-dark: #020606;
   --bg-darker: #010404;
-  --bg-card: rgba(6, 14, 14, 0.55);
-  --border-color: rgba(0, 242, 255, 0.06);
+  --bg-card: rgba(6, 8, 16, 0.55);
+  --border-color: rgba(0, 204, 106, 0.07);
   --text-primary: #ffffff;
   --text-secondary: rgba(255, 255, 255, 0.7);
   --text-muted: rgba(255, 255, 255, 0.35);

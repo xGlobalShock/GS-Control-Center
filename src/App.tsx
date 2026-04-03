@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Loader from './components/Loader';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
-import Dashboard from './pages/Dashboard';
+import LiveMetrics from './pages/LiveMetrics';
 import Performance from './pages/Performance';
 import Cleaner from './pages/Cleaner';
 import GameLibrary from './pages/GameLibrary';
@@ -31,7 +31,16 @@ export interface HardwareInfo {
   gpuDriverVersion: string;
   ramTotalGB: number;
   ramUsedGB: number;
+  ramSpeed?: string;
   ramSticks: string;
+  ramSlotMap?: string;
+  ramDramBrand?: string;
+  ramPageFileUsed?: number;
+  ramPageFileTotal?: number;
+  ramNonPagedPool?: number;
+  ramStandby?: number;
+  ramModified?: number;
+  ramTopProcesses?: { name: string; mb: number }[];
   diskTotalGB: number;
   diskFreeGB: number;
   diskType: string;
@@ -57,6 +66,8 @@ export interface HardwareInfo {
   powerPlan: string;
   lastWindowsUpdate?: string;
   windowsActivation?: string;
+  secureBoot?: string;
+  keyboardName?: string;
   hasBattery: boolean;
   batteryPercent: number;
   batteryStatus: string;
@@ -69,6 +80,9 @@ export interface ExtendedStats {
   gpuTemp: number;
   gpuVramUsed: number;
   gpuVramTotal: number;
+  gpuClock?: number;
+  gpuFan?: number;
+  gpuFanRpm?: number;
   networkUp: number;
   networkDown: number;
   ssid?: string;
@@ -169,7 +183,7 @@ function App() {
     return (
       <>
         <div style={pageStyle('dashboard')}>
-          <Dashboard
+          <LiveMetrics
             systemStats={systemStats}
             hardwareInfo={hardwareInfo}
             extendedStats={extendedStats}

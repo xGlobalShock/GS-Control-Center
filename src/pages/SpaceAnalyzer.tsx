@@ -448,7 +448,7 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
                     <div style={{ flex: '0.8', textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>{files}</div>
                     <div style={{ flex: '0.8', textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>{folders}</div>
                     <div style={{ flex: '0.8', position: 'relative', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ position: 'absolute', left: 0, top: 0, right: 0, height: '100%', background: 'rgba(0, 0, 0, 0.4)', borderRadius: '4px', border: '1px solid rgba(0, 242, 255, 0.15)' }} />
+                    <div style={{ position: 'absolute', left: 0, top: 0, right: 0, height: '100%', background: 'rgba(0, 0, 0, 0.4)', borderRadius: '4px', border: '1px solid rgba(0, 204, 106, 0.15)' }} />
                       <motion.div 
                         initial={{ width: 0 }}
                         animate={{ width: `${pct}%` }}

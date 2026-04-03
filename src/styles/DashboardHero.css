@@ -1,0 +1,707 @@
+/* ═══════════════════════════════════════════════════════════════
+   Dashboard Hero — Live Metric Cards with Sparkline Charts
+   6-card premium monitoring panel (3-column × 2-row)
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Section wrapper ── */
+.dh-section {
+  position: relative;
+}
+
+/* ── 3-column hero grid ── */
+.dh-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+/* ══════════════════════════════════════════
+   Card Container — Glassmorphic
+══════════════════════════════════════════ */
+.dh-card {
+  position: relative;
+  background: rgba(6, 8, 16, 0.55);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid rgba(0, 204, 106, 0.07);
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: default;
+
+  /* GPU layering */
+  transform: translateZ(0);
+  will-change: transform, border-color, box-shadow;
+  contain: layout style paint;
+
+  box-shadow:
+    0 2px 20px rgba(0, 0, 0, 0.45),
+    0 0 1px rgba(0, 204, 106, 0.06),
+    inset 0 1px 0 rgba(0, 204, 106, 0.04),
+    inset 0 0 40px rgba(0, 204, 106, 0.008);
+
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.35s ease,
+    box-shadow 0.35s ease;
+}
+
+.dh-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    150deg,
+    rgba(255, 255, 255, 0.025) 0%,
+    transparent 50%
+  );
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+}
+
+.dh-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 204, 106, 0.16);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(0, 204, 106, 0.05),
+    0 0 24px rgba(0, 204, 106, 0.03),
+    inset 0 0 40px rgba(0, 204, 106, 0.012);
+}
+
+/* ── Top glowing accent bar ── */
+.dh-card-accent {
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1.5px;
+  border-radius: 0 0 4px 4px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════════
+   Corner Bracket Accents
+══════════════════════════════════════════ */
+.dh-corner {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-style: solid;
+  border-width: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.dh-tl { top: 7px; left: 7px; border-top-width: 1.5px; border-left-width: 1.5px; border-top-left-radius: 3px; }
+.dh-tr { top: 7px; right: 7px; border-top-width: 1.5px; border-right-width: 1.5px; border-top-right-radius: 3px; }
+.dh-bl { bottom: 7px; left: 7px; border-bottom-width: 1.5px; border-left-width: 1.5px; border-bottom-left-radius: 3px; }
+.dh-br { bottom: 7px; right: 7px; border-bottom-width: 1.5px; border-right-width: 1.5px; border-bottom-right-radius: 3px; }
+
+/* ── Scanline texture overlay ── */
+.dh-scanline {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.04) 2px,
+    rgba(0, 0, 0, 0.04) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+/* ══════════════════════════════════════════
+   Card Inner Layout
+══════════════════════════════════════════ */
+.dh-inner {
+  position: relative;
+  z-index: 3;
+  padding: 16px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Header row: icon · label-group · chip+gauge ── */
+.dh-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.dh-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  transition: opacity 0.2s;
+}
+
+.dh-label-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.dh-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  color: rgba(180, 210, 240, 0.55);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dh-subtitle {
+  font-size: 10px;
+  font-weight: 400;
+  color: rgba(160, 190, 230, 0.38);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dh-head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════
+   GaugeRing
+══════════════════════════════════════════ */
+.dh-gauge {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+}
+.dh-gauge-text {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  pointer-events: none;
+}
+.dh-gauge-val {
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.dh-gauge-unit {
+  font-size: 7px;
+  color: rgba(180, 210, 240, 0.45);
+  font-weight: 500;
+  line-height: 1;
+}
+
+/* ── Status chip ── */
+.dh-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.dh-chip-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: dhDotBreath 2.6s ease-in-out infinite;
+}
+
+@keyframes dhDotBreath {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.75); }
+}
+
+/* ══════════════════════════════════════════
+   Main Value Display
+══════════════════════════════════════════ */
+.dh-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 4px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.dh-value-num {
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.dh-value-suffix {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(180, 200, 240, 0.45);
+  line-height: 1;
+  padding-bottom: 3px;
+  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Trend indicator ── */
+.dh-trend {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9.5px;
+  font-weight: 700;
+  margin-left: auto;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.dh-trend--stable {
+  background: rgba(0, 204, 106, 0.08);
+  border: 1px solid rgba(0, 204, 106, 0.2);
+  box-shadow: 0 0 8px rgba(0, 204, 106, 0.12);
+  letter-spacing: 0.04em;
+}
+
+/* ── Subline ── */
+.dh-subline {
+  font-size: 11px;
+  color: rgba(150, 180, 220, 0.5);
+  margin-bottom: 6px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  height: 16px;
+}
+
+/* ══════════════════════════════════════════
+   Sparkline Chart Area
+══════════════════════════════════════════ */
+.dh-chart {
+  margin: 0 -16px;
+  height: 56px;
+  flex-shrink: 0;
+}
+
+/* Dual-series legend row (sits above dh-chart) */
+.dh-dual-legend-row {
+  display: flex;
+  gap: 10px;
+  padding: 0 2px;
+  margin-bottom: -2px;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════
+   Footer Info Row
+══════════════════════════════════════════ */
+.dh-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 4px;
+  gap: 8px;
+}
+
+.dh-footer-item {
+  font-size: 10px;
+  color: rgba(140, 170, 210, 0.5);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.dh-footer-right {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════
+   Live Pulse Badge (section header)
+══════════════════════════════════════════ */
+.dh-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: rgba(0, 255, 136, 0.8);
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  flex-shrink: 0;
+}
+
+.dh-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00CC6A;
+  box-shadow: 0 0 6px #00CC6A;
+  transition: opacity 0.4s ease;
+}
+
+/* ══════════════════════════════════════════
+   Responsive
+══════════════════════════════════════════ */
+/* ── Responsive: 2-col at ≤1300px, 1-col at ≤760px ── */
+@media (max-width: 1300px) {
+  .dh-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .dh-grid {
+    grid-template-columns: 1fr;
+  }
+  .dh-value-num {
+    font-size: 28px;
+  }
+}
+
+/* ══════════════════════════════════════════
+   Detail Section
+══════════════════════════════════════════ */
+.dh-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 4px;
+}
+
+/* ── Front card RAM stat pills ── */
+.dh-ram-stats { display: flex; gap: 5px; flex-wrap: wrap; flex-shrink: 0; padding-top: 6px; border-top: 1px solid rgba(0, 204, 106,0.1); }
+.dh-ram-stat  {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+  padding: 2px 7px; border-radius: 999px;
+  background: rgba(0, 204, 106,0.1);
+  border: 1px solid rgba(0, 204, 106,0.22);
+  color: rgba(0, 204, 106,0.75);
+  white-space: nowrap;
+}
+.dh-ram-stat--brand {
+  background: rgba(0, 204, 106,0.06);
+  border-color: rgba(0, 204, 106,0.14);
+  color: rgba(0, 204, 106,0.5);
+}
+
+
+.dh-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-height: 18px;
+}
+.dh-row-label {
+  font-size: 10px;
+  color: rgba(140, 170, 210, 0.45);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+.dh-row-value {
+  font-size: 10.5px;
+  color: rgba(210, 230, 255, 0.78);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+}
+
+/* ── Detail bar ── */
+.dh-bar-wrap   { display: flex; flex-direction: column; gap: 2px; }
+.dh-bar-head   { display: flex; justify-content: space-between; align-items: center; }
+.dh-bar-label  { font-size: 10px; color: rgba(140,170,210,0.45); font-weight: 500; }
+.dh-bar-display{ font-size: 10.5px; font-variant-numeric: tabular-nums; font-weight: 600; }
+.dh-bar-track  { height: 3px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; }
+.dh-bar-fill   { height: 100%; border-radius: 2px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+
+/* ── Core strip ── */
+.dh-cores-wrap { display: flex; flex-direction: column; gap: 4px; }
+.dh-cores-head { display: flex; align-items: center; gap: 5px; }
+.dh-cores-dot  { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.dh-cores-label{ font-size: 10px; color: rgba(140,170,210,0.45); flex: 1; font-weight: 500; }
+.dh-cores-avg  { font-size: 10px; font-variant-numeric: tabular-nums; font-weight: 700; }
+.dh-cores-bar  { display: flex; gap: 2px; height: 14px; }
+.dh-core-seg   { flex: 1; border-radius: 2px; min-width: 0; transition: background 0.4s ease, opacity 0.4s ease; }
+
+/* ── Volume strip ── */
+.dh-vols       { display: flex; flex-direction: column; gap: 4px; }
+.dh-vol-row    { display: flex; align-items: center; gap: 5px; }
+.dh-vol-id     { font-size: 10.5px; font-weight: 800; width: 18px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.dh-vol-cells  { display: flex; gap: 2px; flex: 1; }
+.dh-vol-cell   { flex: 1; height: 8px; border-radius: 1.5px; background: rgba(255,255,255,0.05); min-width: 0; transition: background 0.4s ease; }
+.dh-vol-pct    { font-size: 9.5px; font-weight: 700; width: 28px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.dh-vol-free   { font-size: 9px; color: rgba(140,170,210,0.4); width: 32px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+
+/* ── Storage diagnostic ── */
+.dh-diag      { display: flex; gap: 8px; padding: 6px 8px; background: rgba(255,255,255,0.025); border-radius: 6px; border: 1px solid rgba(255,255,255,0.04); }
+.dh-diag-cell { display: flex; align-items: center; gap: 6px; flex: 1; }
+.dh-diag-dot  { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dh-diag-info { display: flex; flex-direction: column; gap: 0; }
+.dh-diag-key  { font-size: 8.5px; color: rgba(140,170,210,0.45); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.dh-diag-val  { font-size: 11px; font-weight: 700; }
+
+/* ── R/W speed ── */
+.dh-speed       { display: flex; align-items: center; gap: 6px; padding: 5px 8px; background: rgba(255,255,255,0.025); border-radius: 6px; border: 1px solid rgba(255,255,255,0.04); }
+.dh-speed-half  { display: flex; align-items: center; gap: 4px; flex: 1; }
+.dh-speed-div   { width: 1px; height: 14px; background: rgba(255,255,255,0.08); flex-shrink: 0; }
+.dh-speed-ic    { flex-shrink: 0; }
+.dh-speed-ic.read  { color: #00CC6A; }
+.dh-speed-ic.write { color: #00CC6A; }
+.dh-speed-val   { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.dh-speed-val.read  { color: #00CC6A; }
+.dh-speed-val.write { color: #00CC6A; }
+
+/* ── Section sub-header ── */
+.dh-sect-hdr {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: rgba(140,170,210,0.35); margin-top: 2px;
+}
+
+/* ── Network speed bars (legacy, kept for safety) ── */
+.dh-net-bar-row   { display: flex; align-items: center; gap: 6px; }
+.dh-net-ic        { flex-shrink: 0; }
+.dh-net-ic.dn     { color: #00CC6A; }
+.dh-net-ic.up     { color: #00CC6A; }
+.dh-net-bar-track { flex: 1; height: 3px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; }
+.dh-net-bar-fill  { height: 100%; border-radius: 2px; transition: width 0.8s ease; }
+.dh-net-bar-fill.dn { background: linear-gradient(90deg, #00CC6A00, #00CC6A); box-shadow: 0 0 6px #00CC6A55; }
+.dh-net-bar-fill.up { background: linear-gradient(90deg, #00CC6A00, #00CC6A); box-shadow: 0 0 6px #00CC6A55; }
+.dh-net-bar-val   { font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; width: 64px; text-align: right; flex-shrink: 0; }
+.dh-net-bar-val.dn { color: #00CC6A; }
+.dh-net-bar-val.up { color: #00CC6A; }
+
+/* ── Network ping/signal stats (legacy) ── */
+.dh-net-stats         { display: flex; gap: 8px; flex-wrap: wrap; padding: 4px 0; }
+.dh-net-stat          { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 50px; }
+.dh-net-stat-label    { font-size: 8.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(140,170,210,0.4); }
+.dh-net-stat-val      { font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; color: rgba(210,230,255,0.85); line-height: 1.1; }
+.dh-net-stat-val small{ font-size: 9px; font-weight: 500; opacity: 0.6; margin-left: 1px; }
+
+/* ── Network speed split panel ── */
+.dh-net-speeds      { display: flex; background: rgba(0,0,0,0.18); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; overflow: hidden; }
+.dh-net-speed-half  { display: flex; flex-direction: column; gap: 5px; padding: 8px 12px; flex: 1; }
+.dh-net-speeds-sep  { width: 1px; background: rgba(255,255,255,0.06); flex-shrink: 0; align-self: stretch; }
+
+/* ── Combined Ping + Loss sparkline ── */
+.dh-net-dual-leg    { display: flex; align-items: center; gap: 4px; font-size: 8px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
+.dh-net-dual-dot    { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dh-net-speed-top   { display: flex; align-items: center; gap: 5px; }
+.dh-net-speed-ic    { display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0; }
+.dh-net-speed-ic.dn { color: #00CC6A; background: rgba(0, 204, 106,0.12); }
+.dh-net-speed-ic.up { color: #00CC6A; background: rgba(0,255,136,0.12); }
+.dh-net-speed-lbl   { font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(140,170,210,0.4); }
+.dh-net-speed-num   { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -0.01em; }
+.dh-net-speed-num.dn{ color: #00CC6A; text-shadow: 0 0 18px rgba(0, 204, 106,0.35); }
+.dh-net-speed-num.up{ color: #00CC6A; text-shadow: 0 0 18px rgba(0,255,136,0.35); }
+.dh-net-speed-track { height: 2px; background: rgba(255,255,255,0.06); border-radius: 1px; overflow: hidden; }
+.dh-net-speed-fill  { height: 100%; border-radius: 1px; transition: width 0.9s cubic-bezier(0.4,0,0.2,1); }
+.dh-net-speed-fill.dn { background: linear-gradient(90deg, transparent, #00CC6A); box-shadow: 0 0 8px #00CC6A99; }
+.dh-net-speed-fill.up { background: linear-gradient(90deg, transparent, #00CC6A); box-shadow: 0 0 8px #00CC6A99; }
+
+/* ── Quality tiles (Ping / Packet Loss / WiFi) ── */
+.dh-net-quality   { display: flex; gap: 5px; }
+.dh-net-q-tile    { display: flex; align-items: center; gap: 7px; flex: 1; padding: 6px 8px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; min-width: 0; }
+.dh-net-q-dot     { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dh-net-q-label   { display: block; font-size: 7.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: rgba(140,170,210,0.4); white-space: nowrap; }
+.dh-net-q-val     { display: block; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.dh-net-q-val small { font-size: 9px; font-weight: 500; opacity: 0.55; margin-left: 1px; }
+
+/* ── Connection info terminal block ── */
+.dh-net-info          { display: flex; flex-direction: column; background: rgba(0,0,0,0.18); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; overflow: hidden; }
+.dh-net-info-row      { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.dh-net-info-row:last-child { border-bottom: none; }
+.dh-net-info-key      { font-size: 8px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(0, 204, 106,0.55); flex-shrink: 0; white-space: nowrap; }
+.dh-net-info-val      { font-size: 10px; font-weight: 500; color: rgba(190,215,255,0.65); flex: 1; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+
+/* ── Generic stat tiles (CPU / GPU / System) ── */
+.dh-stat-tiles      { display: flex; gap: 5px; }
+.dh-stat-tile       { display: flex; flex-direction: column; gap: 5px; flex: 1; padding: 7px 9px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06); border-radius: 7px; min-width: 0; }
+.dh-stat-tile-top   { display: flex; align-items: center; gap: 5px; }
+.dh-stat-tile-dot   { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.dh-stat-tile-label { font-size: 7.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: rgba(140,170,210,0.4); white-space: nowrap; }
+.dh-stat-tile-val   { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; color: rgba(210,230,255,0.88); line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dh-stat-tile-val small { font-size: 9px; font-weight: 500; opacity: 0.55; margin-left: 1px; }
+
+/* ── Generic terminal info block (GPU / RAM / System) ── */
+.dh-info-block     { display: flex; flex-direction: column; background: rgba(0,0,0,0.18); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; overflow: hidden; }
+.dh-info-row       { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.dh-info-row:last-child { border-bottom: none; }
+.dh-info-divider   { height: 1px; background: rgba(255,255,255,0.07); margin: 3px 10px; }
+
+/* ── RAM Top Processes mini-table ── */
+.dh-ram-procs        { margin: 4px 0 0; }
+.dh-ram-procs-hdr    { display: flex; justify-content: space-between; padding: 5px 10px 4px; border-top: 1px solid rgba(0,204,106,0.15); border-bottom: 1px solid rgba(0,204,106,0.1); font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(0,204,106,0.5); }
+.dh-ram-procs-row    { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.dh-ram-procs-row:last-child { border-bottom: none; }
+.dh-ram-procs-rank   { font-size: 8px; font-weight: 700; color: rgba(0,204,106,0.4); flex-shrink: 0; width: 16px; }
+.dh-ram-procs-name   { flex: 1; font-size: 10.5px; font-weight: 500; color: rgba(200,216,240,0.85); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dh-ram-procs-val    { font-size: 10.5px; font-weight: 700; color: rgba(0,204,106,0.8); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.dh-info-key       { font-size: 8px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(0, 204, 106,0.55); flex-shrink: 0; white-space: nowrap; }
+.dh-info-val       { font-size: 10px; font-weight: 500; color: rgba(190,215,255,0.65); flex: 1; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+
+/* ── Privacy blur ── */
+.dh-blur-field { cursor: pointer; transition: filter 0.25s ease; }
+.dh-blurred    { filter: blur(4px); user-select: none; cursor: pointer; transition: filter 0.25s ease; }
+
+/* ── System RT panel ── */
+.dh-sys-rt        { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; background: rgba(255,255,255,0.025); border-radius: 6px; border: 1px solid rgba(255,255,255,0.04); }
+.dh-sys-stat      { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.dh-sys-stat-label{ font-size: 9.5px; color: rgba(140,170,210,0.45); font-weight: 500; flex-shrink: 0; }
+.dh-sys-stat-val  { font-size: 10.5px; font-weight: 700; color: rgba(210,230,255,0.85); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Reuse hud-section-header / hud-section-title / hud-section-line from PageHeader.css ── */
+
+/* ══════════════════════════════════════════
+   Flip Card Mechanics
+══════════════════════════════════════════ */
+
+/* ── Each face animates independently via framer-motion — no preserve-3d needed ── */
+.dh-card {
+  perspective: 900px;       /* gives depth to child rotateY animations */
+}
+
+.dh-face {
+  min-width: 0;
+}
+
+/* Front face — normal flow, sets card height */
+.dh-face-front {
+  position: relative;
+}
+
+/* Back face — absolute fill, always matches card dimensions */
+.dh-face-back {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 8, 18, 0.97);
+  overflow-y: auto;
+  pointer-events: none;
+}
+
+/* Pointer-events swap on flip */
+.dh-card.is-flipped .dh-face-front {
+  pointer-events: none;
+}
+
+.dh-card.is-flipped .dh-face-back {
+  pointer-events: auto;
+}
+
+/* ── [i] info toggle button in card header ── */
+.dh-info-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 26px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0 8px;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.dh-info-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.dh-info-btn-close {
+  width: 26px;
+  padding: 0;
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* Back face content wrapper */
+.dh-back-content {
+  padding-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+/* ── Network link speed badge (front face) ── */
+.dh-net-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px;
+  background: rgba(255, 213, 0, 0.05);
+  border: 1px solid rgba(255, 213, 0, 0.1);
+  border-radius: 6px;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.dh-net-link-key {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 213, 0, 0.5);
+  flex-shrink: 0;
+}
+
+.dh-net-link-val {
+  font-size: 11px;
+  font-weight: 700;
+  color: #FFD600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+

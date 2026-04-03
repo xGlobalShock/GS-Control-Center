@@ -18,18 +18,18 @@
 /* ── Main Panel — matches app card style ── */
 .purge-panel {
   position: relative;
-  width: 700px;
+  width: 540px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   background:
-    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0, 242, 255, 0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0, 204, 106, 0.04) 0%, transparent 70%),
     rgba(6, 14, 14, 0.97);
-  border: 1px solid rgba(0, 242, 255, 0.14);
+  border: 1px solid rgba(0, 204, 106, 0.14);
   border-radius: 14px;
   box-shadow:
-    0 0 0 1px rgba(0, 242, 255, 0.04) inset,
-    0 0 48px rgba(0, 242, 255, 0.06),
+    0 0 0 1px rgba(0, 204, 106, 0.04) inset,
+    0 0 48px rgba(0, 204, 106, 0.06),
     0 32px 72px rgba(0, 0, 0, 0.75);
   overflow: hidden;
   padding: 22px 22px 18px;
@@ -41,8 +41,8 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(0, 242, 255, 0.018) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 242, 255, 0.018) 1px, transparent 1px);
+    linear-gradient(rgba(0, 204, 106, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 204, 106, 0.018) 1px, transparent 1px);
   background-size: 36px 36px;
   pointer-events: none;
   z-index: 0;
@@ -59,21 +59,21 @@
   pointer-events: none;
 }
 
-.purge-corner-tl { top: 9px; left: 9px; border-top: 1.5px solid rgba(0, 242, 255, 0.45); border-left: 1.5px solid rgba(0, 242, 255, 0.45); }
-.purge-corner-tr { top: 9px; right: 9px; border-top: 1.5px solid rgba(0, 242, 255, 0.45); border-right: 1.5px solid rgba(0, 242, 255, 0.45); }
-.purge-corner-bl { bottom: 9px; left: 9px; border-bottom: 1.5px solid rgba(0, 242, 255, 0.45); border-left: 1.5px solid rgba(0, 242, 255, 0.45); }
-.purge-corner-br { bottom: 9px; right: 9px; border-bottom: 1.5px solid rgba(0, 242, 255, 0.45); border-right: 1.5px solid rgba(0, 242, 255, 0.45); }
+.purge-corner-tl { top: 9px; left: 9px; border-top: 1.5px solid rgba(0, 204, 106, 0.45); border-left: 1.5px solid rgba(0, 204, 106, 0.45); }
+.purge-corner-tr { top: 9px; right: 9px; border-top: 1.5px solid rgba(0, 204, 106, 0.45); border-right: 1.5px solid rgba(0, 204, 106, 0.45); }
+.purge-corner-bl { bottom: 9px; left: 9px; border-bottom: 1.5px solid rgba(0, 204, 106, 0.45); border-left: 1.5px solid rgba(0, 204, 106, 0.45); }
+.purge-corner-br { bottom: 9px; right: 9px; border-bottom: 1.5px solid rgba(0, 204, 106, 0.45); border-right: 1.5px solid rgba(0, 204, 106, 0.45); }
 
 /* ── Horizontal scan line (active only) ── */
 .purge-scanline {
   position: absolute;
   left: 0; right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.45), rgba(0, 212, 170, 0.3), transparent);
+  background: linear-gradient(90deg, transparent, rgba(0, 204, 106, 0.45), rgba(0, 212, 170, 0.3), transparent);
   z-index: 3;
   pointer-events: none;
   animation: scanSweep 3s ease-in-out infinite;
-  box-shadow: 0 0 10px rgba(0, 242, 255, 0.35);
+  box-shadow: 0 0 10px rgba(0, 204, 106, 0.35);
 }
 
 @keyframes scanSweep {
@@ -101,9 +101,9 @@
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  background: rgba(0, 242, 255, 0.07);
-  border: 1px solid rgba(0, 242, 255, 0.14);
-  color: #00F2FF;
+  background: rgba(0, 204, 106, 0.07);
+  border: 1px solid rgba(0, 204, 106, 0.14);
+  color: #00CC6A;
   flex-shrink: 0;
 }
 
@@ -112,8 +112,8 @@
   top: -3px; right: -3px;
   width: 8px; height: 8px;
   border-radius: 50%;
-  background: #00F2FF;
-  box-shadow: 0 0 8px rgba(0, 242, 255, 0.9);
+  background: #00CC6A;
+  box-shadow: 0 0 8px rgba(0, 204, 106, 0.9);
   animation: iconPing 1.4s ease-in-out infinite;
 }
 
@@ -135,7 +135,7 @@
 .purge-subtitle {
   font-size: 11px;
   letter-spacing: 0.03em;
-  color: rgba(0, 242, 255, 0.5);
+  color: rgba(0, 204, 106, 0.5);
   font-family: 'Inter', 'Segoe UI', sans-serif;
   margin-top: 2px;
 }
@@ -157,7 +157,7 @@
 /* ── Divider ── */
 .purge-header-divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.14), rgba(0, 212, 170, 0.08), transparent);
+  background: linear-gradient(90deg, transparent, rgba(0, 204, 106, 0.14), rgba(0, 212, 170, 0.08), transparent);
   margin-bottom: 12px;
 }
 
@@ -218,7 +218,7 @@
 .purge-ring-pct-sign {
   font-size: 11px;
   font-weight: 600;
-  color: rgba(0, 242, 255, 0.65);
+  color: rgba(0, 204, 106, 0.65);
   vertical-align: super;
 }
 
@@ -233,12 +233,12 @@
   border-radius: 5px;
 }
 
-.purge-phase-purging    { color: #00F2FF; background: rgba(0,242,255,0.08); border: 1px solid rgba(0,242,255,0.2); animation: phasePulse 1s ease-in-out infinite; }
-.purge-phase-standby    { color: rgba(0,242,255,0.4); background: rgba(0,242,255,0.04); border: 1px solid rgba(0,242,255,0.08); }
+.purge-phase-purging    { color: #00CC6A; background: rgba(0, 204, 106,0.08); border: 1px solid rgba(0, 204, 106,0.2); animation: phasePulse 1s ease-in-out infinite; }
+.purge-phase-standby    { color: rgba(0, 204, 106,0.4); background: rgba(0, 204, 106,0.04); border: 1px solid rgba(0, 204, 106,0.08); }
 .purge-phase-complete   { color: #00FF88; background: rgba(0,255,136,0.07); border: 1px solid rgba(0,255,136,0.18); }
 .purge-phase-failed     { color: #FF2D55; background: rgba(255,45,85,0.07); border: 1px solid rgba(255,45,85,0.2); }
-.purge-phase-processing { color: #00F2FF; background: rgba(0,242,255,0.08); border: 1px solid rgba(0,242,255,0.2); animation: phasePulse 1s ease-in-out infinite; }
-.purge-phase-idle       { color: rgba(0,242,255,0.4); background: rgba(0,242,255,0.04); border: 1px solid rgba(0,242,255,0.08); }
+.purge-phase-processing { color: #00CC6A; background: rgba(0, 204, 106,0.08); border: 1px solid rgba(0, 204, 106,0.2); animation: phasePulse 1s ease-in-out infinite; }
+.purge-phase-idle       { color: rgba(0, 204, 106,0.4); background: rgba(0, 204, 106,0.04); border: 1px solid rgba(0, 204, 106,0.08); }
 .purge-phase-error      { color: #FF2D55; background: rgba(255,45,85,0.07); border: 1px solid rgba(255,45,85,0.2); }
 
 @keyframes phasePulse {
@@ -260,8 +260,8 @@
 .purge-task-pulse {
   width: 6px; height: 6px;
   border-radius: 50%;
-  background: #00F2FF;
-  box-shadow: 0 0 7px rgba(0, 242, 255, 0.85);
+  background: #00CC6A;
+  box-shadow: 0 0 7px rgba(0, 204, 106, 0.85);
   flex-shrink: 0;
   animation: iconPing 0.9s ease-in-out infinite;
 }
@@ -269,7 +269,7 @@
 .purge-active-task-label {
   font-size: 11px; 
   font-weight: 600;
-  color: rgba(0, 242, 255, 0.85);
+  color: rgba(0, 204, 106, 0.85);
     font-family: Arial, Helvetica, sans-serif;
   white-space: nowrap; 
   overflow: hidden; 
@@ -306,29 +306,29 @@
   justify-content: center;
   gap: 3px;
   padding: 10px 10px;
-  background: linear-gradient(160deg, rgba(0, 242, 255, 0.04) 0%, rgba(6, 14, 14, 0.75) 100%);
-  border: 1px solid rgba(0, 242, 255, 0.08);
-  border-top: 2px solid rgba(0, 242, 255, 0.2);
+  background: linear-gradient(160deg, rgba(0, 204, 106, 0.04) 0%, rgba(6, 14, 14, 0.75) 100%);
+  border: 1px solid rgba(0, 204, 106, 0.08);
+  border-top: 2px solid rgba(0, 204, 106, 0.2);
   border-radius: 9px;
   transition: border-color 0.18s, box-shadow 0.18s;
   flex: 1;
   min-width: 0;
   overflow: hidden;
 }
-.purge-stat-box:hover { border-color: rgba(0, 242, 255, 0.16); box-shadow: 0 0 14px rgba(0, 242, 255, 0.05); }
+.purge-stat-box:hover { border-color: rgba(0, 204, 106, 0.16); box-shadow: 0 0 14px rgba(0, 204, 106, 0.05); }
 
 .purge-stat-num {
   font-size: 15px;
   font-weight: 800;
   font-family: 'Inter', 'Segoe UI', sans-serif;
-  color: #00F2FF;
+  color: #00CC6A;
   line-height: 1;
   white-space: nowrap;
 }
 
 .purge-stat-denom {
   font-size: 11px;
-  color: rgba(0, 242, 255, 0.4);
+  color: rgba(0, 204, 106, 0.4);
   font-weight: 600;
 }
 
@@ -347,7 +347,7 @@
 .purge-stat-freed .purge-stat-num { color: #00FF88; }
 .purge-stat-freed { border-color: rgba(0, 255, 136, 0.07); border-top-color: rgba(0, 255, 136, 0.3); }
 
-.purge-stat-time .purge-stat-num { color: #00D4AA; }
+.purge-stat-time .purge-stat-num { color: #00CC6A; }
 .purge-stat-time { border-color: rgba(0, 212, 170, 0.08); border-top-color: rgba(0, 212, 170, 0.3); }
 
 .purge-stat-fail-box .purge-stat-num { color: #FF2D55; }
@@ -358,7 +358,7 @@
 
 .purge-linebar-track {
   height: 3px;
-  background: rgba(0, 242, 255, 0.06);
+  background: rgba(0, 204, 106, 0.06);
   border-radius: 3px;
   overflow: hidden;
   position: relative;
@@ -366,10 +366,10 @@
 
 .purge-linebar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #00F2FF, #00D4AA);
+  background: linear-gradient(90deg, #00CC6A, #00CC6A);
   border-radius: 3px;
   transition: width 380ms ease;
-  box-shadow: 0 0 8px rgba(0, 242, 255, 0.45);
+  box-shadow: 0 0 8px rgba(0, 204, 106, 0.45);
 }
 
 .purge-linebar-shimmer {
@@ -401,7 +401,7 @@
 .purge-banner-success svg { color: #00FF88; }
 
 .purge-banner-info    { background: rgba(0,212,170,0.04); border: 1px solid rgba(0,212,170,0.12); color: rgba(160,240,220,0.95); }
-.purge-banner-info svg { color: #00D4AA; }
+.purge-banner-info svg { color: #00CC6A; }
 
 .purge-banner-body { flex: 1; }
 .purge-banner-title { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: inherit; }
@@ -416,7 +416,7 @@
   margin-bottom: 9px;
 }
 
-.purge-queue-icon { color: rgba(0, 242, 255, 0.45); flex-shrink: 0; }
+.purge-queue-icon { color: rgba(0, 204, 106, 0.45); flex-shrink: 0; }
 
 .purge-queue-label {
   font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
@@ -428,16 +428,16 @@
 
 .purge-queue-line {
   flex: 1; height: 1px;
-  background: linear-gradient(90deg, rgba(0, 242, 255, 0.1), transparent);
+  background: linear-gradient(90deg, rgba(0, 204, 106, 0.1), transparent);
 }
 
 .purge-queue-count {
   font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
-  color: rgba(0, 242, 255, 0.6);
+  color: rgba(0, 204, 106, 0.6);
   font-family: 'Inter', 'Segoe UI', sans-serif;
   white-space: nowrap;
-  background: rgba(0, 242, 255, 0.06);
-  border: 1px solid rgba(0, 242, 255, 0.12);
+  background: rgba(0, 204, 106, 0.06);
+  border: 1px solid rgba(0, 204, 106, 0.12);
   padding: 2px 8px; border-radius: 6px;
 }
 
@@ -446,33 +446,33 @@
    ══════════════════════════════════ */
 .purge-task-list {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 4px;
   margin-bottom: 14px;
   padding: 5px;
   background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(0, 242, 255, 0.05);
+  border: 1px solid rgba(0, 204, 106, 0.05);
   border-radius: 10px;
 }
 
 /* Task row */
 .purge-task {
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 10px; border-radius: 7px;
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 8px; border-radius: 6px;
   background: rgba(6, 14, 14, 0.6);
-  border: 1px solid rgba(0, 242, 255, 0.05);
-  border-left: 2.5px solid rgba(0, 242, 255, 0.1);
+  border: 1px solid rgba(0, 204, 106, 0.05);
+  border-left: 2.5px solid rgba(0, 204, 106, 0.1);
   transition: background 0.14s, border-color 0.14s, transform 0.12s;
 }
-.purge-task:hover { transform: translateX(2px); background: rgba(0, 242, 255, 0.04); border-color: rgba(0,242,255,0.1); border-left-color: rgba(0,242,255,0.4); }
+.purge-task:hover { transform: translateX(2px); background: rgba(0, 204, 106, 0.04); border-color: rgba(0, 204, 106,0.1); border-left-color: rgba(0, 204, 106,0.4); }
 
-.purge-task-active { background: rgba(0, 242, 255, 0.05); border-color: rgba(0,242,255,0.16); border-left-color: #00F2FF; animation: taskActivePulse 1.1s ease-in-out infinite; }
+.purge-task-active { background: rgba(0, 204, 106, 0.05); border-color: rgba(0, 204, 106,0.16); border-left-color: #00CC6A; animation: taskActivePulse 1.1s ease-in-out infinite; }
 .purge-task-ok     { border-color: rgba(0, 255, 136, 0.09); border-left-color: rgba(0, 255, 136, 0.65); }
 .purge-task-fail   { border-color: rgba(255, 45, 85, 0.09); border-left-color: rgba(255, 45, 85, 0.65); }
 
 @keyframes taskActivePulse {
   0%, 100% { box-shadow: none; }
-  50%       { box-shadow: 0 0 10px rgba(0,242,255,0.1); }
+  50%       { box-shadow: 0 0 10px rgba(0, 204, 106,0.1); }
 }
 
 .purge-task-index {
@@ -485,7 +485,7 @@
   width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
 }
 .purge-dot-idle   { background: rgba(255, 255, 255, 0.12); }
-.purge-dot-active { background: #00F2FF; box-shadow: 0 0 7px rgba(0,242,255,0.8); animation: iconPing 0.85s ease-in-out infinite; }
+.purge-dot-active { background: #00CC6A; box-shadow: 0 0 7px rgba(0, 204, 106,0.8); animation: iconPing 0.85s ease-in-out infinite; }
 .purge-dot-ok     { background: #00FF88; box-shadow: 0 0 5px rgba(0,255,136,0.6); }
 .purge-dot-fail   { background: #FF2D55; box-shadow: 0 0 5px rgba(255,45,85,0.6); }
 
@@ -523,7 +523,7 @@
 }
 
 .purge-badge-idle   { color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); }
-.purge-badge-active { color: #00F2FF; background: rgba(0,242,255,0.08); border: 1px solid rgba(0,242,255,0.22); }
+.purge-badge-active { color: #00CC6A; background: rgba(0, 204, 106,0.08); border: 1px solid rgba(0, 204, 106,0.22); }
 .purge-badge-ok     { color: #00FF88; background: rgba(0,255,136,0.07); border: 1px solid rgba(0,255,136,0.16); }
 .purge-badge-fail   { color: #FF2D55; background: rgba(255,45,85,0.07); border: 1px solid rgba(255,45,85,0.16); }
 
@@ -535,7 +535,7 @@
    ══════════════════════════════════ */
 .purge-actions-divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.1), transparent);
+  background: linear-gradient(90deg, transparent, rgba(0, 204, 106, 0.1), transparent);
   margin-bottom: 14px;
 }
 
@@ -547,9 +547,9 @@
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   padding: 12px 20px;
   border-radius: 10px;
-  background: linear-gradient(135deg, rgba(0, 242, 255, 0.1) 0%, rgba(0, 212, 170, 0.06) 100%);
-  border: 1px solid rgba(0, 242, 255, 0.3);
-  color: #00F2FF;
+  background: linear-gradient(135deg, rgba(0, 204, 106, 0.1) 0%, rgba(0, 212, 170, 0.06) 100%);
+  border: 1px solid rgba(0, 204, 106, 0.3);
+  color: #00CC6A;
   font-size: 15px; 
   font-weight: 700;
   font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
@@ -557,9 +557,9 @@
   transition: background 0.16s, border-color 0.16s, box-shadow 0.16s, transform 0.1s;
 }
 .purge-btn-start:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(0, 242, 255, 0.16) 0%, rgba(0, 212, 170, 0.1) 100%);
-  border-color: rgba(0, 242, 255, 0.5);
-  box-shadow: 0 0 28px rgba(0,242,255,0.15), 0 4px 12px rgba(0,0,0,0.3);
+  background: linear-gradient(135deg, rgba(0, 204, 106, 0.16) 0%, rgba(0, 212, 170, 0.1) 100%);
+  border-color: rgba(0, 204, 106, 0.5);
+  box-shadow: 0 0 28px rgba(0, 204, 106,0.15), 0 4px 12px rgba(0,0,0,0.3);
   transform: translateY(-1px);
 }
 .purge-btn-start:active:not(:disabled) { transform: translateY(0); }
@@ -571,8 +571,8 @@
 }
 
 @keyframes btnRunPulse {
-  0%, 100% { box-shadow: 0 0 12px rgba(0,242,255,0.06); }
-  50%       { box-shadow: 0 0 24px rgba(0,242,255,0.16); }
+  0%, 100% { box-shadow: 0 0 12px rgba(0, 204, 106,0.06); }
+  50%       { box-shadow: 0 0 24px rgba(0, 204, 106,0.16); }
 }
 
 /* Secondary — Dismiss */
@@ -604,3 +604,4 @@
   .purge-stats-panel { width: 100%; flex-direction: row; flex-wrap: wrap; }
   .purge-stat-box { flex: 1; min-width: 80px; }
 }
+

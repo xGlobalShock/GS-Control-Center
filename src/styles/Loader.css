@@ -53,8 +53,8 @@
 /* ── Card ── */
 .loader-skel-card {
   position: relative;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(6, 8, 16, 0.55);
+  border: 1px solid rgba(0, 204, 106, 0.07);
   border-radius: 14px;
   padding: 18px 16px;
   min-height: 140px;

@@ -5,7 +5,7 @@
 
 /* ── Page ── */
 .aur {
-  --a-accent: #00f2ff;
+  --a-accent: #00CC6A;
   position: relative;
   width: 100%;
   height: 100%;
@@ -170,8 +170,8 @@
   padding: 10px 12px;
   position: relative;
   background: linear-gradient(135deg,
-      rgba(0, 242, 255, 0.04) 0%,
-      rgba(0, 242, 255, 0.01) 100%);
+      rgba(0, 204, 106, 0.04) 0%,
+      rgba(0, 204, 106, 0.01) 100%);
   border: 1px solid color-mix(in srgb, var(--a-accent) 12%, transparent);
   border-radius: 18px;
   backdrop-filter: blur(8px);

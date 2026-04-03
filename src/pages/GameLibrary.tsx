@@ -560,6 +560,7 @@ const GameLibrary: React.FC<GameLibraryProps> = ({ hardwareInfo, isActive }) => 
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [showCommandsModal, setShowCommandsModal] = useState(false);
+  const [cmdFilter, setCmdFilter] = useState('');
   const [showSpecsModal, setShowSpecsModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'launch' | 'profile'>('profile');
 
@@ -652,10 +653,10 @@ const GameLibrary: React.FC<GameLibraryProps> = ({ hardwareInfo, isActive }) => 
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'profile' && selectedGame && SUPPORTED_PROFILE_GAMES.includes(selectedGame.id)) {
+    if (selectedGame && SUPPORTED_PROFILE_GAMES.includes(selectedGame.id)) {
       loadProfile(selectedGame.id);
     }
-  }, [activeTab, selectedGame, loadProfile]);
+  }, [selectedGame, loadProfile]);
 
   const handleProfileChange = useCallback((key: string, value: string) => {
     setProfileModified(prev => ({ ...prev, [key]: value }));
@@ -713,31 +714,6 @@ const GameLibrary: React.FC<GameLibraryProps> = ({ hardwareInfo, isActive }) => 
     setProfileLockBusy(false);
   }, [selectedGame]);
 
-  const tabsNodeRef = useRef<HTMLDivElement | null>(null);
-  const [sliderStyle, setSliderStyle] = useState({ left: 0, width: 0 });
-
-  const measureSlider = useCallback((container?: HTMLDivElement | null) => {
-    const node = container || tabsNodeRef.current;
-    if (!node) return;
-    const activeBtn = node.querySelector('.gl-tab--active') as HTMLElement;
-    if (activeBtn) {
-      setSliderStyle({ left: activeBtn.offsetLeft, width: activeBtn.offsetWidth });
-    }
-  }, []);
-
-  // Callback ref — fires exactly when the tabs div mounts in the DOM
-  const tabsRef = useCallback((node: HTMLDivElement | null) => {
-    tabsNodeRef.current = node;
-    if (node) {
-      measureSlider(node);
-    }
-  }, [measureSlider]);
-
-  // Re-measure when user switches tabs
-  useEffect(() => {
-    measureSlider();
-  }, [activeTab, measureSlider]);
-
   const categories = useMemo(() => ['All', ...Array.from(new Set(games.map(game => game.category)))], []);
 
   const filteredGames = useMemo(() => {
@@ -751,7 +727,6 @@ const GameLibrary: React.FC<GameLibraryProps> = ({ hardwareInfo, isActive }) => 
 
   const handleGameClick = useCallback((game: Game) => {
     setSelectedGame(game);
-    setActiveTab('profile');
   }, []);
 
   const handleCopySettings = useCallback((text: string) => {
@@ -940,6 +915,42 @@ const GameLibrary: React.FC<GameLibraryProps> = ({ hardwareInfo, isActive }) => 
 
                 {/* Right: benchmark */}
                 <div className="gl-dash__right">
+                  <div className="gl-dash__right-btns">
+                    {selectedGame.id === 'apex-legends' && (
+                      <button className="gl-test-specs-btn gl-test-specs-btn--commands" onClick={() => setShowCommandsModal(true)}>
+                        <div className="gl-btn__wrap">
+                          <div className="gl-btn__reflex"></div>
+                          <div className="gl-btn__content">
+                            <span className="gl-btn__text">
+                              {'COMMANDS'.split('').map((ch, i) => (
+                                <span key={i} style={{ '--i': i + 1 } as React.CSSProperties} data-label={ch}>
+                                  {ch}
+                                </span>
+                              ))}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="gl-btn__gears-clip">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 635 523">
+                            <defs>
+                              <filter id="gearFilterCmd">
+                                <feGaussianBlur result="blur" stdDeviation="5" in="SourceGraphic" />
+                                <feColorMatrix result="goo" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -8" type="matrix" in="blur" />
+                                <feBlend in2="goo" in="SourceGraphic" />
+                              </filter>
+                            </defs>
+                            <g filter="url(#gearFilterCmd)">
+                              <path className="gl-gear-lg gl-gear-shadow" d="M635 192V171L606 167C605 157 603 148 600 139L625 125L617 106L589 113C584 105 579 97 573 89L592 66L577 51L554 68C547 62 539 57 530 52L537 24L518 16L504 41C495 38 486 36 476 35L472 8H451L447 37C437 38 428 40 419 43L405 18L386 26L393 54C385 59 377 64 369 70L346 53L331 66L348 89C342 96 337 104 332 113L304 106L296 125L321 139C318 148 316 157 315 167L286 171V192L315 196C316 206 318 215 321 224L296 238L304 257L332 250C337 258 342 266 348 274L331 297L346 312L369 295C376 301 384 306 393 311L386 339L405 347L419 322C428 325 437 327 447 328L451 357H472L476 328C486 327 495 325 504 322L518 347L537 339L530 311C538 306 546 301 554 295L577 312L592 297L575 274C581 267 586 259 591 250L619 257L627 238L602 224C605 215 607 206 608 196L635 192ZM461 292C400 292 351 243 351 182C351 121 401 72 461 72C521 72 571 121 571 182C571 243 522 292 461 292Z" />
+                              <path className="gl-gear-md gl-gear-shadow" d="M392 398V377L364 373C363 363 360 354 357 345L380 328L369 310L342 321C336 313 329 307 322 301L333 275L315 264L298 287C289 283 280 281 270 280L266 252H245L241 280C231 281 222 284 213 287L196 264L178 275L189 301C181 307 175 314 169 321L143 310L132 328L155 345C151 354 149 363 148 373L120 377V398L148 402C149 412 152 421 155 430L132 447L143 465L169 454C175 462 182 468 189 474L178 500L196 511L213 488C222 492 231 494 241 495L245 523H266L270 495C280 494 289 491 298 488L315 511L333 500L322 474C330 468 336 461 342 454L368 465L379 447L356 430C360 421 362 412 363 402L392 398ZM255 461C214 461 181 428 181 387C181 346 214 313 255 313C296 313 329 346 329 387C328 428 295 461 255 461Z" />
+                              <path className="gl-gear-sm gl-gear-shadow" d="M200 244V223L171 219C169 209 165 201 160 193L178 170L163 155L140 173C132 168 123 164 114 162L110 133H90L86 162C76 164 68 168 60 173L37 155L22 170L40 193C35 201 31 210 29 219L0 223V244L29 248C31 258 35 266 40 274L22 297L37 312L60 294C68 299 77 303 86 305L90 334H111L115 305C125 303 133 299 141 294L164 312L179 297L161 274C166 266 170 257 172 248L200 244ZM100 270C80 270 63 253 63 233C63 213 80 196 100 196C120 196 137 213 137 233C137 253 121 270 100 270Z" />
+                              <path className="gl-gear-lg" d="M635 184V163L606 159C605 149 603 140 600 131L625 117L617 98L589 105C584 97 579 89 573 81L592 58L577 43L554 60C547 54 539 49 530 44L537 16L518 8L504 33C495 30 486 28 476 27L472 0H451L447 29C437 30 428 32 419 35L405 9L386 17L393 45C385 50 377 55 369 61L346 44L331 58L348 81C342 88 337 96 332 105L304 98L296 117L321 131C318 140 316 149 315 159L286 163V184L315 188C316 198 318 207 321 216L296 230L304 249L332 242C337 250 342 258 348 266L331 289L346 304L369 287C376 293 384 298 393 303L386 331L405 339L419 314C428 317 437 319 447 320L451 349H472L476 320C486 319 495 317 504 314L518 339L537 331L530 303C538 298 546 293 554 287L577 304L592 289L575 266C581 259 586 251 591 242L619 249L627 230L602 216C605 207 607 198 608 188L635 184ZM461 284C400 284 351 235 351 174C351 113 401 64 461 64C521 64 571 113 571 174C571 235 522 284 461 284Z" />
+                              <path className="gl-gear-md" d="M392 390V369L364 365C363 355 360 346 357 337L380 320L369 302L342 313C336 305 329 299 322 293L333 267L315 256L298 279C289 275 280 273 270 272L266 244H245L241 272C231 273 222 276 213 279L196 256L178 267L189 293C181 299 175 306 169 313L143 302L132 320L155 337C151 346 149 355 148 365L120 369V390L148 394C149 404 152 413 155 422L132 439L143 457L169 446C175 454 182 460 189 466L178 492L196 503L213 480C222 484 231 486 241 487L245 515H266L270 487C280 486 289 483 298 480L315 503L333 492L322 466C330 460 336 453 342 446L368 457L379 439L356 422C360 413 362 404 363 394L392 390ZM255 453C214 453 181 420 181 379C181 338 214 305 255 305C296 305 329 338 329 379C328 420 295 453 255 453Z" />
+                              <path className="gl-gear-sm" d="M200 236V215L171 211C169 201 165 193 160 185L178 162L163 147L140 165C132 160 123 156 114 154L110 125H90L86 154C76 156 68 160 60 165L37 147L22 162L40 185C35 193 31 202 29 211L0 215V236L29 240C31 250 35 258 40 266L22 289L37 304L60 286C68 291 77 295 86 297L90 326H111L115 297C125 295 133 291 141 286L164 304L179 289L161 266C166 258 170 249 172 240L200 236ZM100 262C80 262 63 245 63 225C63 205 80 188 100 188C120 188 137 205 137 225C137 245 121 262 100 262Z" />
+                            </g>
+                          </svg>
+                        </div>
+                      </button>
+                    )}
                   <button className="gl-test-specs-btn" onClick={() => setShowSpecsModal(true)}>
                     <div className="gl-btn__wrap">
                       <div className="gl-btn__reflex"></div>
@@ -973,69 +984,16 @@ const GameLibrary: React.FC<GameLibraryProps> = ({ hardwareInfo, isActive }) => 
                       </svg>
                     </div>
                   </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Tab strip — separate zone below the banner */}
-              <div className="gl-dash__tab-strip">
-                <div className="gl-tabs" ref={tabsRef}>
-                  <div className="gl-tab-slider" style={{ left: sliderStyle.left, width: sliderStyle.width }} />
-                  <button className={`gl-tab ${activeTab === 'profile' ? 'gl-tab--active' : ''}`} onClick={() => setActiveTab('profile')}>
-                    <Settings size={12} />
-                    <span className="gl-tab__text">Game Profile</span>
-                  </button>
-                  <button className={`gl-tab ${activeTab === 'launch' ? 'gl-tab--active' : ''}`} onClick={() => setActiveTab('launch')}>
-                    <Cpu size={12} />
-                    <span className="gl-tab__text">Launch Options</span>
-                  </button>
-                </div>
-              </div>
             </div>
 
             {/* Tab Content */}
             <div className="gl-tab-content">
               <AnimatePresence mode="wait">
-                {/* Launch Tab */}
-                {activeTab === 'launch' && (
-                  <motion.div key="launch" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }}>
-                    <div className="gl-launch-combined">
-                      <div className="gl-launch-combined__header">
-                        <span>Combined Launch String</span>
-                        <div className="gl-launch-combined__actions">
-                          {selectedGame.id === 'apex-legends' && (
-                            <button className="gl-cmd-btn gl-cmd-btn--info" onClick={() => setShowCommandsModal(true)}>
-                              <Info size={14} /> All Commands
-                            </button>
-                          )}
-                          <button className="gl-cmd-btn gl-cmd-btn--copy" onClick={() => handleCopySettings(selectedGame.recommended.launch.options.map(o => o.flag).join(' '))}>
-                            <Copy size={14} /> Copy All
-                          </button>
-                        </div>
-                      </div>
-                      <code className="gl-launch-combined__code">
-                        {selectedGame.recommended.launch.options.map(o => o.flag).join(' ')}
-                      </code>
-                    </div>
-
-                    <div className="gl-launch-list">
-                      {selectedGame.recommended.launch.options.map((opt, i) => (
-                        <div key={`${opt.flag}-${i}`} className="gl-launch-item">
-                          <div className="gl-launch-item__head">
-                            <code className="gl-launch-item__flag">{opt.flag}</code>
-                            <span className={`gl-impact gl-impact--${opt.impact.toLowerCase()}`}>{opt.impact}</span>
-                            <button className="gl-launch-item__copy" onClick={() => handleCopySettings(opt.flag)}>
-                              <Copy size={13} />
-                            </button>
-                          </div>
-                          <p className="gl-launch-item__desc">{opt.description}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Game Profile Tab */}
-                {activeTab === 'profile' && selectedGame && (() => {
+                {selectedGame && (() => {
                   const knownKeys = new Set((GAME_PROFILE_SETTINGS[selectedGame.id] || []).map(d => d.key));
                   const labelMap = selectedGame.id === 'apex-legends' ? APEX_SETTING_LABELS : {};
                   return (
@@ -1608,57 +1566,100 @@ const GameLibrary: React.FC<GameLibraryProps> = ({ hardwareInfo, isActive }) => 
 
       {/* Commands Modal */}
       <AnimatePresence>
-        {showCommandsModal && selectedGame?.id === 'apex-legends' && (
-          <motion.div
-            className="gl-modal-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            onClick={() => setShowCommandsModal(false)}
-          >
+        {showCommandsModal && selectedGame?.id === 'apex-legends' && (() => {
+          const filtered = cmdFilter.trim()
+            ? apexAllCommands.filter(o =>
+                o.flag.toLowerCase().includes(cmdFilter.toLowerCase()) ||
+                o.description.toLowerCase().includes(cmdFilter.toLowerCase())
+              )
+            : apexAllCommands;
+          const hiCount  = apexAllCommands.filter(o => o.impact.toLowerCase() === 'high').length;
+          const medCount = apexAllCommands.filter(o => o.impact.toLowerCase() === 'medium').length;
+          const loCount  = apexAllCommands.filter(o => o.impact.toLowerCase() === 'low').length;
+          return (
             <motion.div
-              className="gl-modal"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 16 }}
-              transition={{ duration: 0.15 }}
-              onClick={(e) => e.stopPropagation()}
+              className="gcm-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              onClick={() => { setShowCommandsModal(false); setCmdFilter(''); }}
             >
-              <div className="gl-modal__header">
-                <div className="gl-modal__title-wrap">
-                  <Info size={20} />
-                  <h3>Apex Legends — All Commands</h3>
+              <motion.div
+                className="gcm-panel"
+                initial={{ opacity: 0, scale: 0.97, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.97, y: 20 }}
+                transition={{ duration: 0.18 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="gcm-header">
+                  <div className="gcm-header-left">
+                    <Zap size={14} className="gcm-header-icon" />
+                    <span className="gcm-header-eyebrow">LAUNCH OPTIONS</span>
+                    <span className="gcm-header-sep">–</span>
+                    <span className="gcm-header-game">Apex Legends</span>
+                  </div>
+                  <button className="gcm-close" onClick={() => { setShowCommandsModal(false); setCmdFilter(''); }}>
+                    <X size={16} />
+                  </button>
                 </div>
-                <button className="gl-modal__close" onClick={() => setShowCommandsModal(false)}>
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="gl-modal__body">
-                <p className="gl-modal__desc">All verified launch options. Copy individual flags or grab the full string.</p>
-                <div className="gl-modal__list">
-                  {apexAllCommands.map((opt, i) => (
-                    <div key={`${opt.flag}-${i}`} className="gl-modal__item">
-                      <div className="gl-modal__item-head">
-                        <code className="gl-modal__item-flag">{opt.flag}</code>
-                        <span className={`gl-impact gl-impact--${opt.impact.toLowerCase()}`}>{opt.impact}</span>
-                        <button className="gl-modal__item-copy" onClick={() => handleCopySettings(opt.flag)}>
-                          <Copy size={13} />
+
+                {/* Search */}
+                <div className="gcm-search-wrap">
+                  <Search size={13} className="gcm-search-icon" />
+                  <input
+                    className="gcm-search"
+                    placeholder="Filter commands…"
+                    value={cmdFilter}
+                    onChange={e => setCmdFilter(e.target.value)}
+                  />
+                  {cmdFilter && (
+                    <button className="gcm-search-clear" onClick={() => setCmdFilter('')}><X size={11} /></button>
+                  )}
+                </div>
+
+                {/* Card grid */}
+                <div className="gcm-grid">
+                  {filtered.length === 0 ? (
+                    <div className="gcm-empty">No commands match "{cmdFilter}"</div>
+                  ) : filtered.map((opt, i) => (
+                    <div key={`${opt.flag}-${i}`} className={`gcm-card gcm-card--${opt.impact.toLowerCase()}`}>
+                      <div className="gcm-card-bar" />
+                      <div className="gcm-card-head">
+                        <code className="gcm-card-flag">{opt.flag}</code>
+                        <button className="gcm-card-copy" onClick={() => handleCopySettings(opt.flag)} title="Copy">
+                          <Copy size={11} />
                         </button>
                       </div>
-                      <p className="gl-modal__item-desc">{opt.description}</p>
+                      <p className="gcm-card-desc">{opt.description}</p>
+                      <div className="gcm-card-foot">
+                        <span className={`gcm-badge gcm-badge--${opt.impact.toLowerCase()}`}>{opt.impact}</span>
+                      </div>
                     </div>
                   ))}
                 </div>
-              </div>
-              <div className="gl-modal__footer">
-                <button className="gl-cmd-btn gl-cmd-btn--copy" onClick={() => { handleCopySettings(selectedGame.recommended.launch.options.map(o => o.flag).join(' ')); setShowCommandsModal(false); }}>
-                  <Copy size={15} /> Copy All Commands
-                </button>
-              </div>
+
+                {/* Footer stats + copy */}
+                <div className="gcm-footer">
+                  <div className="gcm-stats">
+                    <span className="gcm-stat">{apexAllCommands.length} <em>total</em></span>
+                    <span className="gcm-stat gcm-stat--hi">{hiCount} <em>high</em></span>
+                    <span className="gcm-stat gcm-stat--med">{medCount} <em>medium</em></span>
+                    <span className="gcm-stat gcm-stat--lo">{loCount} <em>low</em></span>
+                  </div>
+                  <button
+                    className="gcm-copy-all"
+                    onClick={() => { handleCopySettings(apexAllCommands.map(o => o.flag).join(' ')); setShowCommandsModal(false); setCmdFilter(''); }}
+                  >
+                    <Copy size={14} /> Copy All
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
+          );
+        })()}
       </AnimatePresence>
     </div>
   );

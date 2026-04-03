@@ -15,6 +15,9 @@ export interface RealtimeHWPayload {
   gpuUsage: number;
   gpuVramUsed: number;        // MiB
   gpuVramTotal: number;       // MiB
+  gpuClock: number;           // MHz
+  gpuFan: number;             // %
+  gpuFanRpm: number;          // RPM
 
   // Memory
   ram: number;                // usage %
@@ -69,6 +72,9 @@ export interface RealtimeExtendedStats {
   gpuTemp: number;
   gpuVramUsed: number;
   gpuVramTotal: number;
+  gpuClock?: number;
+  gpuFan?: number;
+  gpuFanRpm?: number;
   networkUp: number;
   networkDown: number;
   ssid?: string;
@@ -154,6 +160,9 @@ export function useRealtimeHardware(options: UseRealtimeHardwareOptions = {}) {
         gpuTemp: p.gpuTemp,
         gpuVramUsed: p.gpuVramUsed,
         gpuVramTotal: p.gpuVramTotal,
+        gpuClock: p.gpuClock,
+        gpuFan: p.gpuFan,
+        gpuFanRpm: p.gpuFanRpm,
         networkUp: p.networkUp,
         networkDown: p.networkDown,
         ssid: p.ssid,

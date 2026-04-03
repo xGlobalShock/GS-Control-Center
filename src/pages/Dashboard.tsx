@@ -11,6 +11,12 @@ interface DashboardProps {
     ram: number;
     disk: number;
     temperature: number;
+    tempSource?: string;
+    lhmReady?: boolean;
+    gpuTemp?: number;
+    gpuUsage?: number;
+    gpuVramUsed?: number;
+    gpuVramTotal?: number;
   };
   hardwareInfo?: HardwareInfo;
   extendedStats?: ExtendedStats;
@@ -51,5 +57,4 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ systemStats, hardwareI
 });
 
 Dashboard.displayName = 'Dashboard';
-
 export default Dashboard;

@@ -71,7 +71,7 @@ const Cleaner: React.FC = () => {
       icon: <Monitor size={18} />,
       count: utilityTabs.windows.length,
       description: 'Clear temp files, DNS cache, logs, crash dumps and system junk.',
-      accent: '#00F2FF',
+      accent: '#00CC6A',
     },
     {
       id: 'games' as const,
@@ -79,7 +79,7 @@ const Cleaner: React.FC = () => {
       icon: <Gamepad2 size={18} />,
       count: utilityTabs.games.length,
       description: 'Remove game shader caches for smoother performance.',
-      accent: '#00D4AA',
+      accent: '#00CC6A',
     },
     {
       id: 'nvidia' as const,
