@@ -120,6 +120,7 @@ function createWindow() {
         enableRemoteModule: false,
         webviewTag: true,
         devTools: false,
+        backgroundThrottling: false,
       },
     });
 

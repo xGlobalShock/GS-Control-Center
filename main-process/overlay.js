@@ -63,6 +63,7 @@ function createOverlayWindow() {
         ? path.join(rootDir, 'public', 'overlay-preload.js')
         : path.join(rootDir, 'build', 'overlay-preload.js'),
       devTools: false,
+      backgroundThrottling: false,
     },
   });
 
