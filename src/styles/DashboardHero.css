@@ -28,9 +28,9 @@
   overflow: hidden;
   cursor: default;
 
-  /* GPU layering */
+  /* GPU layering — only compositor-safe properties */
   transform: translateZ(0);
-  will-change: transform, border-color, box-shadow;
+  will-change: transform;      /* border-color / box-shadow are NOT compositable */
   contain: layout style paint;
 
   box-shadow:
@@ -39,10 +39,8 @@
     inset 0 1px 0 rgba(0, 242, 255, 0.04),
     inset 0 0 40px rgba(0, 242, 255, 0.008);
 
-  transition:
-    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 0.35s ease,
-    box-shadow 0.35s ease;
+  /* Only transform is GPU-compositable — no paint per hover frame */
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .dh-card::before {
@@ -59,14 +57,35 @@
   z-index: 0;
 }
 
-.dh-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(0, 242, 255, 0.16);
+/*
+  GPU-composited hover glow overlay.
+  Pre-paints the glow on its own compositor layer (will-change: opacity).
+  On hover, the GPU compositor simply fades in this pre-painted layer —
+  zero CPU paint per frame, zero layout recalculation.
+*/
+.dh-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   box-shadow:
+    0 0 0 1px rgba(0, 242, 255, 0.22),
     0 8px 32px rgba(0, 0, 0, 0.55),
-    0 0 0 1px rgba(0, 242, 255, 0.05),
-    0 0 24px rgba(0, 242, 255, 0.03),
-    inset 0 0 40px rgba(0, 242, 255, 0.012);
+    0 0 24px rgba(0, 242, 255, 0.05);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 0;
+  will-change: opacity;  /* promotes ::after to own layer for zero-paint fade */
+}
+
+.dh-card:hover {
+  /* Only transform — pure GPU compositor operation, zero paint */
+  transform: translateY(-2px) translateZ(0);
+}
+
+.dh-card:hover::after {
+  opacity: 1;
 }
 
 /* ── Top glowing accent bar ── */
@@ -84,27 +103,24 @@
 /* ══════════════════════════════════════════
    Corner Bracket Accents
 ══════════════════════════════════════════ */
+/*
+  BEFORE: animated width/height/filter → layout + paint every frame (CPU-bound)
+  AFTER:  animate transform + opacity only → pure GPU compositor, zero paint/layout
+*/
 @keyframes dhCornerBreathe {
-  0%, 100% {
-    width: 10px;
-    height: 10px;
-    filter: drop-shadow(0 0 1px rgba(0, 242, 255, 0.2));
-  }
-  50% {
-    width: 14px;
-    height: 14px;
-    filter: drop-shadow(0 0 7px rgba(0, 242, 255, 0.85));
-  }
+  0%, 100% { transform: scale(1);   opacity: 0.45; }
+  50%       { transform: scale(1.5); opacity: 1; }
 }
 
 .dh-corner {
   position: absolute;
-  width: 10px;
+  width: 10px;     /* fixed — no more layout changes from animation */
   height: 10px;
   border-style: solid;
   border-width: 0;
   pointer-events: none;
   z-index: 2;
+  will-change: transform, opacity;  /* promotes to own layer for animation */
   animation: dhCornerBreathe 3.2s ease-in-out infinite;
 }
 .dh-tl { top: 7px; left: 7px; border-top-width: 1.5px; border-left-width: 1.5px; border-top-left-radius: 3px; animation-delay: 0s; }
@@ -390,13 +406,23 @@
   flex-shrink: 0;
 }
 
+/*
+  CSS-only pulse — eliminated React setInterval + setState re-render every 1s.
+  opacity animation on a promoted layer = zero JS overhead, zero re-renders.
+*/
+@keyframes dhLivePulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.32; }
+}
+
 .dh-live-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: #00F2FF;
   box-shadow: 0 0 6px #00F2FF;
-  transition: opacity 0.4s ease;
+  will-change: opacity;
+  animation: dhLivePulse 2s ease-in-out infinite;
 }
 
 /* ══════════════════════════════════════════
@@ -477,8 +503,13 @@
 .dh-bar-head   { display: flex; justify-content: space-between; align-items: center; }
 .dh-bar-label  { font-size: 10px; color: rgb(255, 255, 255); font-weight: 500; }
 .dh-bar-display{ font-size: 10.5px; font-variant-numeric: tabular-nums; font-weight: 600; }
-.dh-bar-track  { height: 3px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; }
-.dh-bar-fill   { height: 100%; border-radius: 2px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+/*
+  BEFORE: transition: width → layout recalc every frame (CPU-bound, NOT compositable)
+  AFTER:  transform: scaleX via CSS custom property --bar-scale → pure GPU compositor
+  Set --bar-scale: 0.0–1.0 from JSX inline style; transform-origin: left keeps it left-aligned
+*/
+.dh-bar-track  { position: relative; height: 3px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; }
+.dh-bar-fill   { position: absolute; inset: 0; border-radius: 2px; transform-origin: left center; transform: scaleX(var(--bar-scale, 0)); transition: transform 0.8s cubic-bezier(0.4,0,0.2,1); will-change: transform; }
 
 /* ── Core strip ── */
 .dh-cores-wrap { display: flex; flex-direction: column; gap: 4px; }
@@ -487,14 +518,16 @@
 .dh-cores-label{ font-size: 10px; color: rgb(255, 255, 255); flex: 1; font-weight: 500; }
 .dh-cores-avg  { font-size: 10px; font-variant-numeric: tabular-nums; font-weight: 700; }
 .dh-cores-bar  { display: flex; gap: 2px; height: 14px; }
-.dh-core-seg   { flex: 1; border-radius: 2px; min-width: 0; transition: background 0.4s ease, opacity 0.4s ease; }
+/* background transition triggers CPU paint — opacity is GPU-compositable */
+.dh-core-seg   { flex: 1; border-radius: 2px; min-width: 0; transition: opacity 0.4s ease; }
 
 /* ── Volume strip ── */
 .dh-vols       { display: flex; flex-direction: column; gap: 4px; }
 .dh-vol-row    { display: flex; align-items: center; gap: 5px; }
 .dh-vol-id     { font-size: 10.5px; font-weight: 800; width: 18px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
 .dh-vol-cells  { display: flex; gap: 2px; flex: 1; }
-.dh-vol-cell   { flex: 1; height: 8px; border-radius: 1.5px; background: rgba(255,255,255,0.05); min-width: 0; transition: background 0.4s ease; }
+/* background transition triggers CPU paint per update — removed */
+.dh-vol-cell   { flex: 1; height: 8px; border-radius: 1.5px; background: rgba(255,255,255,0.05); min-width: 0; }
 .dh-vol-pct    { font-size: 9.5px; font-weight: 700; width: 28px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
 .dh-vol-free   { font-size: 9px; color: rgba(140,170,210,0.4); width: 32px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
 
@@ -559,8 +592,9 @@
 .dh-net-speed-num   { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -0.01em; }
 .dh-net-speed-num.dn{ color: #FFFFFF; text-shadow: 0 0 12px rgba(255,255,255,0.06); }
 .dh-net-speed-num.up{ color: #FFFFFF; text-shadow: 0 0 12px rgba(255,255,255,0.06); }
-.dh-net-speed-track { height: 2px; background: rgba(255,255,255,0.06); border-radius: 1px; overflow: hidden; }
-.dh-net-speed-fill  { height: 100%; border-radius: 1px; transition: width 0.9s cubic-bezier(0.4,0,0.2,1); }
+/* Same scaleX GPU pattern as dh-bar-fill — no layout recalc per frame */
+.dh-net-speed-track { position: relative; height: 2px; background: rgba(255,255,255,0.06); border-radius: 1px; overflow: hidden; }
+.dh-net-speed-fill  { position: absolute; inset: 0; border-radius: 1px; transform-origin: left center; transform: scaleX(var(--bar-scale, 0)); transition: transform 0.9s cubic-bezier(0.4,0,0.2,1); will-change: transform; }
 .dh-net-speed-fill.dn { background: linear-gradient(90deg, transparent, #00F2FF); box-shadow: 0 0 8px #00F2FF99; }
 .dh-net-speed-fill.up { background: linear-gradient(90deg, transparent, #00F2FF); box-shadow: 0 0 8px #00F2FF99; }
 
@@ -612,8 +646,10 @@
 .dh-info-val       { font-size: 10px; font-weight: 400; color: rgb(255, 255, 255); flex: 1; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 
 /* ── Privacy blur ── */
-.dh-blur-field { cursor: pointer; transition: filter 0.25s ease; }
-.dh-blurred    { filter: blur(4px); user-select: none; cursor: pointer; transition: filter 0.25s ease; }
+/* will-change: filter promotes element to own compositor layer,
+   isolating filter repaint from the rest of the card's layer */
+.dh-blur-field { cursor: pointer; transition: filter 0.25s ease; will-change: filter; }
+.dh-blurred    { filter: blur(4px); user-select: none; cursor: pointer; transition: filter 0.25s ease; will-change: filter; }
 
 /* ── System RT panel ── */
 .dh-sys-rt        { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; background: rgba(255,255,255,0.025); border-radius: 6px; border: 1px solid rgba(255,255,255,0.04); }

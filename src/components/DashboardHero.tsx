@@ -212,6 +212,12 @@ const DetailRow: React.FC<{ label: string; value?: React.ReactNode; accent?: str
 /* ══════════════════════════════════════════
    DetailBar
 ══════════════════════════════════════════ */
+/*
+  DetailBar — GPU-optimized progress bar.
+  Uses CSS custom property --bar-scale (0–1) + transform: scaleX().
+  BEFORE: transition: width → layout recalc per frame (CPU-bound).
+  AFTER:  transition: transform → GPU compositor only, zero layout/paint per frame.
+*/
 const DetailBar: React.FC<{ pct: number; label: string; display: string; color: string }> = ({ pct, label, display, color }) => (
   <div className="dh-bar-wrap">
     <div className="dh-bar-head">
@@ -220,10 +226,10 @@ const DetailBar: React.FC<{ pct: number; label: string; display: string; color: 
     </div>
     <div className="dh-bar-track">
       <div className="dh-bar-fill" style={{
-        width: `${Math.min(Math.max(pct, 0), 100)}%`,
-        background: `linear-gradient(90deg, ${color}00, ${color})`,
+        '--bar-scale': `${Math.min(Math.max(pct, 0), 100) / 100}`,
+        background: `linear-gradient(90deg, ${color}55, ${color})`,
         boxShadow: `0 0 8px ${color}55`,
-      }} />
+      } as React.CSSProperties} />
     </div>
   </div>
 );
@@ -300,16 +306,16 @@ const VolumeStrip: React.FC<{ drives: { letter: string; totalGB: number; freeGB:
 /* ══════════════════════════════════════════
    LiveBadge
 ══════════════════════════════════════════ */
-const LiveBadge: React.FC = () => {
-  const [tick, setTick] = React.useState(false);
-  React.useEffect(() => { const id = setInterval(() => setTick(t => !t), 1000); return () => clearInterval(id); }, []);
-  return (
-    <div className="dh-live-badge">
-      <span className="dh-live-dot" style={{ opacity: tick ? 1 : 0.35 }} />
-      LIVE
-    </div>
-  );
-};
+/*
+  LiveBadge — stateless: CSS @keyframes dhLivePulse handles the pulse animation.
+  Eliminated setInterval+setState which caused a React re-render every 1 second.
+*/
+const LiveBadge: React.FC = () => (
+  <div className="dh-live-badge">
+    <span className="dh-live-dot" />
+    LIVE
+  </div>
+);
 
 /* ══════════════════════════════════════════
    HeroCard
@@ -962,7 +968,8 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
               </div>
               <span className="dh-net-speed-num dn">{fmtMbps(netDown)}</span>
               <div className="dh-net-speed-track">
-                <div className="dh-net-speed-fill dn" style={{ width: `${Math.max(netDown > 0 ? 3 : 0, Math.min(Math.pow(netDown / 1000, 0.35) * 100, 100))}%` }} />
+                {/* GPU scaleX bar — --bar-scale is 0–1; CSS handles transform: scaleX() */}
+              <div className="dh-net-speed-fill dn" style={{ '--bar-scale': `${Math.max(netDown > 0 ? 0.03 : 0, Math.min(Math.pow(netDown / 1000, 0.35), 1))}` } as React.CSSProperties} />
               </div>
             </div>
             <div className="dh-net-speeds-sep" />
@@ -973,7 +980,7 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
               </div>
               <span className="dh-net-speed-num up">{fmtMbps(netUp)}</span>
               <div className="dh-net-speed-track">
-                <div className="dh-net-speed-fill up" style={{ width: `${Math.max(netUp > 0 ? 3 : 0, Math.min(Math.pow(netUp / 1000, 0.35) * 100, 100))}%` }} />
+                <div className="dh-net-speed-fill up" style={{ '--bar-scale': `${Math.max(netUp > 0 ? 0.03 : 0, Math.min(Math.pow(netUp / 1000, 0.35), 1))}` } as React.CSSProperties} />
               </div>
             </div>
           </div>
