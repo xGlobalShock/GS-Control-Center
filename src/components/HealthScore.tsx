@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
 import '../styles/HealthScore.css';
@@ -55,28 +55,32 @@ const HealthScore: React.FC<HealthScoreProps> = ({ systemStats, extendedStats, h
   const [expandedInternal, setExpandedInternal] = useState(false);
   const expanded = isExpanded !== undefined ? isExpanded : expandedInternal;
   const handleToggle = onToggle ?? (() => setExpandedInternal(v => !v));
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const computeScore = useCallback(async () => {
-    if (!window.electron?.ipcRenderer) return;
-    try {
-      const stats = {
-        ...systemStats,
-        gpuTemp: extendedStats?.gpuTemp,
-        gpuUsage: extendedStats?.gpuUsage,
-        latencyMs: extendedStats?.latencyMs,
-        ramTotalGB: extendedStats?.ramTotalGB ?? hardwareInfo?.ramTotalGB,
-      };
-      const result = await window.electron.ipcRenderer.invoke('health:compute', stats, hardwareInfo);
-      setHealthData(result);
-    } catch {}
-  }, [systemStats, extendedStats, hardwareInfo]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const inflightRef = useRef(false);
+  const latestPropsRef = useRef({ systemStats, extendedStats, hardwareInfo });
+  latestPropsRef.current = { systemStats, extendedStats, hardwareInfo };
 
   useEffect(() => {
-    computeScore();
-    timerRef.current = setInterval(computeScore, 5000);
+    const compute = async () => {
+      if (!window.electron?.ipcRenderer || inflightRef.current) return;
+      inflightRef.current = true;
+      try {
+        const { systemStats: s, extendedStats: e, hardwareInfo: h } = latestPropsRef.current;
+        const stats = {
+          ...s,
+          gpuTemp: e?.gpuTemp,
+          gpuUsage: e?.gpuUsage,
+          latencyMs: e?.latencyMs,
+          ramTotalGB: e?.ramTotalGB ?? h?.ramTotalGB,
+        };
+        const result = await window.electron.ipcRenderer.invoke('health:compute', stats, h);
+        setHealthData(result);
+      } catch {} finally { inflightRef.current = false; }
+    };
+    compute();
+    timerRef.current = setInterval(compute, 5000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [computeScore]);
+  }, []);
 
   const score = healthData?.score ?? 0;
   const color = scoreColor(score);

@@ -10,10 +10,10 @@ import {
 type Section = 'startup' | 'appearance' | 'overlay' | 'about';
 
 const NAV_ITEMS: { id: Section; label: string; icon: React.ReactNode; desc: string }[] = [
-  { id: 'startup',    label: 'Startup',    icon: <Zap size={15} />,     desc: 'Boot behavior'       },
-  { id: 'appearance', label: 'Appearance', icon: <Palette size={15} />, desc: 'Theme & display'     },
-  { id: 'overlay',    label: 'Overlay',    icon: <Layers size={15} />,  desc: 'FPS HUD'             },
-  { id: 'about',      label: 'About',      icon: <Info size={15} />,    desc: 'Version & updates'   },
+  { id: 'startup',    label: 'Startup',    icon: <Zap size={15} />,     desc: 'Boot behavior'    },
+  { id: 'appearance', label: 'Appearance', icon: <Palette size={15} />, desc: 'Colors & effects'  },
+  { id: 'overlay',    label: 'Overlay',    icon: <Layers size={15} />,  desc: 'FPS HUD'          },
+  { id: 'about',      label: 'About',      icon: <Info size={15} />,    desc: 'Version & updates' },
 ];
 
 const Settings: React.FC = () => {
@@ -22,7 +22,6 @@ const Settings: React.FC = () => {
     const saved = loadSettings();
     return {
       autoCleanupOnStartup: saved.autoCleanupOnStartup ?? false,
-      theme: saved.theme ?? 'dark',
     };
   });
   const [appVersion, setAppVersion] = useState('1.0.0');
@@ -33,8 +32,21 @@ const Settings: React.FC = () => {
   const [minimizeToTray, setMinimizeToTray] = useState(false);
   const [checkState, setCheckState] = useState<'idle' | 'checking' | 'up-to-date' | 'available'>('idle');
   const [checkVersion, setCheckVersion] = useState('');
-  const [showThemeDropdown, setShowThemeDropdown] = useState(false);
-  const themeDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Appearance state
+  const [raysColor, setRaysColor] = useState<string>(() => loadSettings().raysColor ?? '#00C8FF');
+  const [appBgColor, setAppBgColor] = useState<string>(() => loadSettings().appBgColor ?? 'linear-gradient(160deg, #050F1A 0%, #071828 60%, #030D18 100%)');
+  const [showRaysDropdown, setShowRaysDropdown] = useState(false);
+  const [showBgDropdown, setShowBgDropdown] = useState(false);
+  const raysDropdownRef    = useRef<HTMLDivElement>(null);
+  const bgDropdownRef       = useRef<HTMLDivElement>(null);
+  const fontDropdownRef     = useRef<HTMLDivElement>(null);
+  const fontSizeDropdownRef = useRef<HTMLDivElement>(null);
+  const colorDropdownRef    = useRef<HTMLDivElement>(null);
+  const [showFontDropdown,     setShowFontDropdown]     = useState(false);
+  const [showFontSizeDropdown, setShowFontSizeDropdown] = useState(false);
+  const [showColorDropdown,    setShowColorDropdown]    = useState(false);
+  const [overlayFontSize, setOverlayFontSize] = useState<'small' | 'medium' | 'large'>('medium');
 
   // Overlay state
   const [overlayVisible, setOverlayVisible] = useState(false);
@@ -68,12 +80,52 @@ const Settings: React.FC = () => {
     { hex: '#FFFFFF', label: 'White'  },
   ];
 
+  // ─── Curated Light Ray Colors ───────────────────────────────────────────────
+  // Each color is tuned to complement one or more of the BG presets below.
+  const RAY_COLORS = [
+    { hex: 'off',     label: 'Off'           }, // disable light rays
+    { hex: '#FFFFFF', label: 'Default'       }, // original white rays
+    { hex: '#00C8FF', label: 'Plasma Cyan'   }, // pairs with Cyber Blue
+    { hex: '#7C45FF', label: 'Neon Violet'   }, // pairs with Void Purple
+    { hex: '#5AAFFF', label: 'Arctic Blue'   }, // pairs with Arctic Haze
+    { hex: '#FF7820', label: 'Ember Orange'  }, // pairs with Ember Forge
+    { hex: '#00E87A', label: 'Ghost Green'   }, // pairs with Ghost Green
+    { hex: '#FF1E4A', label: 'Crimson Red'   }, // pairs with Deep Crimson
+    { hex: '#FFB800', label: 'Solar Gold'    }, // pairs with Solar Storm
+    { hex: '#FF3EB5', label: 'Hot Magenta'   }, // versatile vivid accent
+    { hex: '#C8DCFF', label: 'Moonlight'     }, // soft, low-contrast option
+  ];
+
+  // ─── Curated App Background Gradients ────────────────────────────────────────
+  // 160-degree diagonal gradients give depth without heavy GPU load.
+  const BG_COLORS = [
+    { value: 'radial-gradient(ellipse 70% 60% at 55% 45%, #081a1a 0%, transparent 100%), radial-gradient(ellipse 40% 35% at 30% 30%, rgba(0, 242, 255, 0.025) 0%, transparent 100%), #020606', label: 'Default' },
+    { value: 'linear-gradient(160deg, #050F1A 0%, #071828 60%, #030D18 100%)', label: 'Cyber Blue'    },
+    { value: 'linear-gradient(160deg, #0D0518 0%, #130720 60%, #090315 100%)', label: 'Void Purple'   },
+    { value: 'linear-gradient(160deg, #080808 0%, #101010 60%, #040404 100%)', label: 'Obsidian'      },
+    { value: 'linear-gradient(160deg, #120800 0%, #1C0B00 60%, #0A0500 100%)', label: 'Ember Forge'   },
+    { value: 'linear-gradient(160deg, #030E06 0%, #061508 60%, #020A04 100%)', label: 'Ghost Green'   },
+    { value: 'linear-gradient(160deg, #0F0205 0%, #190408 60%, #0A0203 100%)', label: 'Deep Crimson'  },
+    { value: 'linear-gradient(160deg, #050810 0%, #09101E 60%, #040609 100%)', label: 'Arctic Haze'   },
+    { value: 'linear-gradient(160deg, #0C0800 0%, #1A1100 60%, #080600 100%)', label: 'Solar Storm'   },
+  ];
+
   const OVERLAY_FONTS = [
-    { family: 'Share Tech Mono', label: 'Share Tech',  preview: 'ABC 123' },
-    { family: 'JetBrains Mono',  label: 'JetBrains',   preview: 'ABC 123' },
-    { family: 'Orbitron',        label: 'Orbitron',    preview: 'ABC 123' },
-    { family: 'Rajdhani',        label: 'Rajdhani',    preview: 'ABC 123' },
-    { family: 'Courier Prime',   label: 'Courier',     preview: 'ABC 123' },
+    { family: 'Share Tech Mono', label: 'Share Tech'    },
+    { family: 'JetBrains Mono',  label: 'JetBrains'     },
+    { family: 'Space Mono',      label: 'Space Mono'    },
+    { family: 'Nova Mono',       label: 'Nova Mono'     },
+    { family: 'Orbitron',        label: 'Orbitron'      },
+    { family: 'Chakra Petch',    label: 'Chakra Petch'  },
+    { family: 'Exo 2',           label: 'Exo 2'         },
+    { family: 'Rajdhani',        label: 'Rajdhani'      },
+    { family: 'Courier Prime',   label: 'Courier'       },
+  ];
+
+  const FONT_SIZES = [
+    { value: 'small',  label: 'Small'  },
+    { value: 'medium', label: 'Medium' },
+    { value: 'large',  label: 'Large'  },
   ];
 
   useEffect(() => {
@@ -138,12 +190,16 @@ const Settings: React.FC = () => {
   useEffect(() => {
     const s = loadSettings();
     setSettings(prev => ({ ...prev, ...s }));
+    if (s.raysColor)  setRaysColor(s.raysColor);
+    if (s.appBgColor) setAppBgColor(s.appBgColor);
 
     const onUpdated = (e: Event) => {
       try {
         // @ts-ignore
         const detail = (e as CustomEvent)?.detail || {};
         setSettings(prev => ({ ...prev, ...detail }));
+        if (detail.raysColor)  setRaysColor(detail.raysColor);
+        if (detail.appBgColor) setAppBgColor(detail.appBgColor);
       } catch {}
     };
 
@@ -151,21 +207,28 @@ const Settings: React.FC = () => {
     return () => window.removeEventListener('settings:updated', onUpdated as EventListener);
   }, []);
 
-  // Close theme dropdown on outside click
+  // Close all dropdowns on outside click
   useEffect(() => {
-    if (!showThemeDropdown) return;
+    if (!showRaysDropdown && !showBgDropdown && !showFontDropdown && !showFontSizeDropdown && !showColorDropdown) return;
     const handle = (e: MouseEvent) => {
-      if (themeDropdownRef.current && !themeDropdownRef.current.contains(e.target as Node))
-        setShowThemeDropdown(false);
+      if (raysDropdownRef.current    && !raysDropdownRef.current.contains(e.target as Node))    setShowRaysDropdown(false);
+      if (bgDropdownRef.current      && !bgDropdownRef.current.contains(e.target as Node))      setShowBgDropdown(false);
+      if (fontDropdownRef.current    && !fontDropdownRef.current.contains(e.target as Node))    setShowFontDropdown(false);
+      if (fontSizeDropdownRef.current && !fontSizeDropdownRef.current.contains(e.target as Node)) setShowFontSizeDropdown(false);
+      if (colorDropdownRef.current   && !colorDropdownRef.current.contains(e.target as Node))   setShowColorDropdown(false);
     };
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
-  }, [showThemeDropdown]);
+  }, [showRaysDropdown, showBgDropdown, showFontDropdown, showFontSizeDropdown, showColorDropdown]);
 
   const handleToggle = (key: keyof typeof settings) => {
-    const updated = { ...settings, [key]: !settings[key] };
-    setSettings(updated);
-    saveSettings(updated as any);
+    const updatedLocal = { ...settings, [key]: !settings[key] };
+    setSettings(updatedLocal);
+    try {
+      const s = loadSettings();
+      const merged = { ...s, ...updatedLocal };
+      saveSettings(merged as any);
+    } catch {}
   };
 
   const handleCheckUpdate = async () => {
@@ -241,6 +304,28 @@ const Settings: React.FC = () => {
     const updated = { ...overlaySensors, [key]: !overlaySensors[key] };
     setOverlaySensors(updated);
     try { await ipc?.invoke('overlay:set-config', { [key]: updated[key] }); } catch {}
+  };
+
+  const handleRaysColor = (color: string) => {
+    setRaysColor(color);
+    try {
+      const s = loadSettings();
+      saveSettings({ ...s, raysColor: color });
+    } catch {}
+  };
+
+  const handleBgColor = (value: string) => {
+    setAppBgColor(value);
+    document.documentElement.style.setProperty('--app-bg', value);
+    try {
+      const s = loadSettings();
+      saveSettings({ ...s, appBgColor: value });
+    } catch {}
+  };
+
+  const handleOverlayFontSize = async (size: 'small' | 'medium' | 'large') => {
+    setOverlayFontSize(size);
+    try { await ipc?.invoke('overlay:set-config', { fontSize: size }); } catch {}
   };
 
   return (
@@ -340,42 +425,98 @@ const Settings: React.FC = () => {
                     <span className="panel-header-icon"><Palette size={18} /></span>
                     <div>
                       <h2 className="panel-title">Appearance</h2>
-                      <p className="panel-subtitle">Customize the visual style</p>
+                      <p className="panel-subtitle">Colors, accents and background effects</p>
                     </div>
                   </div>
                   <div className="panel-body">
+
+                    {/* ── Light Rays Color ── */}
                     <div className="setting-row">
                       <div className="setting-row-info">
-                        <span className="setting-row-title">Theme</span>
-                        <span className="setting-row-desc">Choose your preferred color theme</span>
+                        <span className="setting-row-title">Light Rays Color</span>
+                        <span className="setting-row-desc">Color of the animated background rays</span>
                       </div>
-                      <div className="theme-dropdown" ref={themeDropdownRef}>
+                      <div className="theme-dropdown" ref={raysDropdownRef}>
                         <button
-                          className={`theme-dropdown__trigger${showThemeDropdown ? ' theme-dropdown__trigger--open' : ''}`}
-                          onClick={() => setShowThemeDropdown(p => !p)}
+                          className={`theme-dropdown__trigger${showRaysDropdown ? ' theme-dropdown__trigger--open' : ''}`}
+                          onClick={() => setShowRaysDropdown(p => !p)}
+                          style={{ minWidth: 175 }}
                         >
-                          <span>{settings.theme === 'dark' ? 'Dark (Default)' : 'Light'}</span>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {raysColor === 'off'
+                              ? <span style={{ width: 11, height: 11, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.25)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><span style={{ width: 7, height: 1.5, background: 'rgba(255,255,255,0.35)', borderRadius: 1, transform: 'rotate(-45deg)' }} /></span>
+                              : <span style={{ width: 11, height: 11, borderRadius: '50%', background: raysColor, display: 'inline-block', flexShrink: 0, boxShadow: `0 0 6px ${raysColor}` }} />}
+                            {RAY_COLORS.find(c => c.hex === raysColor)?.label ?? 'Custom'}
+                          </span>
                           <ChevronDown size={13} className="theme-dropdown__chevron" />
                         </button>
-                        {showThemeDropdown && (
+                        {showRaysDropdown && (
                           <div className="theme-dropdown__menu">
-                            {(['dark', 'light'] as const).map(opt => (
+                            {RAY_COLORS.map(({ hex, label }) => (
                               <button
-                                key={opt}
-                                className={`theme-dropdown__item${settings.theme === opt ? ' theme-dropdown__item--active' : ''}`}
-                                onClick={() => {
-                                  setSettings(prev => ({ ...prev, theme: opt }));
-                                  setShowThemeDropdown(false);
-                                }}
+                                key={hex}
+                                className={`theme-dropdown__item${raysColor === hex ? ' theme-dropdown__item--active' : ''}`}
+                                onClick={() => { handleRaysColor(hex); setShowRaysDropdown(false); }}
                               >
-                                {settings.theme === opt && <Check size={12} />}
-                                {opt === 'dark' ? 'Dark (Default)' : 'Light'}
+                                {hex === 'off'
+                                  ? <span style={{ width: 10, height: 10, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.25)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><span style={{ width: 6, height: 1.5, background: 'rgba(255,255,255,0.35)', borderRadius: 1, transform: 'rotate(-45deg)' }} /></span>
+                                  : <span style={{ width: 10, height: 10, borderRadius: '50%', background: hex, display: 'inline-block', flexShrink: 0 }} />}
+                                {raysColor === hex && <Check size={12} />}
+                                {label}
                               </button>
                             ))}
                           </div>
                         )}
                       </div>
                     </div>
+
+                    {/* ── App Background ── */}
+                    <div className="setting-row">
+                      <div className="setting-row-info">
+                        <span className="setting-row-title">App Background</span>
+                        <span className="setting-row-desc">Changes only the application background — text and accents are unaffected</span>
+                      </div>
+                      <div className="theme-dropdown" ref={bgDropdownRef}>
+                        <button
+                          className={`theme-dropdown__trigger${showBgDropdown ? ' theme-dropdown__trigger--open' : ''}`}
+                          onClick={() => setShowBgDropdown(p => !p)}
+                          style={{ minWidth: 185 }}
+                        >
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{
+                              width: 24, height: 12, borderRadius: 3,
+                              background: appBgColor,
+                              display: 'inline-block', flexShrink: 0,
+                              border: '1px solid rgba(255,255,255,0.12)',
+                            }} />
+                            {BG_COLORS.find(c => c.value === appBgColor)?.label ?? 'Custom'}
+                          </span>
+                          <ChevronDown size={13} className="theme-dropdown__chevron" />
+                        </button>
+                        {showBgDropdown && (
+                          <div className="theme-dropdown__menu">
+                            {BG_COLORS.map(({ value, label }) => (
+                              <button
+                                key={label}
+                                className={`theme-dropdown__item${appBgColor === value ? ' theme-dropdown__item--active' : ''}`}
+                                onClick={() => { handleBgColor(value); setShowBgDropdown(false); }}
+                              >
+                                <span style={{
+                                  width: 20, height: 10, borderRadius: 2,
+                                  background: value,
+                                  display: 'inline-block', flexShrink: 0,
+                                  border: '1px solid rgba(255,255,255,0.1)',
+                                  marginRight: 2,
+                                }} />
+                                {appBgColor === value && <Check size={12} />}
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                   </div>
                 </>
               )}
@@ -401,167 +542,222 @@ const Settings: React.FC = () => {
                       </label>
                     </div>
                   </div>
-                  <div className="panel-body">
+                  <div className="panel-body ovl-panel-body">
 
-                    {/* ── Controls grid ── */}
-                    <div className="overlay-cfg-grid">
-
-                      {/* Position — visual screen picker */}
-                      <div className="overlay-cfg-card">
-                        <span className="overlay-cfg-card-title">Position</span>
-                        <div className="overlay-screen-picker">
-                          <div className="overlay-screen-frame">
-                            {([
-                              ['top-left',     'top-left'    ],
-                              ['top-right',    'top-right'   ],
-                              ['bottom-left',  'bottom-left' ],
-                              ['bottom-right', 'bottom-right'],
-                            ] as const).map(([pos, corner]) => (
-                              <button
-                                key={pos}
-                                className={`overlay-screen-dot overlay-screen-dot--${corner}${overlayPosition === pos ? ' overlay-screen-dot--active' : ''}`}
-                                onClick={() => handleOverlayPosition(pos)}
-                                title={pos.replace('-', ' ')}
-                              />
-                            ))}
-                            <div className="overlay-screen-scanline" />
-                          </div>
-                          <span className="overlay-screen-label">
-                            {overlayPosition.replace('-', ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Color + Opacity */}
-                      <div className="overlay-cfg-card">
-                        <span className="overlay-cfg-card-title">Accent Color</span>
-                        <div className="overlay-color-grid">
-                          {OVERLAY_COLORS.map(({ hex, label }) => (
-                            <button
-                              key={hex}
-                              className={`overlay-color-swatch${overlayColor === hex ? ' overlay-color-swatch--active' : ''}`}
-                              style={{ '--swatch-color': hex } as React.CSSProperties}
-                              onClick={() => handleOverlayColor(hex)}
-                              title={label}
-                            />
-                          ))}
-                        </div>
-
-                        <div className="overlay-opacity-row">
-                          <span className="overlay-cfg-card-title">Opacity</span>
-                          <span className="overlay-opacity-val">{Math.round(overlayOpacity * 100)}%</span>
-                        </div>
-                        <div className="overlay-slider-track">
-                          <div
-                            className="overlay-slider-fill"
-                            style={{ width: `${overlayOpacity * 100}%`, background: overlayColor }}
-                          />
-                          <input
-                            type="range"
-                            className="overlay-opacity-slider"
-                            min={0}
-                            max={1}
-                            step={0.05}
-                            value={overlayOpacity}
-                            onChange={e => handleOverlayOpacity(parseFloat(e.target.value))}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* ── Metrics + Font side by side ── */}
-                    <div className="overlay-twin-grid">
+                    {/* ── Top Grid: Metrics (left) + Controls (right) ── */}
+                    <div className="ovl-top-grid">
 
                       {/* Visible Metrics */}
-                      <div className="overlay-cfg-card">
-                        <span className="overlay-cfg-card-title">Visible Metrics</span>
-                        <div className="overlay-toggle-list overlay-toggle-list--two-col">
+                      <div className="ovl-metrics-card" style={{ '--ovl-color': overlayColor } as React.CSSProperties}>
+                        <span className="ovl-section-label">Visible Metrics</span>
+                        <div className="ovl-ml-grid">
 
-                          {/* Column 1: HUD + GPU + Network */}
-                          <div className="overlay-toggle-col">
-                          <span className="overlay-toggle-group-label">HUD</span>
-                          {([
-                            ['showHeader',     'Header'    ],
-                            ['showBackground', 'Background'],
-                            ['showFps',        'FPS'       ],
-                          ] as const).map(([key, label]) => (
-                            <div key={key} className="overlay-toggle-row" style={{ '--sensor-color': overlayColor } as React.CSSProperties} onClick={() => handleOverlaySensor(key)}>
-                              <span className="overlay-toggle-label">{label}</span>
-                              <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`}><div className="overlay-toggle-thumb" /></div>
-                            </div>
-                          ))}
-
-                          <span className="overlay-toggle-group-label">GPU</span>
-                          {([
-                            ['showGpuUsage', 'Usage'],
-                            ['showGpuTemp',  'Temp' ],
-                          ] as const).map(([key, label]) => (
-                            <div key={key} className="overlay-toggle-row" style={{ '--sensor-color': overlayColor } as React.CSSProperties} onClick={() => handleOverlaySensor(key)}>
-                              <span className="overlay-toggle-label">{label}</span>
-                              <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`}><div className="overlay-toggle-thumb" /></div>
-                            </div>
-                          ))}
-                          </div>
-
-                          {/* Column 2: CPU + Memory + Network */}
-                          <div className="overlay-toggle-col">
-                          <span className="overlay-toggle-group-label">CPU</span>
-                          {([
-                            ['showCpuUsage', 'Usage'],
-                            ['showCpuTemp',  'Temp' ],
-                          ] as const).map(([key, label]) => (
-                            <div key={key} className="overlay-toggle-row" style={{ '--sensor-color': overlayColor } as React.CSSProperties} onClick={() => handleOverlaySensor(key)}>
-                              <span className="overlay-toggle-label">{label}</span>
-                              <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`}><div className="overlay-toggle-thumb" /></div>
-                            </div>
-                          ))}
-
-                          <span className="overlay-toggle-group-label">Memory</span>
-                          {([
-                            ['showRamUsage', 'RAM'],
-                          ] as const).map(([key, label]) => (
-                            <div key={key} className="overlay-toggle-row" style={{ '--sensor-color': overlayColor } as React.CSSProperties} onClick={() => handleOverlaySensor(key)}>
-                              <span className="overlay-toggle-label">{label}</span>
-                              <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`}><div className="overlay-toggle-thumb" /></div>
-                            </div>
-                          ))}
-
-                          <span className="overlay-toggle-group-label">Network</span>
-                          {([
-                            ['showLatency',      'Ping'        ],
-                            ['showPacketLoss',   'Packet Loss' ],
-                            ['showNetworkSpeed', 'Net Speed'   ],
-                          ] as const).map(([key, label]) => (
-                            <div key={key} className="overlay-toggle-row" style={{ '--sensor-color': overlayColor } as React.CSSProperties} onClick={() => handleOverlaySensor(key)}>
-                              <span className="overlay-toggle-label">{label}</span>
-                              <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`}><div className="overlay-toggle-thumb" /></div>
-                            </div>
-                          ))}
-                          </div>
-
-                        </div>
-                      </div>
-
-                      {/* Font Style */}
-                      <div className="overlay-cfg-card">
-                        <span className="overlay-cfg-card-title">Font Style</span>
-                        <div className="overlay-toggle-list">
-                          {OVERLAY_FONTS.map(({ family, label }) => (
-                            <div
-                              key={family}
-                              className="overlay-toggle-row"
-                              style={{ '--sensor-color': overlayColor } as React.CSSProperties}
-                              onClick={() => handleOverlayFont(family)}
-                            >
-                              <span className="overlay-toggle-label" style={{ fontFamily: family }}>{label}</span>
-                              <div className={`overlay-toggle-switch${overlayFont === family ? ' overlay-toggle-switch--on' : ''}`}>
-                                <div className="overlay-toggle-thumb" />
+                          {/* Column 1: HUD + CPU */}
+                          <div className="ovl-ml-col">
+                            <span className="ovl-ml-group-hdr">HUD</span>
+                            {([
+                              ['showHeader',     'Header'    ],
+                              ['showBackground', 'Background'],
+                              ['showFps',        'FPS'       ],
+                            ] as const).map(([key, label]) => (
+                              <div key={key} className={`ovl-ml-row${overlaySensors[key] ? ' ovl-ml-row--on' : ''}`} onClick={() => handleOverlaySensor(key)}>
+                                <span className="ovl-ml-label">{label}</span>
+                                <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`} style={{ '--sensor-color': overlayColor } as React.CSSProperties}><div className="overlay-toggle-thumb" /></div>
                               </div>
+                            ))}
+
+                            <span className="ovl-ml-group-hdr">CPU</span>
+                            {([
+                              ['showCpuUsage', 'Usage'],
+                              ['showCpuTemp',  'Temp' ],
+                            ] as const).map(([key, label]) => (
+                              <div key={key} className={`ovl-ml-row${overlaySensors[key] ? ' ovl-ml-row--on' : ''}`} onClick={() => handleOverlaySensor(key)}>
+                                <span className="ovl-ml-label">{label}</span>
+                                <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`} style={{ '--sensor-color': overlayColor } as React.CSSProperties}><div className="overlay-toggle-thumb" /></div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Column 2: GPU + Memory + Network */}
+                          <div className="ovl-ml-col">
+                            <span className="ovl-ml-group-hdr">GPU</span>
+                            {([
+                              ['showGpuUsage', 'Usage'],
+                              ['showGpuTemp',  'Temp' ],
+                            ] as const).map(([key, label]) => (
+                              <div key={key} className={`ovl-ml-row${overlaySensors[key] ? ' ovl-ml-row--on' : ''}`} onClick={() => handleOverlaySensor(key)}>
+                                <span className="ovl-ml-label">{label}</span>
+                                <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`} style={{ '--sensor-color': overlayColor } as React.CSSProperties}><div className="overlay-toggle-thumb" /></div>
+                              </div>
+                            ))}
+
+                            <span className="ovl-ml-group-hdr">Memory</span>
+                            <div className={`ovl-ml-row${overlaySensors.showRamUsage ? ' ovl-ml-row--on' : ''}`} onClick={() => handleOverlaySensor('showRamUsage')}>
+                              <span className="ovl-ml-label">RAM</span>
+                              <div className={`overlay-toggle-switch${overlaySensors.showRamUsage ? ' overlay-toggle-switch--on' : ''}`} style={{ '--sensor-color': overlayColor } as React.CSSProperties}><div className="overlay-toggle-thumb" /></div>
                             </div>
-                          ))}
+
+                            <span className="ovl-ml-group-hdr">Network</span>
+                            {([
+                              ['showLatency',      'Ping'       ],
+                              ['showPacketLoss',   'Packet Loss'],
+                              ['showNetworkSpeed', 'Net Speed'  ],
+                            ] as const).map(([key, label]) => (
+                              <div key={key} className={`ovl-ml-row${overlaySensors[key] ? ' ovl-ml-row--on' : ''}`} onClick={() => handleOverlaySensor(key)}>
+                                <span className="ovl-ml-label">{label}</span>
+                                <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`} style={{ '--sensor-color': overlayColor } as React.CSSProperties}><div className="overlay-toggle-thumb" /></div>
+                              </div>
+                            ))}
+                          </div>
+
                         </div>
                       </div>
 
+                      {/* Right column: Display + Position */}
+                      <div className="ovl-controls-col">
+
+                        {/* Display Settings */}
+                        <div className="ovl-control-group">
+                          <span className="ovl-section-label">Display</span>
+
+                          {/* Accent Color */}
+                          <div className="ovl-control-row">
+                            <span className="ovl-control-label">Accent Color</span>
+                            <div className="theme-dropdown" ref={colorDropdownRef}>
+                              <button
+                                className={`theme-dropdown__trigger${showColorDropdown ? ' theme-dropdown__trigger--open' : ''}`}
+                                onClick={() => setShowColorDropdown(p => !p)}
+                                style={{ minWidth: 160 }}
+                              >
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ width: 11, height: 11, borderRadius: '50%', background: overlayColor, display: 'inline-block', flexShrink: 0, boxShadow: `0 0 6px ${overlayColor}` }} />
+                                  {OVERLAY_COLORS.find(c => c.hex === overlayColor)?.label ?? 'Custom'}
+                                </span>
+                                <ChevronDown size={13} className="theme-dropdown__chevron" />
+                              </button>
+                              {showColorDropdown && (
+                                <div className="theme-dropdown__menu">
+                                  {OVERLAY_COLORS.map(({ hex, label }) => (
+                                    <button
+                                      key={hex}
+                                      className={`theme-dropdown__item${overlayColor === hex ? ' theme-dropdown__item--active' : ''}`}
+                                      onClick={() => { handleOverlayColor(hex); setShowColorDropdown(false); }}
+                                    >
+                                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: hex, display: 'inline-block', flexShrink: 0, boxShadow: `0 0 5px ${hex}` }} />
+                                      {overlayColor === hex && <Check size={12} />}
+                                      {label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Font Dropdown */}
+                          <div className="ovl-control-row">
+                            <span className="ovl-control-label">Font</span>
+                            <div className="theme-dropdown" ref={fontDropdownRef}>
+                              <button
+                                className={`theme-dropdown__trigger${showFontDropdown ? ' theme-dropdown__trigger--open' : ''}`}
+                                onClick={() => setShowFontDropdown(p => !p)}
+                                style={{ minWidth: 148, fontFamily: overlayFont }}
+                              >
+                                <span>{OVERLAY_FONTS.find(f => f.family === overlayFont)?.label ?? overlayFont}</span>
+                                <ChevronDown size={13} className="theme-dropdown__chevron" />
+                              </button>
+                              {showFontDropdown && (
+                                <div className="theme-dropdown__menu">
+                                  {OVERLAY_FONTS.map(({ family, label }) => (
+                                    <button
+                                      key={family}
+                                      className={`theme-dropdown__item${overlayFont === family ? ' theme-dropdown__item--active' : ''}`}
+                                      style={{ fontFamily: family }}
+                                      onClick={() => { handleOverlayFont(family); setShowFontDropdown(false); }}
+                                    >
+                                      {overlayFont === family && <Check size={12} />}
+                                      {label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Font Size Dropdown */}
+                          <div className="ovl-control-row">
+                            <span className="ovl-control-label">Font Size</span>
+                            <div className="theme-dropdown" ref={fontSizeDropdownRef}>
+                              <button
+                                className={`theme-dropdown__trigger${showFontSizeDropdown ? ' theme-dropdown__trigger--open' : ''}`}
+                                onClick={() => setShowFontSizeDropdown(p => !p)}
+                                style={{ minWidth: 148 }}
+                              >
+                                <span>{FONT_SIZES.find(s => s.value === overlayFontSize)?.label ?? 'Medium'}</span>
+                                <ChevronDown size={13} className="theme-dropdown__chevron" />
+                              </button>
+                              {showFontSizeDropdown && (
+                                <div className="theme-dropdown__menu">
+                                  {FONT_SIZES.map(({ value, label }) => (
+                                    <button
+                                      key={value}
+                                      className={`theme-dropdown__item${overlayFontSize === value ? ' theme-dropdown__item--active' : ''}`}
+                                      onClick={() => { handleOverlayFontSize(value as 'small' | 'medium' | 'large'); setShowFontSizeDropdown(false); }}
+                                    >
+                                      {overlayFontSize === value && <Check size={12} />}
+                                      {label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Opacity */}
+                          <div className="ovl-control-row ovl-control-row--col">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                              <span className="ovl-control-label">Opacity</span>
+                              <span className="overlay-opacity-val">{Math.round(overlayOpacity * 100)}%</span>
+                            </div>
+                            <div className="overlay-slider-track" style={{ width: '100%' }}>
+                              <div className="overlay-slider-fill" style={{ width: `${overlayOpacity * 100}%`, background: overlayColor }} />
+                              <input
+                                type="range"
+                                className="overlay-opacity-slider"
+                                min={0} max={1} step={0.05}
+                                value={overlayOpacity}
+                                onChange={e => handleOverlayOpacity(parseFloat(e.target.value))}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Position Picker */}
+                        <div className="ovl-control-group">
+                          <span className="ovl-section-label">Position</span>
+                          <div className="overlay-screen-picker" style={{ marginTop: 4 }}>
+                            <div className="overlay-screen-frame">
+                              {([
+                                ['top-left',     'top-left'    ],
+                                ['top-right',    'top-right'   ],
+                                ['bottom-left',  'bottom-left' ],
+                                ['bottom-right', 'bottom-right'],
+                              ] as const).map(([pos, corner]) => (
+                                <button
+                                  key={pos}
+                                  className={`overlay-screen-dot overlay-screen-dot--${corner}${overlayPosition === pos ? ' overlay-screen-dot--active' : ''}`}
+                                  onClick={() => handleOverlayPosition(pos)}
+                                  title={pos.replace('-', ' ')}
+                                />
+                              ))}
+                              <div className="overlay-screen-scanline" />
+                            </div>
+                            <span className="overlay-screen-label">
+                              {overlayPosition.replace('-', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                            </span>
+                          </div>
+                        </div>
+
+                      </div>
                     </div>
 
                     <div className="overlay-note">

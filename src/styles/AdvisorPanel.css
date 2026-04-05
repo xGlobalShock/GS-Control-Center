@@ -168,19 +168,45 @@
 .advisor-upgrades-title svg { color: #00F2FF; }
 .advisor-upgrade-row {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 3px;
   font-size: 11px;
-  padding: 4px 0;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+.advisor-upgrade-row:last-child { border-bottom: none; }
+.advisor-upgrade-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 .advisor-upgrade-component {
-  font-weight: 600;
-  color: rgba(228, 228, 231, 0.8);
-  min-width: 60px;
+  font-weight: 700;
+  color: rgba(228, 228, 231, 0.9);
+  font-size: 11.5px;
 }
-.advisor-upgrade-current { color: rgba(228, 228, 231, 0.4); }
-.advisor-upgrade-arrow { color: rgba(228, 228, 231, 0.2); }
-.advisor-upgrade-rec { color: #00F2FF; font-weight: 500; }
+.advisor-upgrade-impact {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: rgba(0, 242, 255, 0.08);
+  border: 1px solid rgba(0, 242, 255, 0.18);
+  color: #00F2FF;
+}
+.advisor-upgrade-reason {
+  color: rgba(228, 228, 231, 0.55);
+  font-size: 10.5px;
+  line-height: 1.45;
+  margin: 0;
+}
+.advisor-upgrade-specifics {
+  color: #00F2FF;
+  font-size: 10.5px;
+  font-weight: 500;
+  opacity: 0.85;
+}
 
 /* ── Compact variant (inside PageHeader actions) ────────────────────── */
 /* Same pill-chip concept as health-score, purple variant */

@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Cpu, Thermometer, HardDrive, Wifi, MemoryStick, MonitorCheck, ChevronDown, ChevronUp, Lightbulb, ArrowUpCircle } from 'lucide-react';
+import { Brain, Cpu, Thermometer, HardDrive, Wifi, MemoryStick, MonitorCheck, ChevronDown, ChevronUp, Lightbulb, ArrowUpCircle, Zap, BatteryCharging, Activity } from 'lucide-react';
 import '../styles/AdvisorPanel.css';
 
 interface Insight {
@@ -14,8 +14,8 @@ interface Insight {
 
 interface Upgrade {
   component: string;
-  current: string;
-  recommended: string;
+  reason: string;
+  specifics: string;
   impact: string;
   priority: number;
 }
@@ -28,11 +28,16 @@ interface AdvisorData {
 interface AdvisorPanelProps {
   systemStats: { cpu: number; ram: number; disk: number; temperature: number };
   extendedStats?: {
-    gpuTemp?: number; gpuUsage?: number; latencyMs?: number;
-    ramTotalGB?: number; ramUsedGB?: number;
+    gpuTemp?: number; gpuUsage?: number; gpuVramUsed?: number; gpuVramTotal?: number;
+    latencyMs?: number; packetLoss?: number;
+    ramTotalGB?: number; ramUsedGB?: number; ramAvailableGB?: number;
+    processCount?: number; networkUp?: number; networkDown?: number;
   };
   hardwareInfo?: {
-    cpuCores?: number; ramTotalGB?: number; diskType?: string; diskName?: string;
+    cpuName?: string; cpuCores?: number; ramTotalGB?: number; ramType?: string;
+    ramSlotsTotal?: number; ramSlotsUsed?: number; ramSpeed?: string;
+    diskType?: string; diskName?: string; gpuVramTotal?: string;
+    hasBattery?: boolean;
   };
   compact?: boolean;
   isExpanded?: boolean;
@@ -47,6 +52,9 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   disk: <HardDrive size={15} />,
   network: <Wifi size={15} />,
   check: <MonitorCheck size={15} />,
+  zap: <Zap size={15} />,
+  'battery-charging': <BatteryCharging size={15} />,
+  activity: <Activity size={15} />,
 };
 
 const severityClass: Record<string, string> = {
@@ -61,29 +69,40 @@ const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ systemStats, extendedStats,
   const expanded = isExpanded !== undefined ? isExpanded : expandedInternal;
   const handleToggle = onToggle ?? (() => setExpandedInternal(v => !v));
   const [expandedInsight, setExpandedInsight] = useState<string | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const analyze = useCallback(async () => {
-    if (!window.electron?.ipcRenderer) return;
-    try {
-      const stats = {
-        ...systemStats,
-        gpuTemp: extendedStats?.gpuTemp,
-        gpuUsage: extendedStats?.gpuUsage,
-        latencyMs: extendedStats?.latencyMs,
-        ramTotalGB: extendedStats?.ramTotalGB ?? hardwareInfo?.ramTotalGB,
-        ramUsedGB: extendedStats?.ramUsedGB,
-      };
-      const result = await window.electron.ipcRenderer.invoke('advisor:analyze', stats, hardwareInfo);
-      setData(result);
-    } catch {}
-  }, [systemStats, extendedStats, hardwareInfo]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const inflightRef = useRef(false);
+  const latestPropsRef = useRef({ systemStats, extendedStats, hardwareInfo });
+  latestPropsRef.current = { systemStats, extendedStats, hardwareInfo };
 
   useEffect(() => {
+    const analyze = async () => {
+      if (!window.electron?.ipcRenderer || inflightRef.current) return;
+      inflightRef.current = true;
+      try {
+        const { systemStats: s, extendedStats: e, hardwareInfo: h } = latestPropsRef.current;
+        const stats = {
+          ...s,
+          gpuTemp: e?.gpuTemp,
+          gpuUsage: e?.gpuUsage,
+          gpuVramUsed: e?.gpuVramUsed,
+          gpuVramTotal: e?.gpuVramTotal,
+          latencyMs: e?.latencyMs,
+          packetLoss: e?.packetLoss,
+          ramTotalGB: e?.ramTotalGB ?? h?.ramTotalGB,
+          ramUsedGB: e?.ramUsedGB,
+          ramAvailableGB: e?.ramAvailableGB,
+          processCount: e?.processCount,
+          networkUp: e?.networkUp,
+          networkDown: e?.networkDown,
+        };
+        const result = await window.electron.ipcRenderer.invoke('advisor:analyze', stats, h);
+        setData(result);
+      } catch {} finally { inflightRef.current = false; }
+    };
     analyze();
     timerRef.current = setInterval(analyze, 8000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [analyze]);
+  }, []);
 
   const criticalCount = data?.insights.filter(i => i.severity === 'critical').length ?? 0;
   const warningCount = data?.insights.filter(i => i.severity === 'warning').length ?? 0;
@@ -158,10 +177,12 @@ const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ systemStats, extendedStats,
                 </div>
                 {data.upgrades.map((u, i) => (
                   <div key={i} className="advisor-upgrade-row">
-                    <span className="advisor-upgrade-component">{u.component}</span>
-                    <span className="advisor-upgrade-current">{u.current}</span>
-                    <span className="advisor-upgrade-arrow">→</span>
-                    <span className="advisor-upgrade-rec">{u.recommended}</span>
+                    <div className="advisor-upgrade-header">
+                      <span className="advisor-upgrade-component">{u.component}</span>
+                      <span className="advisor-upgrade-impact">{u.impact}</span>
+                    </div>
+                    <p className="advisor-upgrade-reason">{u.reason}</p>
+                    <span className="advisor-upgrade-specifics">{u.specifics}</span>
                   </div>
                 ))}
               </div>

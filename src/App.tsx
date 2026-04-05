@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Loader from './components/Loader';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
+import LightRays from './components/LightRays';
 import LiveMetrics from './pages/LiveMetrics';
 import Performance from './pages/Performance';
 import Cleaner from './pages/Cleaner';
@@ -16,6 +17,7 @@ import { ToastProvider } from './contexts/ToastContext';
 import { ToastContainer } from './components/ToastContainer';
 import AutoCleanupRunner from './components/AutoCleanupRunner';
 import { useRealtimeHardware } from './hooks/useRealtimeHardware';
+import { loadSettings } from './utils/settings';
 
 export interface HardwareInfo {
   cpuName: string;
@@ -106,6 +108,7 @@ export interface ExtendedStats {
 
 function App() {
     const [isLoading, setIsLoading] = useState(true);
+  const [raysColor, setRaysColor] = useState<string>(() => loadSettings().raysColor ?? '#00F2FF');
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo | undefined>(undefined);
   const shouldStream = isLoading || currentPage === 'dashboard' || currentPage === 'performance';
@@ -165,6 +168,28 @@ function App() {
     return () => { unsub?.(); };
   }, []);
 
+  useEffect(() => {
+    const s = loadSettings();
+    if (s.appBgColor) {
+      document.documentElement.style.setProperty('--app-bg', s.appBgColor);
+    }
+  }, []);
+
+  useEffect(() => {
+    const onUpdated = (e: Event) => {
+      try {
+        // @ts-ignore
+        const detail = (e as CustomEvent)?.detail || {};
+        if (detail.raysColor) setRaysColor(detail.raysColor);
+        if (detail.appBgColor) {
+          document.documentElement.style.setProperty('--app-bg', detail.appBgColor);
+        }
+      } catch {}
+    };
+    window.addEventListener('settings:updated', onUpdated as EventListener);
+    return () => window.removeEventListener('settings:updated', onUpdated as EventListener);
+  }, []);
+
   const show = { display: 'block' } as const;
   const hide = { display: 'none' } as const;
 
@@ -208,6 +233,21 @@ function App() {
 
   return (
     <ToastProvider>
+      {raysColor !== 'off' && (
+      <LightRays
+        raysColor={raysColor}
+        raysSpeed={1}
+        lightSpread={1.6}
+        rayLength={1.5}
+        followMouse={false}
+        mouseInfluence={0}
+        noiseAmount={0.02}
+        distortion={0}
+        pulsating={false}
+        fadeDistance={1}
+        saturation={2.5}
+      />
+      )}
       {isLoading ? (
         <div className="app-container">
           <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />

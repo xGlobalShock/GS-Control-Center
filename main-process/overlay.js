@@ -20,6 +20,7 @@ let _overlayConfig = {
   opacity: 0.85,
   color: '#00F2FF',
   font: 'Share Tech Mono',
+  fontSize: 'medium',
   hotkey: 'CommandOrControl+Shift+F',
 };
 
@@ -27,7 +28,12 @@ function getOverlayBounds() {
   const { screen } = require('electron');
   const display = screen.getPrimaryDisplay();
   const { width: sw, height: sh } = display.workAreaSize;
-  const ow = 234, oh = 310;
+  const sizeMap = {
+    small:  { ow: 192, oh: 255 },
+    medium: { ow: 234, oh: 310 },
+    large:  { ow: 286, oh: 400 },
+  };
+  const { ow, oh } = sizeMap[_overlayConfig.fontSize] ?? sizeMap.medium;
   const margin = 10;
 
   switch (_overlayConfig.position) {

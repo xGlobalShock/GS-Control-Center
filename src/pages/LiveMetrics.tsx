@@ -28,13 +28,10 @@ const MAX_HISTORY = 60;
 
 const LiveMetrics: React.FC<LiveMetricsProps> = React.memo(({ systemStats, hardwareInfo, extendedStats }) => {
   const [openPanel, setOpenPanel] = useState<'health' | 'advisor' | null>(null);
-  const [cpuHistory, setCpuHistory] = useState<MetricPoint[]>([]);
-  const [gpuHistory, setGpuHistory] = useState<MetricPoint[]>([]);
-  const [ramHistory, setRamHistory] = useState<MetricPoint[]>([]);
-  const [netHistory, setNetHistory] = useState<MetricPoint[]>([]);
-  const [lossHistory, setLossHistory] = useState<MetricPoint[]>([]);
-  const [diskHistory, setDiskHistory] = useState<MetricPoint[]>([]);
-  const [processHistory, setProcessHistory] = useState<MetricPoint[]>([]);
+  const [histories, setHistories] = useState<{
+    cpu: MetricPoint[]; gpu: MetricPoint[]; ram: MetricPoint[];
+    net: MetricPoint[]; loss: MetricPoint[]; disk: MetricPoint[]; proc: MetricPoint[];
+  }>({ cpu: [], gpu: [], ram: [], net: [], loss: [], disk: [], proc: [] });
   const lastWriteRef = useRef(0);
 
   useEffect(() => {
@@ -47,17 +44,23 @@ const LiveMetrics: React.FC<LiveMetricsProps> = React.memo(({ systemStats, hardw
     const ram = systemStats?.ram ?? 0;
     const ping = Math.max(extendedStats?.latencyMs ?? 0, 0);
     const loss = Math.max(extendedStats?.packetLoss ?? 0, 0);
-
     const disk = systemStats?.disk ?? 0;
-    setCpuHistory(h => [...h.slice(-(MAX_HISTORY - 1)), { v: cpu }]);
-    setGpuHistory(h => [...h.slice(-(MAX_HISTORY - 1)), { v: gpu }]);
-    setRamHistory(h => [...h.slice(-(MAX_HISTORY - 1)), { v: ram }]);
-    setNetHistory(h => [...h.slice(-(300 - 1)), { v: ping }]);
-    setLossHistory(h => [...h.slice(-(300 - 1)), { v: loss }]);
-    setDiskHistory(h => [...h.slice(-(MAX_HISTORY - 1)), { v: disk }]);
     const proc = Math.min(extendedStats?.processCount ?? 0, 500);
-    setProcessHistory(h => [...h.slice(-(MAX_HISTORY - 1)), { v: proc }]);
+
+    // Single state update instead of 7 — one re-render per cycle
+    setHistories(h => ({
+      cpu:  [...h.cpu.slice(-(MAX_HISTORY - 1)),  { v: cpu }],
+      gpu:  [...h.gpu.slice(-(MAX_HISTORY - 1)),  { v: gpu }],
+      ram:  [...h.ram.slice(-(MAX_HISTORY - 1)),  { v: ram }],
+      net:  [...h.net.slice(-(300 - 1)),           { v: ping }],
+      loss: [...h.loss.slice(-(300 - 1)),          { v: loss }],
+      disk: [...h.disk.slice(-(MAX_HISTORY - 1)),  { v: disk }],
+      proc: [...h.proc.slice(-(MAX_HISTORY - 1)),  { v: proc }],
+    }));
   }, [systemStats, extendedStats]);
+
+  // Destructure for prop compatibility
+  const { cpu: cpuHistory, gpu: gpuHistory, ram: ramHistory, net: netHistory, loss: lossHistory, disk: diskHistory, proc: processHistory } = histories;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

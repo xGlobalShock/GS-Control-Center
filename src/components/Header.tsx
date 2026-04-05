@@ -291,11 +291,11 @@ const description = release.body?.trim() || undefined;
 
     fetchDevUpdates();
 
-    // Refresh every 10 seconds
+    // Refresh every 5 minutes (was 10 s — hammered GitHub API and wasted CPU)
     const refreshInterval = setInterval(() => {
       localStorage.removeItem(DEV_UPDATES_CACHE_KEY);
       fetchDevUpdates();
-    }, 10000);
+    }, 300_000);
 
     return () => clearInterval(refreshInterval);
   }, []);

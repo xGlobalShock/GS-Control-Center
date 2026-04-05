@@ -70,3 +70,6 @@ interface Window {
     };
   };
 }
+
+// Allow importing the `ogl` package without TypeScript types in this repo
+declare module 'ogl';

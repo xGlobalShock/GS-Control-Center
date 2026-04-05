@@ -1113,6 +1113,22 @@
   transform: scale(1.12);
 }
 
+/* preview removed — keep action/button styles below */
+
+.settings-action-row { display:flex; gap:8px; align-items:center; }
+.action-btn {
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+  color: #e4e4e7;
+}
+.action-btn:focus { outline: none; box-shadow: 0 0 0 3px rgba(0,242,255,0.06); }
+.action-btn--primary { background: linear-gradient(180deg,#0b61d6,#0657c0); color: #fff; border-color: rgba(11,97,214,0.25); box-shadow: 0 6px 18px color-mix(in srgb, var(--rays-color, #00F2FF) 18%, transparent); }
+.action-btn--ghost { background: rgba(255,255,255,0.02); color: #e4e4e7; border-color: rgba(255,255,255,0.06); }
+
 /* ── Opacity Slider ─────────────────────────────────────── */
 
 .overlay-opacity-row {
@@ -1340,6 +1356,329 @@
   padding-top: 2px;
   margin-top: 0;
 }
+
+
+/* ══════════════════════════════════════════════════════
+   Overlay Redesign — futuristic control panel layout
+   ══════════════════════════════════════════════════════ */
+
+/* Panel body override: tighter gap for the new layout */
+.ovl-panel-body {
+  gap: 12px !important;
+}
+
+/* ── Top Grid: Preview (left) + Controls (right) ─────── */
+
+.ovl-top-grid {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 12px;
+}
+
+/* ── Live Preview card ──────────────────────────────── */
+
+.ovl-preview-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ovl-section-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  color: rgba(228, 228, 231, 0.28);
+  text-transform: uppercase;
+}
+
+.ovl-preview-frame {
+  flex: 1;
+  position: relative;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--ovl-color, #00C8FF) 22%, rgba(255,255,255,0.06));
+  background: rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  box-shadow:
+    inset 0 0 20px rgba(0,0,0,0.4),
+    0 0 16px color-mix(in srgb, var(--ovl-color, #00C8FF) 8%, transparent);
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.ovl-preview-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.1) 2px,
+    rgba(0, 0, 0, 0.1) 3px
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Pulsing corner indicator matching the selected position */
+.ovl-preview-pos-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--ovl-color, #00C8FF);
+  box-shadow: 0 0 8px var(--ovl-color, #00C8FF);
+  z-index: 5;
+  animation: ovl-pos-pulse 2s ease-in-out infinite;
+  transition: top 0.2s, right 0.2s, bottom 0.2s, left 0.2s;
+}
+
+@keyframes ovl-pos-pulse {
+  0%, 100% { opacity: 1;   box-shadow: 0 0 6px  var(--ovl-color, #00C8FF); }
+  50%       { opacity: 0.3; box-shadow: 0 0 14px var(--ovl-color, #00C8FF); }
+}
+
+.ovl-preview-pos-dot--top-left     { top: 7px;    left: 7px;    }
+.ovl-preview-pos-dot--top-right    { top: 7px;    right: 7px;   }
+.ovl-preview-pos-dot--bottom-left  { bottom: 7px; left: 7px;    }
+.ovl-preview-pos-dot--bottom-right { bottom: 7px; right: 7px;   }
+
+/* HUD content inside the preview */
+.ovl-preview-hud {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: opacity 0.2s, font-size 0.15s;
+}
+
+.ovl-preview-hud[data-size='small']  { font-size: 7.5px; }
+.ovl-preview-hud[data-size='medium'] { font-size: 9.5px;  }
+.ovl-preview-hud[data-size='large']  { font-size: 12px;  }
+
+.ovl-preview-hud-header {
+  font-size: 0.78em;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: var(--ovl-color, #00C8FF);
+  margin-bottom: 3px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ovl-color, #00C8FF) 28%, transparent);
+  padding-bottom: 3px;
+  text-shadow: 0 0 8px color-mix(in srgb, var(--ovl-color, #00C8FF) 60%, transparent);
+}
+
+.ovl-preview-hud-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ovl-preview-metric {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ovl-metric-key {
+  font-size: 0.85em;
+  font-weight: 700;
+  color: var(--ovl-color, #00C8FF);
+  opacity: 0.7;
+  min-width: 26px;
+  letter-spacing: 0.05em;
+}
+
+.ovl-metric-val {
+  font-size: 0.85em;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+  font-variant-numeric: tabular-nums;
+}
+
+/* "OVERLAY OFF" dimmed overlay */
+.ovl-preview-offline {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.68);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  color: rgba(228, 228, 231, 0.2);
+  z-index: 10;
+}
+
+/* ── Controls Column ─────────────────────────────────── */
+
+.ovl-controls-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ovl-control-group {
+  padding: 13px 15px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  background: rgba(255, 255, 255, 0.018);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ovl-control-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* Stacked layout (used for opacity slider) */
+.ovl-control-row--col {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.ovl-control-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(228, 228, 231, 0.6);
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  min-width: 74px;
+}
+
+/* ── Visible Metrics Card ────────────────────────────── */
+
+.ovl-metrics-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 13px 15px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  background: rgba(255, 255, 255, 0.018);
+  align-self: stretch;
+}
+
+/* 2-column grid for metric rows */
+.ovl-ml-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 6px;
+  flex: 1;
+}
+
+.ovl-ml-col {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Section header row */
+.ovl-ml-group-hdr {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ovl-color, #00C8FF) 70%, rgba(228,228,231,0.4));
+  padding: 9px 0 4px;
+  margin-top: 2px;
+}
+
+.ovl-ml-group-hdr:first-child {
+  padding-top: 2px;
+  margin-top: 0;
+}
+
+.ovl-ml-group-hdr::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: color-mix(in srgb, var(--ovl-color, #00C8FF) 18%, transparent);
+}
+
+/* Individual metric toggle row */
+.ovl-ml-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 6px 5px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s;
+  min-height: 30px;
+}
+
+.ovl-ml-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ovl-ml-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: rgba(228, 228, 231, 0.42);
+  letter-spacing: 0.02em;
+  transition: color 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.ovl-ml-row--on .ovl-ml-label {
+  color: rgba(228, 228, 231, 0.85);
+}
+
+/* ── Toggle Chips ──────────────────────────────────── */
+
+.ovl-chip {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  letter-spacing: 0.03em;
+  outline: none;
+  line-height: 1.5;
+  user-select: none;
+}
+
+.ovl-chip--off {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgba(228, 228, 231, 0.38);
+}
+
+.ovl-chip--off:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: rgba(228, 228, 231, 0.65);
+}
+
+.ovl-chip--on {
+  background: color-mix(in srgb, var(--ovl-color, #00C8FF) 14%, transparent);
+  border-color: color-mix(in srgb, var(--ovl-color, #00C8FF) 42%, transparent);
+  color: var(--ovl-color, #00C8FF);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--ovl-color, #00C8FF) 16%, transparent);
+}
+
+.ovl-chip--on:hover {
+  background: color-mix(in srgb, var(--ovl-color, #00C8FF) 22%, transparent);
+  border-color: color-mix(in srgb, var(--ovl-color, #00C8FF) 60%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--ovl-color, #00C8FF) 26%, transparent);
+}
+
 
 
 

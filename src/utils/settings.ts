@@ -10,6 +10,9 @@ interface AppSettings {
   cleanupSchedule?: 'daily' | 'weekly' | 'monthly';
   lastCleanup?: string;
   autoCleanupOnStartup?: boolean;
+  raysColor?: string;
+  accentColor?: string;
+  appBgColor?: string;
 }
 
 const SETTINGS_KEY = 'pc-controlcenter-settings';
@@ -22,6 +25,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   startupLaunch: true,
   cleanupSchedule: 'weekly',
   autoCleanupOnStartup: false,
+  raysColor: '#00C8FF',
+  accentColor: '#00C8FF',
+  appBgColor: 'radial-gradient(ellipse 70% 60% at 55% 45%, #081a1a 0%, transparent 100%), radial-gradient(ellipse 40% 35% at 30% 30%, rgba(0, 242, 255, 0.025) 0%, transparent 100%), #020606',
 };
 
 export function loadSettings(): AppSettings {
