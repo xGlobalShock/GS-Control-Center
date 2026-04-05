@@ -90,7 +90,23 @@ function initAutoUpdater() {
       try {
         autoUpdater.quitAndInstall(true, true);
       } catch (e) {
-        console.error('[AutoUpdater] quitAndInstall failed:', e?.message || e);
+        const msg = e?.message || 'Unknown error';
+        console.error('[AutoUpdater] quitAndInstall failed:', msg);
+        logUpdateEvent(`quitAndInstall-failed: ${msg}`);
+        windowManager.sendSplashStatus(`Install failed: ${msg}. Returning to app...`);
+        sendUpdateStatus({ event: 'error', message: `Install failed: ${msg}` });
+
+        // Recover: close splash and restore the main window after a brief pause
+        setTimeout(() => {
+          try {
+            const splash = windowManager.getSplashWindow();
+            if (splash && !splash.isDestroyed()) splash.close();
+          } catch {}
+          try {
+            const main = windowManager.getMainWindow();
+            if (main && !main.isDestroyed()) main.show();
+          } catch {}
+        }, 3000);
       }
     }, 800);
   });

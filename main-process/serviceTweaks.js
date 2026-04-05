@@ -588,8 +588,9 @@ function registerIPC() {
         return { success: true, message: 'No eligible services to modify.', applied: 0 };
       }
 
-      // 1. Attempt a Windows System Restore Point FIRST (best-effort)
+      // 1. Attempt a Windows System Restore Point FIRST — REQUIRED, not best-effort
       let restoreOk = false;
+      let restoreError = null;
       try {
         const restoreDesc = `GS Center - Before Service Optimization (${mode || 'safe'} mode)`.replace(/'/g, "''");
         await runPSScript(
@@ -599,29 +600,45 @@ function registerIPC() {
         );
         restoreOk = true;
       } catch (rpErr) {
-        // Restore point creation may fail on some systems; record and continue to attempt backup
-        restoreOk = false;
-        console.warn('[ServiceTweaks] Restore point creation failed:', rpErr && rpErr.message ? rpErr.message : rpErr);
+        restoreError = rpErr && rpErr.message ? rpErr.message : String(rpErr);
+        console.error('[ServiceTweaks] Restore point creation failed:', restoreError);
       }
 
-      // 2. Backup current service states (JSON)
+      // Safety: abort immediately if restore point failed
+      if (!restoreOk) {
+        _sendProgress({ phase: 'done', total: 0, current: 0, summary: { total: 0, success: 0, skipped: 0, failed: 0 }, log: [] });
+        return {
+          success: false,
+          message: `Safety abort: Could not create Windows System Restore point. No changes were made. Error: ${restoreError || 'Unknown'}`,
+          applied: 0,
+        };
+      }
+
+      // 2. Backup current service states (JSON) — REQUIRED
       const backupNames = toApply.map(s => s.name);
       let backupOk = false;
       let backupData = null;
+      let backupError = null;
       try {
         backupData = await _backupCurrentStates(backupNames);
         if (backupData && Array.isArray(backupData) && backupData.length > 0) backupOk = true;
+        else backupError = 'Backup returned empty or no data';
       } catch (bErr) {
-        backupOk = false;
-        console.warn('[ServiceTweaks] Backup of current service states failed:', bErr && bErr.message ? bErr.message : bErr);
+        backupError = bErr && bErr.message ? bErr.message : String(bErr);
+        console.error('[ServiceTweaks] Backup of current service states failed:', backupError);
       }
 
-      // 2.5 Safety check: require at least one of restore point OR backup to have succeeded
-      if (!restoreOk && !backupOk) {
-        return { success: false, message: 'Failed to create System Restore point and failed to backup current service states. Aborting to preserve system safety.', applied: 0 };
+      // Safety: abort if backup also failed (restore point succeeded, so system is safe, but we need the JSON too)
+      if (!backupOk) {
+        _sendProgress({ phase: 'done', total: 0, current: 0, summary: { total: 0, success: 0, skipped: 0, failed: 0 }, log: [] });
+        return {
+          success: false,
+          message: `Safety abort: System Restore point was created, but JSON backup of current service states failed. No changes were made. Error: ${backupError || 'Unknown'}`,
+          applied: 0,
+        };
       }
 
-      // 3. Apply changes
+      // 3. Both safety checks passed — apply changes
       const result = await _applyServices(toApply);
       return result;
 

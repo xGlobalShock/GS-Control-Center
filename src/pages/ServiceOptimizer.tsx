@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, ShieldCheck, ShieldAlert, RotateCcw, Play, Search, Info, AlertTriangle, XCircle, Loader2, Check, X, ChevronRight } from 'lucide-react';
+import {
+  Shield, ShieldCheck, ShieldAlert, RotateCcw, Play, Search, Info,
+  AlertTriangle, XCircle, Loader2, Check, X, Minimize2, CheckCircle,
+} from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { useToast } from '../contexts/ToastContext';
 import '../styles/ServiceOptimizer.css';
@@ -39,12 +43,11 @@ interface ProgressSummary {
 
 /* ── Mode card definitions ── */
 const MODE_CARDS: { id: Mode; label: string; icon: React.ReactNode; desc: string; color: string }[] = [
-  { id: 'safe',       label: 'Safe',       icon: <Shield size={20} />,      desc: 'Low-risk services only',    color: '#00F2FF' },
-  { id: 'balanced',   label: 'Balanced',   icon: <ShieldCheck size={20} />, desc: 'Low + Medium risk',         color: '#FFD600' },
-  { id: 'aggressive', label: 'Aggressive', icon: <ShieldAlert size={20} />, desc: 'Full Chris Titus config',   color: '#FF2D55' },
+  { id: 'safe',       label: 'Safe',       icon: <Shield size={20} />,      desc: 'Low-risk services only',  color: '#00F2FF' },
+  { id: 'balanced',   label: 'Balanced',   icon: <ShieldCheck size={20} />, desc: 'Low + Medium risk',       color: '#FFD600' },
+  { id: 'aggressive', label: 'Aggressive', icon: <ShieldAlert size={20} />, desc: 'Full Chris Titus config', color: '#FF2D55' },
 ];
 
-/* ── Normalise WMI StartMode → readable string ── */
 function normStartType(raw: string | null): string {
   if (!raw) return 'Unknown';
   const m: Record<string, string> = { Auto: 'Automatic', Manual: 'Manual', Disabled: 'Disabled' };
@@ -61,7 +64,6 @@ function alreadyMatches(current: string | null, target: string): boolean {
 const ServiceOptimizer: React.FC = () => {
   const { addToast } = useToast();
 
-  /* ── State ── */
   const [mode, setMode] = useState<Mode>('safe');
   const [allDefs, setAllDefs] = useState<ServiceDef[]>([]);
   const [states, setStates] = useState<Record<string, ServiceState>>({});
@@ -74,16 +76,15 @@ const ServiceOptimizer: React.FC = () => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const scannedOnce = useRef(false);
 
-  /* ── Progress state ── */
   const [progressPhase, setProgressPhase] = useState<'idle' | 'start' | 'working' | 'done'>('idle');
   const [progressTotal, setProgressTotal] = useState(0);
   const [progressCurrent, setProgressCurrent] = useState(0);
   const [progressService, setProgressService] = useState('');
   const [progressLog, setProgressLog] = useState<ProgressLogEntry[]>([]);
   const [progressSummary, setProgressSummary] = useState<ProgressSummary | null>(null);
-  const logEndRef = useRef<HTMLDivElement>(null);
+  const [progressMinimized, setProgressMinimized] = useState(false);
+  const logRef = useRef<HTMLDivElement>(null);
 
-  /* ── Fetch definitions + elevation once ── */
   useEffect(() => {
     const load = async () => {
       if (!window.electron?.ipcRenderer) return;
@@ -103,7 +104,6 @@ const ServiceOptimizer: React.FC = () => {
     load();
   }, []);
 
-  /* ── Listen for svc:progress events ── */
   useEffect(() => {
     if (!window.electron?.ipcRenderer) return;
     const unsub = window.electron.ipcRenderer.on('svc:progress', (data: any) => {
@@ -115,28 +115,26 @@ const ServiceOptimizer: React.FC = () => {
         setProgressLog([]);
         setProgressSummary(null);
         setProgressService('');
+        setProgressMinimized(false);
       } else if (data.phase === 'working') {
         setProgressPhase('working');
         setProgressCurrent(data.current);
         setProgressService(data.service || '');
-        if (data.entry) {
-          setProgressLog(prev => [...prev, data.entry]);
-        }
+        if (data.entry) setProgressLog(prev => [...prev, data.entry]);
       } else if (data.phase === 'done') {
         setProgressPhase('done');
         setProgressCurrent(data.total);
         setProgressSummary(data.summary || null);
+        setProgressMinimized(false);
       }
     });
     return () => { if (unsub) unsub(); };
   }, []);
 
-  /* ── Auto-scroll log to bottom ── */
   useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [progressLog]);
 
-  /* ── Scan ── */
   const scan = useCallback(async () => {
     if (!window.electron?.ipcRenderer) return;
     setScanning(true);
@@ -148,19 +146,17 @@ const ServiceOptimizer: React.FC = () => {
       } else {
         addToast(result?.message || 'Scan failed', 'error');
       }
-    } catch (e) {
+    } catch {
       addToast('Failed to scan services', 'error');
     } finally {
       setScanning(false);
     }
   }, [addToast]);
 
-  /* ── Auto-scan on mount ── */
   useEffect(() => {
     if (!scannedOnce.current && allDefs.length > 0) scan();
   }, [allDefs, scan]);
 
-  /* ── Apply ── */
   const handleApply = useCallback(async () => {
     if (!window.electron?.ipcRenderer) return;
     if (!isElevated) {
@@ -173,6 +169,7 @@ const ServiceOptimizer: React.FC = () => {
     setProgressSummary(null);
     setProgressCurrent(0);
     setProgressService('');
+    setProgressMinimized(false);
     try {
       const payload = selected.size > 0
         ? { mode, selectedNames: Array.from(selected) }
@@ -186,7 +183,7 @@ const ServiceOptimizer: React.FC = () => {
       } else {
         addToast(result?.message || 'Apply failed', 'error');
       }
-    } catch (e) {
+    } catch {
       addToast('Apply failed', 'error');
       setProgressPhase('idle');
     } finally {
@@ -194,7 +191,6 @@ const ServiceOptimizer: React.FC = () => {
     }
   }, [mode, selected, isElevated, addToast, scan]);
 
-  /* ── Restore ── */
   const handleRestore = useCallback(async () => {
     if (!window.electron?.ipcRenderer) return;
     if (!isElevated) {
@@ -210,14 +206,13 @@ const ServiceOptimizer: React.FC = () => {
       } else {
         addToast(result?.message || 'Restore failed', 'error');
       }
-    } catch (e) {
+    } catch {
       addToast('Restore failed', 'error');
     } finally {
       setRestoring(false);
     }
   }, [isElevated, addToast, scan]);
 
-  /* ── Filtered services by mode (flat list) ── */
   const filteredServices = useMemo(() => {
     const modeRisks: Record<Mode, Set<string>> = {
       safe: new Set(['low']),
@@ -226,7 +221,6 @@ const ServiceOptimizer: React.FC = () => {
     };
     const allowed = modeRisks[mode];
     let list = allDefs.filter(s => allowed.has(s.risk));
-
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
       list = list.filter(s =>
@@ -235,8 +229,6 @@ const ServiceOptimizer: React.FC = () => {
         s.category.toLowerCase().includes(q)
       );
     }
-
-    // Sort alphabetically by name
     list.sort((a, b) => a.name.localeCompare(b.name));
     return list;
   }, [allDefs, mode, searchTerm]);
@@ -252,11 +244,9 @@ const ServiceOptimizer: React.FC = () => {
     return count;
   }, [filteredServices, states]);
 
-  /* ── Are all (or all selected) services already optimized? ── */
   const allOptimized = useMemo(() => {
     if (!scannedOnce.current || totalListCount === 0) return false;
     if (selected.size > 0) {
-      // Check only selected services
       return Array.from(selected).every(name => {
         const def = filteredServices.find(s => s.name === name);
         if (!def) return true;
@@ -264,12 +254,10 @@ const ServiceOptimizer: React.FC = () => {
         return st?.Exists && alreadyMatches(st.StartType, def.target);
       });
     }
-    // Check all services in current mode
-    const existingServices = filteredServices.filter(s => states[s.name]?.Exists);
-    return existingServices.length > 0 && existingServices.every(s => alreadyMatches(states[s.name].StartType, s.target));
+    const existing = filteredServices.filter(s => states[s.name]?.Exists);
+    return existing.length > 0 && existing.every(s => alreadyMatches(states[s.name].StartType, s.target));
   }, [filteredServices, states, selected, totalListCount]);
 
-  /* ── Toggle individual service selection ── */
   const toggleService = (name: string) => {
     setSelected(prev => {
       const n = new Set(prev);
@@ -278,7 +266,6 @@ const ServiceOptimizer: React.FC = () => {
     });
   };
 
-  /* ── Select All / None for visible services ── */
   const selectAll = () => {
     const s = new Set(selected);
     for (const svc of filteredServices) s.add(svc.name);
@@ -286,207 +273,130 @@ const ServiceOptimizer: React.FC = () => {
   };
   const selectNone = () => setSelected(new Set());
 
-  /* ── Dismiss progress overlay ── */
   const dismissProgress = () => {
     setProgressPhase('idle');
     setProgressLog([]);
     setProgressSummary(null);
+    setProgressMinimized(false);
   };
 
-  /* ── Progress percentage ── */
   const progressPct = progressTotal > 0 ? Math.round((progressCurrent / progressTotal) * 100) : 0;
+  const isRunning = progressPhase === 'start' || progressPhase === 'working';
+  const modeColor = MODE_CARDS.find(c => c.id === mode)?.color ?? '#00F2FF';
 
   /* ═══════ RENDER ═══════ */
   return (
-    <div className="svc-page">
-      <PageHeader
-        icon={<Shield size={20} />}
-        title="Services"
-        stat={
-          scannedOnce.current
-            ? <span className="svc-header-stat">{matchingCount} / {totalListCount} optimized</span>
-            : undefined
-        }
-      />
+    <>
+      <div className="svc-page">
+        <PageHeader
+          icon={<Shield size={20} />}
+          title="Services"
+          stat={
+            scannedOnce.current
+              ? <span className="svc-header-stat">{matchingCount} / {totalListCount} optimized</span>
+              : undefined
+          }
+        />
 
-      {/* ── Admin warning ── */}
-      {!isElevated && (
-        <motion.div className="svc-admin-warn" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-          <AlertTriangle size={16} />
-          <span>GS Center is <b>not</b> running as Administrator. Service changes require elevation.</span>
-        </motion.div>
-      )}
-
-      {/* ── Mode selector ── */}
-      <div className="svc-mode-row">
-        {MODE_CARDS.map(m => (
-          <button
-            key={m.id}
-            className={`svc-mode-card${mode === m.id ? ' svc-mode-card--active' : ''}`}
-            style={{ '--mode-color': m.color } as React.CSSProperties}
-            onClick={() => { setMode(m.id); setSelected(new Set()); }}
-          >
-            <span className="svc-mode-icon">{m.icon}</span>
-            <span className="svc-mode-label">{m.label}</span>
-            <span className="svc-mode-desc">{m.desc}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* ── Aggressive warning ── */}
-      <AnimatePresence>
-        {mode === 'aggressive' && (
-          <motion.div
-            className="svc-aggro-warn"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-          >
-            <AlertTriangle size={15} />
-            <span><b>Aggressive mode</b> modifies all services including high-risk system components. A backup is always created before applying.</span>
+        {!isElevated && (
+          <motion.div className="svc-admin-warn" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+            <AlertTriangle size={16} />
+            <span>GS Center is <b>not</b> running as Administrator. Service changes require elevation.</span>
           </motion.div>
         )}
-      </AnimatePresence>
 
-      {/* ── Actions bar ── */}
-      <div className="svc-actions-bar">
-        <div className="svc-actions-left">
-          <button className="svc-btn svc-btn--scan" onClick={scan} disabled={scanning}>
-            {scanning ? <Loader2 size={14} className="svc-spin" /> : <Search size={14} />}
-            {scanning ? 'Scanning…' : 'Scan Services'}
-          </button>
-          <button className="svc-btn svc-btn--apply" onClick={handleApply} disabled={applying || !scannedOnce.current || allOptimized}>
-            {applying ? <Loader2 size={14} className="svc-spin" /> : allOptimized ? <Check size={14} /> : <Play size={14} />}
-            {applying ? 'Applying…' : allOptimized ? 'All Optimized' : selected.size > 0 ? `Apply ${selected.size} Selected` : `Apply ${MODE_CARDS.find(c => c.id === mode)!.label} Mode`}
-          </button>
-        </div>
-
-        <div className="svc-actions-right">
-          {hasBackup.exists && (
-            <button className="svc-btn svc-btn--restore" onClick={handleRestore} disabled={restoring}>
-              {restoring ? <Loader2 size={14} className="svc-spin" /> : <RotateCcw size={14} />}
-              {restoring ? 'Restoring…' : 'Restore Backup'}
+        <div className="svc-mode-row">
+          {MODE_CARDS.map(m => (
+            <button
+              key={m.id}
+              className={`svc-mode-card${mode === m.id ? ' svc-mode-card--active' : ''}`}
+              style={{ '--mode-color': m.color } as React.CSSProperties}
+              onClick={() => { setMode(m.id); setSelected(new Set()); }}
+            >
+              <span className="svc-mode-icon">{m.icon}</span>
+              <span className="svc-mode-label">{m.label}</span>
+              <span className="svc-mode-desc">{m.desc}</span>
             </button>
+          ))}
+        </div>
+
+        <AnimatePresence>
+          {mode === 'aggressive' && (
+            <motion.div
+              className="svc-aggro-warn"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+            >
+              <AlertTriangle size={15} />
+              <span><b>Aggressive mode</b> modifies all services including high-risk system components. A backup is always created before applying.</span>
+            </motion.div>
           )}
+        </AnimatePresence>
+
+        <div className="svc-actions-bar">
+          <div className="svc-actions-left">
+            <button className="svc-btn svc-btn--scan" onClick={scan} disabled={scanning}>
+              {scanning ? <Loader2 size={14} className="svc-spin" /> : <Search size={14} />}
+              {scanning ? 'Scanning\u2026' : 'Scan Services'}
+            </button>
+            <button
+              className="svc-btn svc-btn--apply"
+              onClick={handleApply}
+              disabled={applying || !scannedOnce.current || allOptimized}
+            >
+              {applying ? <Loader2 size={14} className="svc-spin" /> : allOptimized ? <Check size={14} /> : <Play size={14} />}
+              {applying
+                ? 'Applying\u2026'
+                : allOptimized
+                  ? 'All Optimized'
+                  : selected.size > 0
+                    ? `Apply ${selected.size} Selected`
+                    : `Apply ${MODE_CARDS.find(c => c.id === mode)!.label} Mode`}
+            </button>
+          </div>
+          <div className="svc-actions-right">
+            <button
+              className="svc-btn svc-btn--restore"
+              onClick={handleRestore}
+              disabled={restoring || !hasBackup.exists}
+              title={hasBackup.exists
+                ? `Restore ${hasBackup.count} services from backup (${new Date(hasBackup.timestamp!).toLocaleString()})`
+                : 'No backup yet — a backup is created automatically when you apply tweaks'}
+            >
+              {restoring ? <Loader2 size={14} className="svc-spin" /> : <RotateCcw size={14} />}
+              {restoring ? 'Restoring\u2026' : 'Restore Backup'}
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* ── Selection helpers ── */}
-      <div className="svc-selection-row">
-        <button className="svc-link-btn" onClick={selectAll}>Select All</button>
-        <span className="svc-selection-sep">|</span>
-        <button className="svc-link-btn" onClick={selectNone}>Select None</button>
-        {selected.size > 0 && <span className="svc-selection-count">{selected.size} selected</span>}
-
-        {/* Search */}
-        <div className="svc-search-wrap">
-          <Search size={13} className="svc-search-icon" />
-          <input
-            className="svc-search"
-            placeholder="Filter services…"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
+        <div className="svc-selection-row">
+          <button className="svc-link-btn" onClick={selectAll}>Select All</button>
+          <span className="svc-selection-sep">|</span>
+          <button className="svc-link-btn" onClick={selectNone}>Select None</button>
+          {selected.size > 0 && <span className="svc-selection-count">{selected.size} selected</span>}
+          <div className="svc-search-wrap">
+            <Search size={13} className="svc-search-icon" />
+            <input
+              className="svc-search"
+              placeholder="Filter services\u2026"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
-      </div>
 
-      {/* ── Backup info ── */}
-      {hasBackup.exists && progressPhase === 'idle' && (
-        <div className="svc-backup-info">
-          <Info size={13} />
-          <span>Backup: {hasBackup.count} services saved on {new Date(hasBackup.timestamp!).toLocaleString()}</span>
-        </div>
-      )}
-
-      {/* ── Progress overlay ── */}
-      <AnimatePresence>
-        {progressPhase !== 'idle' && (
-          <motion.div
-            className="svc-progress"
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-          >
-            {/* Header */}
-            <div className="svc-progress-header">
-              <div className="svc-progress-title">
-                {progressPhase === 'done'
-                  ? <Check size={14} />
-                  : <Loader2 size={14} className="svc-spin" />
-                }
-                <span>
-                  {progressPhase === 'done'
-                    ? 'Optimization Complete'
-                    : `Applying tweaks… (${progressCurrent}/${progressTotal})`
-                  }
-                </span>
-              </div>
-              {progressPhase === 'done' && (
-                <button className="svc-progress-close" onClick={dismissProgress}>
-                  <X size={13} />
-                </button>
-              )}
-            </div>
-
-            {/* Progress bar */}
-            <div className="svc-progress-bar-track">
-              <motion.div
-                className="svc-progress-bar-fill"
-                initial={{ width: 0 }}
-                animate={{ width: `${progressPct}%` }}
-                transition={{ duration: 0.3, ease: 'easeOut' }}
-              />
-            </div>
-
-            {/* Current service */}
-            {progressPhase === 'working' && progressService && (
-              <div className="svc-progress-current">
-                <ChevronRight size={11} />
-                <span>Setting <b>{progressService}</b> → Manual</span>
-              </div>
-            )}
-
-            {/* Summary (when done) */}
-            {progressPhase === 'done' && progressSummary && (
-              <div className="svc-progress-summary">
-                <span className="svc-ps svc-ps--success">{progressSummary.success} changed</span>
-                <span className="svc-ps svc-ps--skipped">{progressSummary.skipped} skipped</span>
-                {progressSummary.failed > 0 && (
-                  <span className="svc-ps svc-ps--failed">{progressSummary.failed} failed</span>
-                )}
-              </div>
-            )}
-
-            {/* Log panel */}
-            {progressLog.length > 0 && (
-              <div className="svc-progress-log">
-                {progressLog.map((entry, i) => (
-                  <div key={i} className={`svc-log-entry svc-log-entry--${entry.status}`}>
-                    <span className="svc-log-icon">
-                      {entry.status === 'success' ? '✔' : entry.status === 'skipped' ? '→' : '✖'}
-                    </span>
-                    <span className="svc-log-name">{entry.name}</span>
-                    <span className="svc-log-detail">
-                      {entry.status === 'success'
-                        ? `${entry.prev || '?'} → ${entry.target}`
-                        : entry.status === 'skipped'
-                          ? entry.reason || 'Skipped'
-                          : entry.reason || 'Failed'
-                      }
-                    </span>
-                  </div>
-                ))}
-                <div ref={logEndRef} />
-              </div>
-            )}
-          </motion.div>
+        {hasBackup.exists && progressPhase === 'idle' && (
+          <div className="svc-backup-info">
+            <Info size={13} />
+            <span>Backup: {hasBackup.count} services saved on {new Date(hasBackup.timestamp!).toLocaleString()}</span>
+          </div>
         )}
-      </AnimatePresence>
 
-      {/* ── Service grid ── */}
-      <div className="svc-list">
-        <div className="svc-grid">
+        <div className="svc-grid svc-grid--flat">
+          {filteredServices.length === 0 && (
+            <div className="svc-empty">No services match your filter.</div>
+          )}
           {filteredServices.map(svc => {
             const st = states[svc.name];
             const exists = st?.Exists ?? false;
@@ -494,32 +404,26 @@ const ServiceOptimizer: React.FC = () => {
             const isSelected = selected.has(svc.name);
 
             const cardClass = [
-              'svc-card',
+              'svc-card svc-card--flat',
               isSelected ? 'svc-card--selected' : '',
               !exists ? 'svc-card--missing' : '',
               matches ? 'svc-card--match' : '',
             ].filter(Boolean).join(' ');
 
-            /* Dot colour: green = already optimized, amber = needs change, grey = not found */
             const dotClass = !exists
               ? 'svc-dot svc-dot--off'
-              : matches
-                ? 'svc-dot svc-dot--good'
-                : 'svc-dot svc-dot--pending';
+              : matches ? 'svc-dot svc-dot--good' : 'svc-dot svc-dot--pending';
 
-            /* Right-side badge icon */
             const badgeClass = !exists
               ? 'svc-card-badge svc-card-badge--missing'
-              : matches
-                ? 'svc-card-badge svc-card-badge--match'
-                : 'svc-card-badge svc-card-badge--pending';
+              : matches ? 'svc-card-badge svc-card-badge--match' : 'svc-card-badge svc-card-badge--pending';
 
             return (
               <div
                 key={svc.name}
                 className={cardClass}
                 onClick={() => exists && toggleService(svc.name)}
-                title={`${svc.description}\n${svc.category} · ${svc.risk} risk`}
+                title={`${svc.description}\n${svc.category} \u00b7 ${svc.risk} risk`}
               >
                 <div className="svc-card-cb" />
                 <span className={dotClass} />
@@ -538,12 +442,163 @@ const ServiceOptimizer: React.FC = () => {
             );
           })}
         </div>
-
-        {filteredServices.length === 0 && (
-          <div className="svc-empty">No services match your filter.</div>
-        )}
       </div>
-    </div>
+
+      {createPortal(
+        <AnimatePresence>
+          {progressPhase !== 'idle' && !progressMinimized && (
+            <>
+              <motion.div
+                className="svc-modal-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18 }}
+              />
+              <div className="svc-modal-wrapper">
+                <motion.div
+                  className="svc-modal"
+                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+                  style={{ '--svc-modal-color': modeColor } as React.CSSProperties}
+                >
+                  <div className="svc-modal-header">
+                    <div className="svc-modal-title-row">
+                      <div className="svc-modal-icon">
+                        <Shield size={16} />
+                      </div>
+                      <div>
+                        <div className="svc-modal-title">Service Optimizer</div>
+                        <div className="svc-modal-subtitle">{MODE_CARDS.find(c => c.id === mode)?.label} Mode</div>
+                      </div>
+                      <div className={`svc-modal-badge ${progressPhase === 'done' ? 'svc-modal-badge--done' : 'svc-modal-badge--running'}`}>
+                        {progressPhase === 'done'
+                          ? <><CheckCircle size={11} /><span>Completed</span></>
+                          : <><Loader2 size={11} className="svc-spin" /><span>Running...</span></>
+                        }
+                      </div>
+                    </div>
+                    {isRunning && (
+                      <button className="svc-modal-minimize" onClick={() => setProgressMinimized(true)} title="Minimize">
+                        <Minimize2 size={15} />
+                      </button>
+                    )}
+                    <button
+                      className="svc-modal-close"
+                      onClick={dismissProgress}
+                      disabled={isRunning}
+                      title={isRunning ? 'Running\u2026' : 'Close'}
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+
+                  <div className="svc-modal-bar-track">
+                    <motion.div
+                      className="svc-modal-bar-fill"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progressPct}%` }}
+                      transition={{ duration: 0.3, ease: 'easeOut' }}
+                    />
+                  </div>
+
+                  <div className="svc-modal-log" ref={logRef}>
+                    {progressLog.length === 0 ? (
+                      <div className="svc-modal-log-empty">
+                        <Loader2 size={16} className="svc-spin" />
+                        <span>Preparing services\u2026</span>
+                      </div>
+                    ) : (
+                      <>
+                        {progressLog.map((entry, i) => {
+                          const icon = entry.status === 'success' ? '\u2714' : entry.status === 'skipped' ? '\u2192' : '\u2716';
+                          const detail = entry.status === 'success'
+                            ? `${entry.prev || '?'} \u2192 ${entry.target}`
+                            : entry.reason || (entry.status === 'skipped' ? 'Already set' : 'Failed');
+                          return (
+                            <div key={i} className={`svc-log-line svc-log-line--${entry.status}`}>
+                              <span className="svc-log-glyph">{icon}</span>
+                              <span className="svc-log-svc">{entry.name}</span>
+                              <span className="svc-log-detail">{detail}</span>
+                            </div>
+                          );
+                        })}
+                        {isRunning && <div className="svc-log-cursor" />}
+                      </>
+                    )}
+                  </div>
+
+                  <div className="svc-modal-footer">
+                    {isRunning && (
+                      <button className="svc-modal-minimize-btn" onClick={() => setProgressMinimized(true)}>
+                        <Minimize2 size={13} />
+                        <span>Minimize</span>
+                      </button>
+                    )}
+                    {progressPhase === 'done' && progressSummary && (
+                      <div className="svc-modal-summary">
+                        <span className="svc-mps svc-mps--success">{progressSummary.success} changed</span>
+                        <span className="svc-mps svc-mps--skipped">{progressSummary.skipped} skipped</span>
+                        {progressSummary.failed > 0 && (
+                          <span className="svc-mps svc-mps--failed">{progressSummary.failed} failed</span>
+                        )}
+                      </div>
+                    )}
+                    <button className="svc-modal-close-btn" onClick={dismissProgress} disabled={isRunning}>
+                      {isRunning ? 'Running\u2026' : 'Close'}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {createPortal(
+        <AnimatePresence>
+          {progressPhase !== 'idle' && progressMinimized && (
+            <motion.div
+              className="svc-mini-overlay"
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+              style={{ '--svc-modal-color': modeColor } as React.CSSProperties}
+            >
+              <div className="svc-mini-header">
+                <span className="svc-mini-title">Service Optimizer</span>
+                <div className={`svc-mini-badge ${progressPhase === 'done' ? 'svc-mini-badge--done' : 'svc-mini-badge--running'}`}>
+                  {isRunning
+                    ? <><Loader2 size={10} className="svc-spin" /><span>Running</span></>
+                    : <><CheckCircle size={10} /><span>Done</span></>
+                  }
+                </div>
+              </div>
+              <div className="svc-mini-bar-row">
+                <div className="svc-mini-bar-track">
+                  <motion.div
+                    className="svc-mini-bar-fill"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progressPct}%` }}
+                    transition={{ duration: 0.3, ease: 'easeOut' }}
+                  />
+                </div>
+                <span className="svc-mini-pct">{progressPct}%</span>
+              </div>
+              <button className="svc-mini-restore" onClick={() => setProgressMinimized(false)}>
+                <Minimize2 size={12} style={{ transform: 'rotate(180deg)' }} />
+                <span>Restore</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+    </>
   );
 };
 
