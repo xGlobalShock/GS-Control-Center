@@ -88,11 +88,6 @@
 }
 
 /* ——— CORNER ACCENTS ——— */
-@keyframes ccCornerBreathe {
-  0%, 100% { transform: scale(1);   opacity: 0.45; }
-  50%       { transform: scale(1.5); opacity: 1; }
-}
-
 .cc-corner {
   position: absolute;
   width: 10px;
@@ -100,7 +95,7 @@
   z-index: 2;
   pointer-events: none;
   will-change: transform, opacity;
-  animation: ccCornerBreathe 3.2s ease-in-out infinite;
+  animation: cornerBreathe 3.2s ease-in-out infinite;
 }
 
 .cc:hover .cc-corner {

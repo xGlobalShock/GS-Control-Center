@@ -6,8 +6,7 @@ import { useToast } from '../contexts/ToastContext';
 import CacheCleanupToast from '../components/CacheCleanupToast';
 import PageHeader from '../components/PageHeader';
 import SystemRepairPanel from '../components/SystemRepairPanel';
-import { Monitor, Gamepad2, Wrench, Cpu } from 'lucide-react';
-import { Sparkle, SlidersHorizontal } from 'phosphor-react';
+import { Monitor, Gamepad2, Wrench, Cpu, Sparkles, SlidersHorizontal } from 'lucide-react';
 import '../styles/Cleaner.css';
 import ProPreviewBanner from '../components/ProPreviewBanner';
 import ProLockedWrapper from '../components/ProLockedWrapper';
@@ -201,13 +200,13 @@ const Cleaner: React.FC = () => {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.15 }}
     >
-      <PageHeader icon={<SlidersHorizontal size={16} weight="bold" />} title="Utilities" />
+      <PageHeader icon={<SlidersHorizontal size={16} strokeWidth={3} />} title="Utilities" />
 
       <ProPreviewBanner pageName="Utilities" />
 
       {isPro && activeCategory === 'windows' && (
         <button className="cleaner-clearall-btn" onClick={handleShowClearAllToast}>
-          <Sparkle size={13} weight="fill" />
+          <Sparkles size={13} fill="currentColor" strokeWidth={0} />
           Full Cache Cleanup
         </button>
       )}

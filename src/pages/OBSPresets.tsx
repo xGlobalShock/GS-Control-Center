@@ -3,14 +3,13 @@ import { OBS_PRESETS } from '../data/obsPresets';
 import { applyObsPreset, launchObs } from '../services/obsPresetsService';
 import { useToast } from '../contexts/ToastContext';
 import { motion } from 'framer-motion';
-import { Broadcast } from 'phosphor-react';
 import { Check, Zap, Radio } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import '../styles/OBSPresets.css';
 
 const ICON_MAP: Record<string, React.ReactNode> = {
-  broadcast: <Broadcast size={48} weight="fill" />,
-  gamepad:   <Broadcast size={48} weight="fill" />,
+  broadcast: <Radio size={48} />,
+  gamepad:   <Radio size={48} />,
 };
 
 /* Only show the Gaming preset */

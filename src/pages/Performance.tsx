@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PerformanceTweakCard from '../components/PerformanceTweakCard';
-import { ArrowCounterClockwise } from 'phosphor-react';
+import { RotateCcw } from 'lucide-react';
 import { performanceTweaks } from '../data/performanceTweaks';
 import { useToast } from '../contexts/ToastContext';
 import '../styles/Performance.css';
@@ -270,7 +270,7 @@ const Performance: React.FC = () => {
               disabled={creatingRestore}
               title="Create a system restore point"
             >
-              <ArrowCounterClockwise size={14} weight="bold" />
+              <RotateCcw size={14} strokeWidth={3} />
               <span>{creatingRestore ? 'Creating...' : 'Restore Point'}</span>
             </button>
           </div>

@@ -107,11 +107,6 @@
   BEFORE: animated width/height/filter → layout + paint every frame (CPU-bound)
   AFTER:  animate transform + opacity only → pure GPU compositor, zero paint/layout
 */
-@keyframes dhCornerBreathe {
-  0%, 100% { transform: scale(1);   opacity: 0.45; }
-  50%       { transform: scale(1.5); opacity: 1; }
-}
-
 .dh-corner {
   position: absolute;
   width: 10px;     /* fixed — no more layout changes from animation */
@@ -121,7 +116,7 @@
   pointer-events: none;
   z-index: 2;
   will-change: transform, opacity;  /* promotes to own layer for animation */
-  animation: dhCornerBreathe 3.2s ease-in-out infinite;
+  animation: cornerBreathe 3.2s ease-in-out infinite;
 }
 .dh-tl { top: 7px; left: 7px; border-top-width: 1.5px; border-left-width: 1.5px; border-top-left-radius: 3px; animation-delay: 0s; }
 .dh-tr { top: 7px; right: 7px; border-top-width: 1.5px; border-right-width: 1.5px; border-top-right-radius: 3px; animation-delay: 0.8s; }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check } from 'phosphor-react';
+import { Check } from 'lucide-react';
 import '../styles/CleanerCard.css';
 
 interface CleanerCardProps {
@@ -91,7 +91,7 @@ const CleanerCard: React.FC<CleanerCardProps> = ({
             </>
           ) : (
             <>
-              <Check size={13} weight="bold" />
+              <Check size={13} strokeWidth={3} />
               <span>{buttonText}</span>
             </>
           )}

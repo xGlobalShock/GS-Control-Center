@@ -1517,7 +1517,7 @@ const GameLibrary: React.FC<GameLibraryProps> = ({ hardwareInfo, isActive }) => 
                                   </div>
                                   <span className="gl-fps-tier__unit">FPS</span>
                                   <div className="gl-fps-tier__bar">
-                                    <div className="gl-fps-tier__fill" style={{ width: `${pct}%` }} />
+                                    <div className="gl-fps-tier__fill" style={{ transform: `scaleX(${pct / 100})` }} />
                                   </div>
                                 </div>
                               );
@@ -1544,7 +1544,7 @@ const GameLibrary: React.FC<GameLibraryProps> = ({ hardwareInfo, isActive }) => 
                               </div>
                               <span className="gl-bench__hw-val" title={row.result.userValue}>{row.result.userValue}</span>
                               <div className="gl-bench__hw-bar-wrap">
-                                <div className={`gl-bench__hw-bar gl-bench__hw-bar--${row.result.verdict}`} style={{ width: `${row.result.percent}%` }} />
+                                <div className={`gl-bench__hw-bar gl-bench__hw-bar--${row.result.verdict}`} style={{ transform: `scaleX(${row.result.percent / 100})` }} />
                               </div>
                               <div className="gl-bench__hw-specs">
                                 <span title={row.minSpec}><em>Minimum:</em> {row.minSpec}</span>

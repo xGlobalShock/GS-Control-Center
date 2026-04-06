@@ -1,17 +1,17 @@
-// phospor-react icons (only used for windows cache)
+// lucide-react icons (used for cache utility cards)
 import {
   Cpu,
-  Trash,
+  Trash2,
   FileText,
-  DownloadSimple,
-  GlobeHemisphereEast,
-  FolderSimple,
+  Download,
+  Globe,
+  Folder,
   Image,
-  Scroll,
+  ScrollText,
   Bug,
-  CloudArrowDown,
-  ClockCounterClockwise,
-} from 'phosphor-react';
+  DownloadCloud,
+  RotateCcw,
+} from 'lucide-react';
 
 // bring back game & nvidia asset logos
 import PrefetchLogo from '../assets/Prefetch.png';
@@ -162,7 +162,7 @@ export const cleanerUtilities: CleanerUtility[] = [
   {
     id: 'windows-logs',
     title: 'Clear Windows Logs',
-    icon: Scroll,
+    icon: ScrollText,
     cacheType: 'Log Files',
     description: 'Clears accumulated Windows event logs to reclaim disk space and reduce clutter, while keeping recent logs intact.',
     buttonText: 'Clear Logs',
@@ -192,7 +192,7 @@ export const cleanerUtilities: CleanerUtility[] = [
   {
     id: 'update-cache',
     title: 'Clear Update Cache',
-    icon: DownloadSimple,
+    icon: Download,
     cacheType: 'Windows Updates',
     description: 'Clears Windows Update download cache so future patches can start fresh and avoid update errors.',
     buttonText: 'Clear Cache',
@@ -202,7 +202,7 @@ export const cleanerUtilities: CleanerUtility[] = [
   {
     id: 'dns-cache',
     title: 'Clear DNS Cache',
-    icon: GlobeHemisphereEast,
+    icon: Globe,
     cacheType: 'Network Resolver',
     description: 'Flushes DNS cache so domain lookups are re-resolved and network name changes take effect quickly.',
     buttonText: 'Clear Cache',
@@ -222,7 +222,7 @@ export const cleanerUtilities: CleanerUtility[] = [
   {
     id: 'recycle-bin',
     title: 'Empty Recycle Bin',
-    icon: Trash,
+    icon: Trash2,
     cacheType: 'Recycle Bin',
     description: 'Permanently deletes recycled files to recover disk space, make sure you no longer need deleted items before running.',
     buttonText: 'Empty Bin',
@@ -232,7 +232,7 @@ export const cleanerUtilities: CleanerUtility[] = [
   {
     id: 'windows-temp',
     title: 'Clear System Temp',
-    icon: FolderSimple,
+    icon: Folder,
     cacheType: 'System Temp Folder',
     description: 'Clears the Windows system-wide temp folder (C:\\Windows\\Temp), which accumulates files from system processes and installers.',
     buttonText: 'Clear Temp',
@@ -242,7 +242,7 @@ export const cleanerUtilities: CleanerUtility[] = [
   {
     id: 'delivery-optimization',
     title: 'Clear Delivery Optimization',
-    icon: CloudArrowDown,
+    icon: DownloadCloud,
     cacheType: 'Delivery Optimization',
     description: 'Clears the Windows Update delivery optimization cache used for peer-to-peer update sharing, freeing up disk space without affecting future updates.',
     buttonText: 'Clear Cache',
@@ -252,7 +252,7 @@ export const cleanerUtilities: CleanerUtility[] = [
   {
     id: 'recent-files',
     title: 'Clear Quick Access History',
-    icon: ClockCounterClockwise,
+    icon: RotateCcw,
     cacheType: 'Quick Access History',
     description: 'Removes the Recent Files and Quick Access history from Windows Explorer, keeping your browsing activity private and the list clutter-free.',
     buttonText: 'Clear History',

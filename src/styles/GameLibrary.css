@@ -40,11 +40,6 @@
 
 
 /*  Corner bracket mixin (reused)  */
-@keyframes glCornerBreathe {
-  0%, 100% { transform: scale(1);   opacity: 0.45; }
-  50%       { transform: scale(1.5); opacity: 1; }
-}
-
 .gl-hero__corner,
 .gl-card__corner {
   position: absolute;
@@ -53,7 +48,7 @@
   z-index: 4;
   pointer-events: none;
   will-change: transform, opacity;
-  animation: glCornerBreathe 3.2s ease-in-out infinite;
+  animation: cornerBreathe 3.2s ease-in-out infinite;
 }
 
 .gl-card:hover .gl-card__corner {
@@ -2000,27 +1995,6 @@
 }
 .gl-empty--sm p { margin: 0; font-size: 0.82rem; }
 
-/* 
-   MODAL
-    */
-.gl-modal-overlay {
-  position: fixed !important;
-  top: 72px !important;
-  right: 1.0rem !important;
-  width: auto !important;
-  height: auto !important;
-  background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  display: block !important;
-  justify-content: flex-start !important;
-  align-items: flex-start !important;
-  z-index: 2147483647 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  pointer-events: auto !important;
-}
-
 .gl-modal {
   position: relative;
   background: rgba(8, 10, 18, 0.95);
@@ -2292,8 +2266,10 @@
 
 .gl-bench__hw-bar {
   height: 100%;
+  width: 100%;
   border-radius: 5px;
-  transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: left;
+  transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .gl-bench__hw-specs {
@@ -4535,8 +4511,10 @@
   top: 0;
   left: 0;
   height: 100%;
+  width: 100%;
   border-radius: 3px;
-  transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: left;
+  transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* ── Verdict color variants ── */

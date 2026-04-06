@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, ArrowCounterClockwise, Power } from 'phosphor-react';
+import { Check, RotateCcw, Power } from 'lucide-react';
 import '../styles/PerformanceTweakCard.css';
 
 interface PerformanceTweakCardProps {
@@ -70,7 +70,7 @@ const PerformanceTweakCard: React.FC<PerformanceTweakCardProps> = ({
         {/* Top row: status indicator + category */}
         <div className="tc-top-row">
           <div className={`tc-power-indicator ${isEnabled ? 'tc-power--on' : 'tc-power--off'}`}>
-            <Power size={10} weight="bold" />
+            <Power size={10} strokeWidth={3} />
           </div>
           <span className="tc-category">{category}</span>
         </div>
@@ -101,7 +101,7 @@ const PerformanceTweakCard: React.FC<PerformanceTweakCardProps> = ({
               onClick={handleClick}
               disabled={isLoading}
             >
-              <Check size={14} weight="bold" />
+              <Check size={14} strokeWidth={3} />
               <span>{isLoading ? 'Applying...' : 'Apply'}</span>
               <div className="tc-btn-shine" />
             </button>
@@ -111,7 +111,7 @@ const PerformanceTweakCard: React.FC<PerformanceTweakCardProps> = ({
               onClick={handleReset}
               disabled={isLoading}
             >
-              <ArrowCounterClockwise size={14} weight="bold" />
+              <RotateCcw size={14} strokeWidth={3} />
               <span>{isLoading ? 'Reverting...' : 'Revert'}</span>
               <div className="tc-btn-shine" />
             </button>

@@ -75,7 +75,7 @@
   animation: scanSweep 3s ease-in-out infinite;
   box-shadow: 0 0 10px rgba(0, 242, 255, 0.35);
   top: 0;
-  will-change: top, opacity;
+  will-change: transform, opacity;
   transform: translateZ(0);
 }
 
