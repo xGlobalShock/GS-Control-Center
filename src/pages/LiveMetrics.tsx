@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import DashboardHero, { MetricPoint } from '../components/DashboardHero';
+import Loader from '../components/Loader';
 import PageHeader from '../components/PageHeader';
 import HealthScore from '../components/HealthScore';
 import AdvisorPanel from '../components/AdvisorPanel';
@@ -34,7 +35,13 @@ const LiveMetrics: React.FC<LiveMetricsProps> = React.memo(({ systemStats, hardw
   }>({ cpu: [], gpu: [], ram: [], net: [], loss: [], disk: [], proc: [] });
   const lastWriteRef = useRef(0);
 
+  // Detect whether we've received any meaningful hardware data
+  const hasData = (systemStats?.cpu > 0 || systemStats?.ram > 0 || systemStats?.disk > 0) || !!hardwareInfo;
+
   useEffect(() => {
+    // Only accumulate history once we have real data
+    if (!hasData) return;
+
     const now = Date.now();
     if (now - lastWriteRef.current < 750) return;
     lastWriteRef.current = now;
@@ -57,10 +64,23 @@ const LiveMetrics: React.FC<LiveMetricsProps> = React.memo(({ systemStats, hardw
       disk: [...h.disk.slice(-(MAX_HISTORY - 1)),   { v: disk }],
       proc: [...h.proc.slice(-(MAX_HISTORY - 1)),   { v: proc }],
     }));
-  }, [systemStats, extendedStats]);
+  }, [systemStats, extendedStats, hasData]);
 
   // Destructure for prop compatibility
   const { cpu: cpuHistory, gpu: gpuHistory, ram: ramHistory, net: netHistory, loss: lossHistory, disk: diskHistory, proc: processHistory } = histories;
+
+  // Show skeleton loader while waiting for hardware monitors to connect
+  if (!hasData) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <PageHeader
+          icon={<Monitor size={16} />}
+          title="SYSTEM DETAILS"
+        />
+        <Loader />
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

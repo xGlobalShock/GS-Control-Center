@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import Loader from './components/Loader';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import LightRays from './components/LightRays';
@@ -113,41 +112,47 @@ export interface ExtendedStats {
 }
 
 function AppInner() {
-    const [isLoading, setIsLoading] = useState(true);
+  const [hardwareReady, setHardwareReady] = useState(false);
   const { user, loading: authLoading } = useAuth();
   const [raysColor, setRaysColor] = useState<string>(() => loadSettings().raysColor ?? '#00F2FF');
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo | undefined>(undefined);
-  const shouldStream = isLoading || currentPage === 'dashboard' || currentPage === 'performance';
+  // Always stream on dashboard/performance; also stream during initial boot so
+  // the first payload arrives as soon as possible.
+  const shouldStream = !hardwareReady || currentPage === 'dashboard' || currentPage === 'performance';
   const { systemStats, extendedStats, connected } = useRealtimeHardware({ enabled: shouldStream });
 
+  // Mark hardware as ready once the first realtime payload arrives
   useEffect(() => {
-    if (isLoading && connected) {
-      setIsLoading(false);
+    if (!hardwareReady && connected) {
+      setHardwareReady(true);
     }
-  }, [isLoading, connected]);
+  }, [hardwareReady, connected]);
 
   // Signal the main process that the renderer is fully loaded.
+  // Fire as soon as hardware is ready OR after a 3-second grace period,
+  // whichever comes first — so the splash screen doesn't hang.
+  const appReadySentRef = React.useRef(false);
   useEffect(() => {
-    if (!isLoading) {
+    if (appReadySentRef.current) return;
+    if (hardwareReady) {
+      appReadySentRef.current = true;
       try { (window as any).electron?.ipcRenderer?.send('app:ready'); } catch (_) {}
     }
-  }, [isLoading]);
+  }, [hardwareReady]);
 
+  // Fallback: send app:ready after 3 s even if hardware hasn't connected
   useEffect(() => {
-    if (!isLoading) return;
-    const timer = setTimeout(async () => {
-      if (!connected && window.electron?.ipcRenderer) {
-        try {
-          await window.electron.ipcRenderer.invoke('system:get-stats');
-          setIsLoading(false);
-        } catch {}
+    const timer = setTimeout(() => {
+      if (!appReadySentRef.current) {
+        appReadySentRef.current = true;
+        try { (window as any).electron?.ipcRenderer?.send('app:ready'); } catch (_) {}
       }
-
-      if (!window.electron) setIsLoading(false);
-    }, 5000);
+      // In non-Electron mode, mark hardware ready so we don't wait forever
+      if (!window.electron) setHardwareReady(true);
+    }, 3000);
     return () => clearTimeout(timer);
-  }, [isLoading, connected]);
+  }, []);
 
   useEffect(() => {
     const fetchHardwareInfo = async () => {
@@ -279,29 +284,17 @@ function AppInner() {
         saturation={2.5}
       />
       )}
-      {isLoading ? (
-        <div className="app-container">
-          <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
-          <div className="main-content">
-            <Header />
-            <div className="page-content">
-              <Loader />
-            </div>
+      <div className="app-container">
+        <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
+        <div className="main-content">
+          <Header />
+          <div className="page-content">
+            {renderPage()}
           </div>
         </div>
-      ) : (
-        <div className="app-container">
-          <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
-          <div className="main-content">
-            <Header />
-            <div className="page-content">
-              {renderPage()}
-            </div>
-          </div>
-          <ToastContainer />
-          <AutoCleanupRunner ready={!isLoading} />
-        </div>
-      )}
+        <ToastContainer />
+        <AutoCleanupRunner ready={hardwareReady} />
+      </div>
     </ToastProvider>
   );
 }
