@@ -3,6 +3,7 @@
 // No .NET runtime needed on target machine (self-contained single-file publish).
 
 using System.Diagnostics;
+using System.Management;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
@@ -85,6 +86,9 @@ public static class Program
 
     // Stdout lock — prevents JSON line interleaving between main loop and hwinfo thread
     private static readonly object _stdoutLock = new();
+
+    // One-time diagnostics flag (logs all CPU temp sensor names on first tick)
+    private static bool _cpuTempDiagLogged = false;
 
     // Ping state (written by background thread, read by main loop)
     private static double _latencyMs;
@@ -429,8 +433,30 @@ public static class Program
             }
         }
 
-        // Fallback: motherboard CPU temp
+        // Fallback chain for CPU temperature
         if (cpuTemp < 0 && mbCpuTemp > 0) cpuTemp = mbCpuTemp;
+
+        // Last resort: WMI ACPI thermal zone (works on many AMD systems where LHM can't read temps)
+        if (cpuTemp < 0)
+        {
+            try
+            {
+                using var tz = new ManagementObjectSearcher(@"root\WMI",
+                    "SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature");
+                foreach (ManagementObject obj in tz.Get())
+                {
+                    var kelvinTenths = Convert.ToDouble(obj["CurrentTemperature"]);
+                    var celsius = (kelvinTenths / 10.0) - 273.15;
+                    if (celsius > 10 && celsius < 120)
+                    {
+                        cpuTemp = Math.Round(celsius, 1);
+                        Log($"ACPI_THERMAL:{cpuTemp}C");
+                        break;
+                    }
+                }
+            }
+            catch { /* WMI thermal zone not available — estimation will kick in on JS side */ }
+        }
 
         // Process pending GPU fan control command
         int fanCmd;
@@ -587,6 +613,17 @@ public static class Program
         ref double cpuTemp, ref double cpuClock,
         ref double cpuPower, ref double cpuVoltage, List<double> perCoreCpu)
     {
+        // One-time: log all CPU temperature sensor names for diagnostics
+        if (!_cpuTempDiagLogged)
+        {
+            _cpuTempDiagLogged = true;
+            foreach (var s in sensors)
+            {
+                if (s.SensorType == SensorType.Temperature)
+                    Log($"CPU_TEMP_SENSOR:{s.Name}={s.Value?.ToString() ?? "null"}");
+            }
+        }
+
         foreach (var s in sensors)
         {
             if (!s.Value.HasValue) continue;
@@ -595,14 +632,16 @@ public static class Program
             if (s.SensorType == SensorType.Temperature)
             {
                 var name = s.Name;
-                // Priority: CPU Package > Tctl/Tdie > Core Average > Core Max > first Core #
+                // Priority: CPU Package > Tctl/Tdie > Core (AMD) > Core Average > Core Max > first Core # > any
                 if (name == "CPU Package" || name.Contains("Tctl") || name.Contains("Tdie"))
+                    cpuTemp = Math.Round(v, 1);
+                else if ((name == "Core" || name == "CPU") && cpuTemp < 0)
                     cpuTemp = Math.Round(v, 1);
                 else if (name == "Core Average" && cpuTemp < 0)
                     cpuTemp = Math.Round(v, 1);
                 else if (name == "Core Max" && cpuTemp < 0)
                     cpuTemp = Math.Round(v, 1);
-                else if (name.StartsWith("Core #") && cpuTemp < 0 && v > 0 && v < 150)
+                else if ((name.StartsWith("Core #") || name.StartsWith("CCD")) && cpuTemp < 0 && v > 0 && v < 150)
                     cpuTemp = Math.Round(v, 1);
                 else if (cpuTemp < 0 && v > 0 && v < 150)
                     cpuTemp = Math.Round(v, 1);
@@ -635,17 +674,27 @@ public static class Program
 
     private static void ExtractMoboTemp(List<ISensor> sensors, ref double mbCpuTemp)
     {
+        double genericTemp = -1;
         foreach (var s in sensors)
         {
             if (!s.Value.HasValue || s.SensorType != SensorType.Temperature) continue;
             var v = s.Value.Value;
+            if (v <= 0 || v >= 150) continue;
             var name = s.Name;
-            if ((name.Contains("CPU") || name.Contains("Tctl") || name.Contains("Core"))
-                && v > 0 && v < 150)
+            // Prefer named CPU/Tctl/Core sensor
+            if (name.Contains("CPU") || name.Contains("Tctl") || name.Contains("Core"))
             {
                 mbCpuTemp = Math.Round(v, 1);
             }
+            // Track first valid generic temp (e.g. SuperIO "Temperature #1") as fallback
+            else if (genericTemp < 0 && v >= 15 && v <= 120)
+            {
+                genericTemp = Math.Round(v, 1);
+            }
         }
+        // If no named CPU sensor, use the first generic SuperIO temp
+        if (mbCpuTemp < 0 && genericTemp > 0)
+            mbCpuTemp = genericTemp;
     }
 
     private static void ExtractGpuMetrics(List<ISensor> sensors,

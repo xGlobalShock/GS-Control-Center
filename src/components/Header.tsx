@@ -562,9 +562,6 @@ const description = release.body?.trim() || undefined;
         <button className="window-control-btn minimize-btn" onClick={handleMinimize} aria-label="Minimize">
           <Minus size={16} />
         </button>
-        <button className="window-control-btn maximize-btn" onClick={handleMaximize} aria-label={isMaximized ? 'Restore' : 'Maximize'}>
-          {isMaximized ? <Copy size={14} /> : <Square size={14} />}
-        </button>
         <button className="window-control-btn close-btn" onClick={handleClose} aria-label="Close">
           <X size={16} />
         </button>

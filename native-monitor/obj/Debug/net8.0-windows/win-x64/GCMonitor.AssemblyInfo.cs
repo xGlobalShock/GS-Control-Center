@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("GCMonitor")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ca018c7986505c0f86281acd59fc2d3afe8a22f9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+218521dfe4a27b92f476d46a8ffa61e8ef31257e")]
 [assembly: System.Reflection.AssemblyProductAttribute("GCMonitor")]
 [assembly: System.Reflection.AssemblyTitleAttribute("GCMonitor")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
