@@ -336,11 +336,39 @@ function registerIPC() {
     try {
       const path = require('path');
       const fs = require('fs');
-      const scriptPath = path.resolve(__dirname, '..', 'scripts', 'WPFTweaksRevertStartMenu.ps1');
-      if (!fs.existsSync(scriptPath)) {
-        return { success: false, message: `Script not found: ${scriptPath}. Place WPFTweaksRevertStartMenu.ps1 in the repo 'scripts' folder.` };
+      const os = require('os');
+      const fileName = 'WPFTweaksRevertStartMenu.ps1';
+      const candidates = [
+        path.resolve(__dirname, '..', 'scripts', fileName),
+        path.resolve(process.resourcesPath || '', 'app.asar.unpacked', 'scripts', fileName),
+        path.resolve(process.resourcesPath || '', 'scripts', fileName),
+        path.resolve(process.resourcesPath || '', 'app.asar', 'scripts', fileName),
+        path.resolve(process.cwd(), 'scripts', fileName),
+      ];
+      let scriptPath = null;
+      for (const p of candidates) {
+        try { if (fs.existsSync(p)) { scriptPath = p; break; } } catch (e) { }
       }
-      await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`, { shell: true, timeout: 0 });
+      if (!scriptPath) {
+        return { success: false, message: `Script not found in expected locations. Place ${fileName} in the repo 'scripts' folder or add it to the installer (app.asar.unpacked). Searched: ${candidates.join(', ')}` };
+      }
+
+      // If the script is inside an asar archive, extract to a temp file so PowerShell can run it.
+      let tmpFileToCleanup = null;
+      try {
+        if (scriptPath.includes('.asar') && !scriptPath.includes('.asar.unpacked')) {
+          const tmpFile = path.join(os.tmpdir(), `gs_wpftweaks_${process.pid}_${Date.now()}.ps1`);
+          const content = fs.readFileSync(scriptPath, 'utf8');
+          fs.writeFileSync(tmpFile, content, 'utf8');
+          tmpFileToCleanup = tmpFile;
+          scriptPath = tmpFile;
+        }
+        await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`, { shell: true, timeout: 0 });
+      } finally {
+        if (tmpFileToCleanup) {
+          try { fs.unlinkSync(tmpFileToCleanup); } catch (_) { }
+        }
+      }
       _tweakCheckCache = null;
       return { success: true, message: 'WPFTweaksRevertStartMenu script executed (apply).' };
     } catch (error) {
@@ -353,17 +381,54 @@ function registerIPC() {
     try {
       const path = require('path');
       const fs = require('fs');
-      const script = path.resolve(__dirname, '..', 'scripts', 'WPFTweaksRevertStartMenu.ps1');
-      const undoScript = path.resolve(__dirname, '..', 'scripts', 'WPFTweaksRevertStartMenuUndo.ps1');
-      let cmd = null;
-      if (fs.existsSync(undoScript)) {
-        cmd = `powershell -NoProfile -ExecutionPolicy Bypass -File "${undoScript}"`;
-      } else if (fs.existsSync(script)) {
-        cmd = `powershell -NoProfile -ExecutionPolicy Bypass -File "${script}" -Undo`;
-      } else {
-        return { success: false, message: 'No undo script found. Add WPFTweaksRevertStartMenuUndo.ps1 or implement -Undo in the main script.' };
+      const os = require('os');
+      const fileName = 'WPFTweaksRevertStartMenu.ps1';
+      const undoFileName = 'WPFTweaksRevertStartMenuUndo.ps1';
+      const candidates = [
+        path.resolve(__dirname, '..', 'scripts', undoFileName),
+        path.resolve(__dirname, '..', 'scripts', fileName),
+        path.resolve(process.resourcesPath || '', 'app.asar.unpacked', 'scripts', undoFileName),
+        path.resolve(process.resourcesPath || '', 'app.asar.unpacked', 'scripts', fileName),
+        path.resolve(process.resourcesPath || '', 'scripts', undoFileName),
+        path.resolve(process.resourcesPath || '', 'scripts', fileName),
+        path.resolve(process.cwd(), 'scripts', undoFileName),
+        path.resolve(process.cwd(), 'scripts', fileName),
+      ];
+
+      let execPath = null;
+      let execArgs = null;
+      // prefer explicit undo script if present
+      for (const p of candidates) {
+        try { if (fs.existsSync(p)) {
+          if (p.toLowerCase().endsWith(undoFileName.toLowerCase())) {
+            execPath = p; execArgs = [];
+            break;
+          }
+          if (!execPath && p.toLowerCase().endsWith(fileName.toLowerCase())) {
+            execPath = p; execArgs = ['-Undo'];
+          }
+        } } catch (e) { }
       }
-      await execAsync(cmd, { shell: true, timeout: 0 });
+      if (!execPath) {
+        return { success: false, message: 'No undo script found. Add WPFTweaksRevertStartMenuUndo.ps1 or ensure WPFTweaksRevertStartMenu.ps1 supports -Undo and is available in scripts.' };
+      }
+
+      let tmpFileToCleanup = null;
+      try {
+        if (execPath.includes('.asar') && !execPath.includes('.asar.unpacked')) {
+          const tmpFile = path.join(os.tmpdir(), `gs_wpftweaks_${process.pid}_${Date.now()}.ps1`);
+          const content = fs.readFileSync(execPath, 'utf8');
+          fs.writeFileSync(tmpFile, content, 'utf8');
+          tmpFileToCleanup = tmpFile;
+          execPath = tmpFile;
+        }
+        const argStr = execArgs && execArgs.length ? ` ${execArgs.join(' ')}` : '';
+        await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${execPath}"${argStr}`, { shell: true, timeout: 0 });
+      } finally {
+        if (tmpFileToCleanup) {
+          try { fs.unlinkSync(tmpFileToCleanup); } catch (_) { }
+        }
+      }
       _tweakCheckCache = null;
       return { success: true, message: 'WPFTweaksRevertStartMenu undo executed (reset).' };
     } catch (error) {
