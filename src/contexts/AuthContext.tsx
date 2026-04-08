@@ -38,6 +38,50 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 /* ═══════════════════════════════════════════════════════════════════
+   Constants
+═══════════════════════════════════════════════════════════════════ */
+const REDIRECT_URL         = 'http://localhost:3000/auth/callback';
+const STORAGE_AUTH_KEY     = 'gs-center-auth-token';
+const STORAGE_PROVIDER_KEY = 'gs-center-current-provider';
+const STORAGE_PROFILE_KEY  = 'gs-center-profile-cache';
+
+/* ═══════════════════════════════════════════════════════════════════
+   localStorage helpers (all sync, all try/catch)
+═══════════════════════════════════════════════════════════════════ */
+function _persistProvider(p: AuthProviderType): void {
+  try { if (p) localStorage.setItem(STORAGE_PROVIDER_KEY, p); else localStorage.removeItem(STORAGE_PROVIDER_KEY); } catch {}
+}
+function _readProvider(): AuthProviderType {
+  try { const v = localStorage.getItem(STORAGE_PROVIDER_KEY); if (v === 'discord' || v === 'twitch') return v; } catch {}
+  return null;
+}
+function _cacheProfile(p: UserProfile | null): void {
+  try { if (p) localStorage.setItem(STORAGE_PROFILE_KEY, JSON.stringify(p)); else localStorage.removeItem(STORAGE_PROFILE_KEY); } catch {}
+}
+function _readCachedProfile(): UserProfile | null {
+  try { const r = localStorage.getItem(STORAGE_PROFILE_KEY); if (r) return JSON.parse(r); } catch {}
+  return null;
+}
+/** Clear only OUR custom keys — does NOT touch the Supabase session token. */
+function _clearCustomStorage(): void {
+  try { localStorage.removeItem(STORAGE_PROVIDER_KEY); } catch {}
+  try { localStorage.removeItem(STORAGE_PROFILE_KEY); } catch {}
+}
+/** Clear everything including the Supabase session — only for explicit logout. */
+function _clearAllAuthStorage(): void {
+  try { localStorage.removeItem(STORAGE_AUTH_KEY); } catch {}
+  _clearCustomStorage();
+}
+/** Read full User object from the Supabase session in localStorage (sync). */
+function _readCachedUser(): User | null {
+  try {
+    const r = localStorage.getItem(STORAGE_AUTH_KEY);
+    if (r) { const p = JSON.parse(r); if (p?.user?.id) return p.user as User; }
+  } catch {}
+  return null;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    Helpers
 ═══════════════════════════════════════════════════════════════════ */
 function _checkExpired(profile: UserProfile | null): boolean {
@@ -46,266 +90,266 @@ function _checkExpired(profile: UserProfile | null): boolean {
   return new Date(profile.pro_expires_at).getTime() < Date.now();
 }
 
-// Hard timeout on the profile DB query.
-// On a post-update first launch the system is busy (NSIS extraction, Defender
-// scans, Chromium V8 bytecode recompile, token refresh) and a cold Supabase
-// request can take 10-30s — far exceeding the splash app:ready safety cap.
-// If the fetch doesn't complete in time appReady fires with profile=null and
-// the background retry effect re-fetches it once the system settles.
-const PROFILE_FETCH_TIMEOUT_MS = 5_000;
-const PROFILE_RETRY_DELAYS     = [2_000, 5_000, 10_000];
+/**
+ * Build a temporary profile instantly from the Supabase User object.
+ * Contains name + avatar so the header renders real data immediately.
+ * The background DB fetch will replace this with the full profile (role, etc).
+ */
+function _profileFromUser(u: User): UserProfile {
+  const meta = u.user_metadata ?? {};
+  return {
+    id: u.id,
+    email: u.email ?? '',
+    username: meta.full_name || meta.name || meta.user_name || meta.preferred_username || u.email?.split('@')[0] || 'User',
+    avatar_url: meta.avatar_url || meta.picture || null,
+    role: 'user',
+    pro_source: null,
+    pro_expires_at: null,
+    subscription_status: null,
+    provider: (u.app_metadata?.provider as AuthProviderType) ?? null,
+    created_at: u.created_at ?? '',
+    updated_at: '',
+  };
+}
+
+function _providerFromUser(u: User | null): AuthProviderType {
+  const p = u?.app_metadata?.provider;
+  if (p === 'discord' || p === 'twitch') return p;
+  return null;
+}
+
+/** Extract `sub` (user ID) from a JWT without verification — client-side only. */
+function _decodeJwtSub(token: string): string | null {
+  try {
+    const payload = token.split('.')[1];
+    const decoded = JSON.parse(atob(payload));
+    return decoded?.sub ?? null;
+  } catch { return null; }
+}
+
+const PROFILE_FETCH_TIMEOUT_MS = 2_000;
+const PROFILE_COLUMNS = 'id,email,username,avatar_url,role,pro_source,pro_expires_at,created_at,updated_at';
 
 async function _fetchProfile(userId: string): Promise<UserProfile | null> {
   if (!isSupabaseConfigured) return null;
   try {
-    const timeoutPromise = new Promise<null>((resolve) =>
-      setTimeout(() => resolve(null), PROFILE_FETCH_TIMEOUT_MS),
-    );
-    const fetchPromise = supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
+    const timeout = new Promise<null>(r => setTimeout(() => r(null), PROFILE_FETCH_TIMEOUT_MS));
+    const query = supabase
+      .from('profiles').select(PROFILE_COLUMNS).eq('id', userId).single()
       .then(({ data, error }) => (error || !data ? null : (data as UserProfile)));
-    return await Promise.race([fetchPromise, timeoutPromise]);
-  } catch {
-    return null;
-  }
+    return await Promise.race([query, timeout]);
+  } catch { return null; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
    Provider
 ═══════════════════════════════════════════════════════════════════ */
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser]       = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [appReady, setAppReady] = useState(false);
+  // Synchronously restore cached auth state so the very first render
+  // already shows the full app (no blank div, no LoginPage flash).
+  const [cachedU] = useState(_readCachedUser);
+  const [cachedP] = useState(_readCachedProfile);
+  const hasCached = !!(cachedU && cachedP);
 
-  // Prevent multiple simultaneous profile fetches
-  const fetchingRef = useRef(false);
+  const [user, setUser]                     = useState<User | null>(cachedU);
+  const [profile, setProfile]               = useState<UserProfile | null>(cachedP ?? (cachedU ? _profileFromUser(cachedU) : null));
+  const [loading, setLoading]               = useState(!hasCached);
+  const [appReady, setAppReady]             = useState(hasCached);
+  const [currentProvider, setCurrentProvider] = useState<AuthProviderType>(_readProvider);
 
-  /* ── Load profile for an authenticated user ─────────────────────── */
-  const loadProfile = useCallback(async (u: User) => {
+  const fetchingRef  = useRef(false);
+  const loginLockRef = useRef(false);
+
+  /**
+   * Set user + instant profile (from cache or synthesized from metadata)
+   * so the header renders immediately without any skeleton.
+   */
+  const setUserWithProfile = useCallback((u: User) => {
+    setUser(u);
+    setCurrentProvider(_readProvider() || _providerFromUser(u));
+    // Prefer cached DB profile (has real role/plan) → fall back to synthesized
+    const cached = _readCachedProfile();
+    if (cached && cached.id === u.id) {
+      setProfile(cached);
+    } else {
+      setProfile(_profileFromUser(u));
+    }
+  }, []);
+
+  /** Fetch full profile from DB in background and cache it. */
+  const refreshProfileFromDB = useCallback(async (u: User) => {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
     try {
       const p = await _fetchProfile(u.id);
-      setProfile(p);
-    } finally {
-      fetchingRef.current = false;
-    }
+      if (p) { setProfile(p); _cacheProfile(p); }
+    } finally { fetchingRef.current = false; }
   }, []);
 
-  /* ── Initialise: restore session & subscribe to auth changes ─────── */
+  /* ── Init: restore session + subscribe to auth changes ──────────── */
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      setLoading(false);
-      setAppReady(true);
-      return;
-    }
+    if (!isSupabaseConfigured) { setLoading(false); setAppReady(true); return; }
 
     let mounted = true;
 
-    // Restore existing session.
-    // Use try/finally so setAppReady(true) is GUARANTEED even if getSession()
-    // rejects or loadProfile() throws — the splash screen depends on this.
     const init = async () => {
+      // Kick off profile fetch immediately using cached user ID — runs in
+      // parallel with getSession() so the DB round-trip overlaps with the
+      // Supabase JWT validation instead of waiting for it.
+      const cachedId = cachedU?.id ?? null;
+      const earlyFetch = cachedId ? _fetchProfile(cachedId) : null;
+
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!mounted) return;
         if (session?.user) {
-          setUser(session.user);
-          await loadProfile(session.user);
+          // Validated session — update user with the fresh JWT-backed object
+          setUserWithProfile(session.user);
+          // Consume the early fetch if the user ID still matches
+          if (earlyFetch && cachedId === session.user.id) {
+            fetchingRef.current = true;
+            earlyFetch
+              .then(p => { if (p && mounted) { setProfile(p); _cacheProfile(p); } })
+              .finally(() => { fetchingRef.current = false; });
+          } else {
+            refreshProfileFromDB(session.user);
+          }
+        } else if (hasCached) {
+          // getSession() returned null but we had cached state.
+          // Session truly expired/revoked — drop to login.
+          setUser(null); setProfile(null); setCurrentProvider(null);
+          _clearCustomStorage();
         }
-      } catch (_) {
-        // swallow — partial state is fine; appReady must still fire
-      } finally {
-        if (mounted) {
-          setLoading(false);
-          setAppReady(true);
-        }
-      }
+      } catch {}
+      finally { if (mounted) { setLoading(false); setAppReady(true); } }
     };
     init();
 
-    // Live auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         if (!mounted) return;
+        if (event === 'INITIAL_SESSION') return;
+        if (event === 'SIGNED_OUT') {
+          setUser(null); setProfile(null); setCurrentProvider(null);
+          // Only clear our custom keys — Supabase already manages its own
+          // session token. Clearing it here caused lost sessions on restart
+          // when SIGNED_OUT fired during transient token-refresh failures.
+          _clearCustomStorage();
+          return;
+        }
         if (session?.user) {
-          setUser(session.user);
-          await loadProfile(session.user);
-        } else {
-          setUser(null);
-          setProfile(null);
+          setUserWithProfile(session.user);
+          if (event === 'SIGNED_IN') refreshProfileFromDB(session.user);
         }
       },
     );
 
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, [loadProfile]);
+    return () => { mounted = false; subscription.unsubscribe(); };
+  }, [setUserWithProfile, refreshProfileFromDB]);
 
-  /* ── Background profile retry ─────────────────────────────────────── */
-  // If _fetchProfile timed out during init (post-update first launch), this
-  // retries with escalating delays once the app is visible so the user's
-  // plan/role info appears shortly after the blank-screen window is revealed.
-  useEffect(() => {
-    if (!user || profile || !appReady) return;
-    let cancelled = false;
-    (async () => {
-      for (const delay of PROFILE_RETRY_DELAYS) {
-        await new Promise(r => setTimeout(r, delay));
-        if (cancelled) return;
-        const p = await _fetchProfile(user.id);
-        if (p) { if (!cancelled) setProfile(p); return; }
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [user, profile, appReady]);
-
-  /* ── Listen for tokens sent by Electron after OAuth popup ───────── */
+  /* ── Listen for tokens from Electron OAuth popup ────────────────── */
   useEffect(() => {
     if (!isSupabaseConfigured) return;
-
     const ipc = (window as any).electron?.ipcRenderer;
     if (!ipc) return;
 
-    // Implicit flow: main sends { access_token, refresh_token }
-    const unsubCallback = ipc.on(
-      'auth:callback',
+    const unsubImplicit = ipc.on('auth:callback',
       async ({ access_token, refresh_token }: { access_token: string; refresh_token: string }) => {
-        const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
-        if (!error && data.user) {
-          setUser(data.user);
-          await loadProfile(data.user);
-          setLoading(false);
-          setAppReady(true);
-        }
+        try {
+          await supabase.auth.setSession({ access_token, refresh_token });
+          // Session is now valid — fetch profile immediately rather than
+          // waiting for onAuthStateChange to fire asynchronously.
+          const uid = _decodeJwtSub(access_token);
+          if (uid) {
+            fetchingRef.current = true;
+            try {
+              const p = await _fetchProfile(uid);
+              if (p) { setProfile(p); _cacheProfile(p); }
+            } finally { fetchingRef.current = false; }
+          }
+        } catch {}
       },
     );
-
-    // PKCE flow: main sends { code }
-    const unsubCode = ipc.on(
-      'auth:callback-code',
+    const unsubPkce = ipc.on('auth:callback-code',
       async ({ code }: { code: string }) => {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-        if (!error && data.user) {
-          setUser(data.user);
-          await loadProfile(data.user);
-          setLoading(false);
-          setAppReady(true);
-        }
+        try { await supabase.auth.exchangeCodeForSession(code); } catch {}
       },
     );
-
     return () => {
-      if (typeof unsubCallback === 'function') unsubCallback();
-      if (typeof unsubCode === 'function') unsubCode();
+      if (typeof unsubImplicit === 'function') unsubImplicit();
+      if (typeof unsubPkce === 'function') unsubPkce();
     };
-  }, [loadProfile]);
+  }, []);
 
   /* ── Actions ─────────────────────────────────────────────────────── */
   const login = useCallback(async (provider: 'discord' | 'twitch') => {
-    if (!isSupabaseConfigured) return;
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: 'http://localhost:3000/auth/callback', skipBrowserRedirect: true },
-    });
-    if (error || !data.url) return;
-    const ipc = (window as any).electron?.ipcRenderer;
-    if (ipc) {
-      ipc.invoke('auth:open-oauth', data.url).catch(() => {});
-    } else {
-      window.open(data.url, '_blank');
-    }
+    if (!isSupabaseConfigured || loginLockRef.current) return;
+    loginLockRef.current = true;
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: REDIRECT_URL, skipBrowserRedirect: true },
+      });
+      if (error || !data.url) return;
+      _persistProvider(provider);
+      setCurrentProvider(provider);
+      const ipc = (window as any).electron?.ipcRenderer;
+      if (ipc) ipc.invoke('auth:open-oauth', data.url).catch(() => {});
+      else window.open(data.url, '_blank');
+    } finally { loginLockRef.current = false; }
   }, []);
 
   const logout = useCallback(async () => {
     if (!isSupabaseConfigured) return;
+    const ipc = (window as any).electron?.ipcRenderer;
+    if (ipc) { try { await ipc.invoke('auth:clear-session'); } catch {} }
     await supabase.auth.signOut();
-    setUser(null);
-    setProfile(null);
+    setUser(null); setProfile(null); setCurrentProvider(null);
+    _clearAllAuthStorage();
   }, []);
 
   const refreshProfile = useCallback(async () => {
     if (!user) return;
     const p = await _fetchProfile(user.id);
-    setProfile(p);
+    if (p) { setProfile(p); _cacheProfile(p); }
   }, [user]);
 
   const cancelSubscription = useCallback(async () => {
     if (!user || !isSupabaseConfigured) return;
-    await supabase
-      .from('profiles')
-      .update({ subscription_status: 'cancelled' })
-      .eq('id', user.id);
+    await supabase.from('profiles').update({ subscription_status: 'cancelled' }).eq('id', user.id);
     await refreshProfile();
   }, [user, refreshProfile]);
 
-  const grantPro = useCallback(async (
-    userId: string,
-    expiresAt: string | null,
-  ): Promise<boolean> => {
+  const grantPro = useCallback(async (userId: string, expiresAt: string | null): Promise<boolean> => {
     if (!isSupabaseConfigured) return false;
-    const updates: Partial<UserProfile> = {
-      role: 'pro',
-      pro_source: 'manual',
-      pro_expires_at: expiresAt,
-      subscription_status: 'active',
-    };
-    const { error } = await supabase
-      .from('profiles')
-      .update(updates)
+    const { error } = await supabase.from('profiles')
+      .update({ role: 'pro', pro_source: 'manual', pro_expires_at: expiresAt, subscription_status: 'active' } as any)
       .eq('id', userId);
     return !error;
   }, []);
 
   const revokePro = useCallback(async (userId: string): Promise<boolean> => {
     if (!isSupabaseConfigured) return false;
-    const updates: Partial<UserProfile> = {
-      role: 'user',
-      pro_source: null,
-      pro_expires_at: null,
-      subscription_status: null,
-    };
-    const { error } = await supabase
-      .from('profiles')
-      .update(updates)
+    const { error } = await supabase.from('profiles')
+      .update({ role: 'user', pro_source: null, pro_expires_at: null, subscription_status: null } as any)
       .eq('id', userId);
     return !error;
   }, []);
 
-  /* ── Derived values ──────────────────────────────────────────────── */
+  /* ── Derived ─────────────────────────────────────────────────────── */
   const isExpired = _checkExpired(profile);
   const isOwner   = profile?.role === 'owner';
   const isAdmin   = profile?.role === 'admin' || isOwner;
   const isPro     = isAdmin || (profile?.role === 'pro' && !isExpired);
-  const currentProvider: AuthProviderType = profile?.provider ?? null;
 
-  /* ── Value ───────────────────────────────────────────────────────── */
-  const value: AuthContextValue = {
-    user,
-    profile,
-    loading,
-    appReady,
-    isExpired,
-    isPro,
-    isAdmin,
-    isOwner,
-    currentProvider,
-    login,
-    logout,
-    cancelSubscription,
-    refreshProfile,
-    grantPro,
-    revokePro,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{
+      user, profile, loading, appReady, isExpired, isPro, isAdmin, isOwner,
+      currentProvider, login, logout, cancelSubscription, refreshProfile, grantPro, revokePro,
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 /* ═══════════════════════════════════════════════════════════════════
