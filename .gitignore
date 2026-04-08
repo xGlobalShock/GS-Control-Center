@@ -77,3 +77,7 @@ Useful Commands.md
 # ── Cache / temporary build files ──
 .cache/
 .cache-loader/
+
+# ── .NET sidecar build artifacts ──
+native-monitor/bin/
+native-monitor/obj/
