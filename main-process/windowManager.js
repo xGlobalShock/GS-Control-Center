@@ -121,7 +121,7 @@ function createWindow() {
         contextIsolation: true,
         enableRemoteModule: false,
         webviewTag: true,
-        devTools: true,
+        devTools: false,
         backgroundThrottling: false,
       },
     });
@@ -161,18 +161,18 @@ function createWindow() {
     mainWindow.on('unmaximize', () => mainWindow?.webContents.send('window-maximized-changed', false));
 
     // DISABLED/ENABLED DEVTOOLS IN PRODUCTION 
-    // mainWindow.webContents.on('before-input-event', (event, input) => {
-    //   if (
-    //     input.control &&
-    //     input.shift &&
-    //     (input.key.toLowerCase() === 'i' || input.key.toLowerCase() === 'c' || input.key.toLowerCase() === 'j')
-    //   ) {
-    //     event.preventDefault();
-    //   }
-    //   if (input.key === 'F12') {
-    //     event.preventDefault();
-    //   }
-    // });
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      if (
+        input.control &&
+        input.shift &&
+        (input.key.toLowerCase() === 'i' || input.key.toLowerCase() === 'c' || input.key.toLowerCase() === 'j')
+      ) {
+        event.preventDefault();
+      }
+      if (input.key === 'F12') {
+        event.preventDefault();
+      }
+    });
 
 
     // Track page-load completion BEFORE loadURL — avoids race where
