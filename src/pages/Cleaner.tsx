@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CleanerCard from '../components/CleanerCard';
 import { cleanerUtilities } from '../data/cleanerUtilities';
@@ -24,7 +24,7 @@ interface CleanResult {
 
 const Cleaner: React.FC = () => {
   const [cleaningId, setCleaningId] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState<'windows' | 'games' | 'nvidia' | 'repair'>('windows');
+  const [activeCategory, setActiveCategory] = useState<'windows' | 'games' | 'nvidia' | 'repair' | 'essential' | 'preferences'>('windows');
   const { addToast } = useToast();
   const { isPro } = useAuth();
 
@@ -58,6 +58,7 @@ const Cleaner: React.FC = () => {
     'error-reports': 'cleaner:clear-error-reports',
     'delivery-optimization': 'cleaner:clear-delivery-optimization',
     'recent-files': 'cleaner:clear-recent-files',
+    'revert-startmenu': 'tweak:apply-revert-startmenu',
   };
 
   // Categorize utilities by category
@@ -65,6 +66,8 @@ const Cleaner: React.FC = () => {
     windows: cleanerUtilities.filter(u => ['windows-temp', 'thumbnail-cache', 'windows-logs', 'crash-dumps', 'error-reports', 'delivery-optimization', 'recent-files', 'temp-files', 'update-cache', 'dns-cache', 'ram-cache', 'recycle-bin'].includes(u.id)),
     games: cleanerUtilities.filter(u => ['forza-shaders', 'apex-shaders', 'cod-shaders', 'cs2-shaders', 'fortnite-shaders', 'lol-shaders', 'overwatch-shaders', 'r6-shaders', 'rocket-league-shaders', 'valorant-shaders'].includes(u.id)),
     nvidia: cleanerUtilities.filter(u => ['nvidia-cache'].includes(u.id)),
+    essential: cleanerUtilities.filter(u => ['revert-startmenu'].includes(u.id)),
+    preferences: [],
   };
 
   const categories = [
@@ -74,6 +77,23 @@ const Cleaner: React.FC = () => {
       icon: <Monitor size={18} />,
       count: utilityTabs.windows.length,
       description: 'Clear temp files, DNS cache, logs, crash dumps and system junk.',
+      accent: '#00F2FF',
+    },
+    {
+      id: 'essential' as const,
+      label: 'Essential Tweaks',
+      icon: <Sparkles size={18} />,
+      count: utilityTabs.essential.length,
+      description: 'Important small tweaks and fixes for common Windows annoyances.',
+      accent: '#8B5CF6',
+      premium: true,
+    },
+    {
+      id: 'preferences' as const,
+      label: 'Preferences',
+      icon: <SlidersHorizontal size={18} />,
+      count: 5,
+      description: 'Quick preference toggles: mouse, start recommendations, settings, Bing, theme.',
       accent: '#00F2FF',
     },
     {
@@ -196,6 +216,80 @@ const Cleaner: React.FC = () => {
     }
   };
 
+  // Preferences state and handlers
+  const [prefsLoading, setPrefsLoading] = useState(true);
+  const [mouseEnabled, setMouseEnabled] = useState<boolean | null>(null);
+  const [mouseLoading, setMouseLoading] = useState(false);
+  const [startRecEnabled, setStartRecEnabled] = useState<boolean | null>(null);
+  const [startLoading, setStartLoading] = useState(false);
+  const [settingsHomeEnabled, setSettingsHomeEnabled] = useState<boolean | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [bingEnabled, setBingEnabled] = useState<boolean | null>(null);
+  const [bingLoading, setBingLoading] = useState(false);
+  const [darkEnabled, setDarkEnabled] = useState<boolean | null>(null);
+  const [darkLoading, setDarkLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      setPrefsLoading(true);
+      try {
+        if (!window.electron?.ipcRenderer) return;
+        const [mouseRes, startRes, settingsRes, bingRes, darkRes] = await Promise.all([
+          window.electron.ipcRenderer.invoke('pref:check-mouse-acceleration'),
+          window.electron.ipcRenderer.invoke('pref:check-startmenu-recommendations'),
+          window.electron.ipcRenderer.invoke('pref:check-settings-home'),
+          window.electron.ipcRenderer.invoke('pref:check-bing-search'),
+          window.electron.ipcRenderer.invoke('pref:check-dark-theme'),
+        ]);
+        if (!mounted) return;
+        setMouseEnabled(!!(mouseRes && mouseRes.applied));
+        setStartRecEnabled(!!(startRes && startRes.applied));
+        setSettingsHomeEnabled(!!(settingsRes && settingsRes.value === 'show:home'));
+        setBingEnabled(!!(bingRes && bingRes.value === 0));
+        setDarkEnabled(!!(darkRes && darkRes.applied));
+      } catch (e) {
+        addToast('Failed to load preferences', 'error');
+      } finally {
+        if (mounted) setPrefsLoading(false);
+      }
+    };
+    load();
+    return () => { mounted = false; };
+  }, []);
+
+  const applyPref = async (channel: string, value: any, setLoading: (v:boolean)=>void, setState: (v:boolean|null)=>void, successMsg?: string) => {
+    setLoading(true);
+    try {
+      if (!window.electron?.ipcRenderer) { addToast('IPC not available', 'error'); return; }
+      const res = await window.electron.ipcRenderer.invoke(channel, value);
+      if (res && res.success) {
+        if (typeof res.applied === 'boolean') {
+          setState(res.applied);
+        } else if (res.value && typeof (res.value as any).MouseSpeed !== 'undefined') {
+          try {
+            const v = res.value as any;
+            const parsedApplied = !!(v.MouseSpeed === 1 && v.MouseThreshold1 === 0 && v.MouseThreshold2 === 0);
+            setState(parsedApplied);
+          } catch {
+            setState(!!value);
+          }
+        } else {
+          setState(!!value);
+        }
+        addToast(res.message || successMsg || 'Preference updated', 'success');
+      } else {
+        addToast(res?.message || 'Failed to update preference', 'error');
+      }
+    } catch (err) {
+      const msg = err && err.message ? err.message : String(err || 'Error updating preference');
+      console.error('[Cleaner] applyPref error:', channel, err);
+      addToast(msg || 'Error updating preference', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <motion.div
       className="cleaner-page"
@@ -270,6 +364,64 @@ const Cleaner: React.FC = () => {
                         onClean={handleClean}
                         isLoading={cleaningId === utility.id}
                       />
+                    </motion.div>
+                  ))}
+                </div>
+              ) : activeCategory === 'preferences' ? (
+                <div className="cleaner-grid cleaner-grid--small cleaner-grid--prefs">
+                  {[
+                    {
+                      id: 'start-rec',
+                      title: 'Remove Pinned Apps from Start',
+                      desc: 'Toggle Start menu recommendations to quickly unpin unwanted apps and declutter your Start menu.',
+                      onClick: () => applyPref('pref:apply-startmenu-recommendations', !startRecEnabled, setStartLoading, setStartRecEnabled, 'Start menu recommendations updated'),
+                      enabled: startRecEnabled,
+                      loading: startLoading,
+                      icon: <Sparkles size={28} />,
+                    },
+                    {
+                      id: 'bing-search',
+                      title: 'Bing Search in Start Menu',
+                      desc: 'Toggle Bing web search results in the Start menu to speed up search performance and reduce distractions when looking for local files and apps.',
+                      onClick: () => applyPref('pref:apply-bing-search', !bingEnabled, setBingLoading, setBingEnabled, 'Bing search preference updated'),
+                      enabled: bingEnabled,
+                      loading: bingLoading,
+                      icon: <Wrench size={28} />,
+                    },
+                    {
+                      id: 'dark-theme',
+                      title: 'Dark Theme for Windows',
+                      desc: 'Toggle dark (Apps/System) theme via registry keys.',
+                      onClick: () => applyPref('pref:apply-dark-theme', !darkEnabled, setDarkLoading, setDarkEnabled, 'Theme preference updated'),
+                      enabled: darkEnabled,
+                      loading: darkLoading,
+                      icon: <Sparkles size={28} />,
+                    },
+                  ].map((pref, index) => (
+                    <motion.div
+                      key={pref.id}
+                      initial={{ y: 20, opacity: 0, scale: 0.97 }}
+                      animate={{ y: 0, opacity: 1, scale: 1 }}
+                      transition={{ delay: index * 0.05, type: 'spring', stiffness: 200, damping: 22 }}
+                    >
+                      <div className="cleaner-pref-card">
+                        <div className="cleaner-pref-icon">{pref.icon}</div>
+                        <div className="cleaner-pref-body">
+                          <div className="cleaner-pref-title">{pref.title}</div>
+                          <div className="cleaner-pref-desc">{pref.desc}</div>
+                        </div>
+                        <div className="cleaner-pref-meta">
+                          <button
+                            className={`futuristic-toggle gl-profile__preset-toggle ${pref.enabled ? 'gl-profile__preset-toggle--on' : ''}`}
+                            onClick={pref.onClick}
+                            disabled={pref.loading || prefsLoading}
+                            aria-pressed={pref.enabled ? 'true' : 'false'}
+                          >
+                            <div className="gl-profile__preset-toggle-track"><div className="gl-profile__preset-toggle-thumb" /></div>
+                            <span className="gl-profile__preset-toggle-label">{pref.enabled ? 'ON' : 'OFF'}</span>
+                          </button>
+                        </div>
+                      </div>
                     </motion.div>
                   ))}
                 </div>

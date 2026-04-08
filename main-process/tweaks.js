@@ -330,6 +330,47 @@ function registerIPC() {
     }
   });
 
+  // WPFTweaks: Revert new Windows Start Menu via ViVeTool script
+  ipcMain.handle('tweak:apply-revert-startmenu', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
+    try {
+      const path = require('path');
+      const fs = require('fs');
+      const scriptPath = path.resolve(__dirname, '..', 'scripts', 'WPFTweaksRevertStartMenu.ps1');
+      if (!fs.existsSync(scriptPath)) {
+        return { success: false, message: `Script not found: ${scriptPath}. Place WPFTweaksRevertStartMenu.ps1 in the repo 'scripts' folder.` };
+      }
+      await execAsync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`, { shell: true, timeout: 0 });
+      _tweakCheckCache = null;
+      return { success: true, message: 'WPFTweaksRevertStartMenu script executed (apply).' };
+    } catch (error) {
+      return { success: false, message: `Error: ${error.message}` };
+    }
+  });
+
+  ipcMain.handle('tweak:reset-revert-startmenu', async () => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
+    try {
+      const path = require('path');
+      const fs = require('fs');
+      const script = path.resolve(__dirname, '..', 'scripts', 'WPFTweaksRevertStartMenu.ps1');
+      const undoScript = path.resolve(__dirname, '..', 'scripts', 'WPFTweaksRevertStartMenuUndo.ps1');
+      let cmd = null;
+      if (fs.existsSync(undoScript)) {
+        cmd = `powershell -NoProfile -ExecutionPolicy Bypass -File "${undoScript}"`;
+      } else if (fs.existsSync(script)) {
+        cmd = `powershell -NoProfile -ExecutionPolicy Bypass -File "${script}" -Undo`;
+      } else {
+        return { success: false, message: 'No undo script found. Add WPFTweaksRevertStartMenuUndo.ps1 or implement -Undo in the main script.' };
+      }
+      await execAsync(cmd, { shell: true, timeout: 0 });
+      _tweakCheckCache = null;
+      return { success: true, message: 'WPFTweaksRevertStartMenu undo executed (reset).' };
+    } catch (error) {
+      return { success: false, message: `Error: ${error.message}` };
+    }
+  });
+
   // Check tweaks
   ipcMain.handle('tweak:check-irq-priority', async () => {
     try { return _tweakResult(await _runAllTweakChecks(), 'irq', 1); }
@@ -522,6 +563,201 @@ function registerIPC() {
       _tweakCheckCache = null;
       return { success: true, message: 'Fullscreen Optimization reset to default' };
     } catch (error) { return { success: false, message: 'Failed to reset Fullscreen Optimization - Admin privileges required' }; }
+  });
+
+  // Preferences: Mouse acceleration, Start Menu recommendations, Settings Home visibility,
+  // Bing search toggle and Dark Theme toggles.
+  ipcMain.handle('pref:check-mouse-acceleration', async () => {
+    try {
+      const raw = await runPSScript(`
+$r = @{}
+try {
+  $p = Get-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseSpeed','MouseThreshold1','MouseThreshold2' -ErrorAction SilentlyContinue
+  if ($p -ne $null) {
+    $r.MouseSpeed = [int]($p.MouseSpeed)
+    $r.MouseThreshold1 = [int]($p.MouseThreshold1)
+    $r.MouseThreshold2 = [int]($p.MouseThreshold2)
+  }
+} catch { }
+$r | ConvertTo-Json -Compress
+      `, 4000);
+      if (!raw) return { applied: false, exists: false, value: null };
+      const parsed = JSON.parse(raw);
+      const applied = parsed && parsed.MouseSpeed === 1 && parsed.MouseThreshold1 === 0 && parsed.MouseThreshold2 === 0;
+      return { applied, exists: !!parsed, value: parsed };
+    } catch (e) {
+      return { applied: false, exists: false, value: null, error: e.message || String(e) };
+    }
+  });
+
+  ipcMain.handle('pref:apply-mouse-acceleration', async (event, enable) => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
+    try {
+      const script = enable ? `
+if (-not (Test-Path 'HKCU:\\Control Panel\\Mouse')) { New-Item -Path 'HKCU:\\Control Panel\\Mouse' -Force | Out-Null }
+Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseSpeed' -Value 1 -Force
+Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseThreshold1' -Value 0 -Force
+Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseThreshold2' -Value 0 -Force
+Get-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseSpeed','MouseThreshold1','MouseThreshold2' | ConvertTo-Json -Compress
+` : `
+if (-not (Test-Path 'HKCU:\\Control Panel\\Mouse')) { New-Item -Path 'HKCU:\\Control Panel\\Mouse' -Force | Out-Null }
+Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseSpeed' -Value 0 -Force
+Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseThreshold1' -Value 6 -Force
+Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseThreshold2' -Value 10 -Force
+Get-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseSpeed','MouseThreshold1','MouseThreshold2' | ConvertTo-Json -Compress
+`;
+      const res = await runPSScript(script, 6000);
+      _tweakCheckCache = null;
+      return { success: true, message: 'Mouse acceleration updated', value: res ? JSON.parse(res) : null };
+    } catch (e) {
+      return { success: false, message: e.message || String(e) };
+    }
+  });
+
+  ipcMain.handle('pref:check-startmenu-recommendations', async () => {
+    try {
+      const raw = await runPSScript(`
+$r = @{}
+try { $r.HideRecommendedSection_PM = (Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Start' -Name 'HideRecommendedSection' -ErrorAction SilentlyContinue).HideRecommendedSection } catch {}
+try { $r.IsEducationEnvironment = (Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Education' -Name 'IsEducationEnvironment' -ErrorAction SilentlyContinue).IsEducationEnvironment } catch {}
+try { $r.HideRecommendedSection_Explorer = (Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer' -Name 'HideRecommendedSection' -ErrorAction SilentlyContinue).HideRecommendedSection } catch {}
+$r | ConvertTo-Json -Compress
+      `, 4000);
+      if (!raw) return { applied: false, value: null };
+      const parsed = JSON.parse(raw);
+      const applied = (parsed.HideRecommendedSection_PM === 1) || (parsed.IsEducationEnvironment === 1) || (parsed.HideRecommendedSection_Explorer === 1);
+      return { applied, value: parsed };
+    } catch (e) {
+      return { applied: false, value: null, error: e.message || String(e) };
+    }
+  });
+
+  ipcMain.handle('pref:apply-startmenu-recommendations', async (event, enable) => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
+    try {
+      if (!_isElevated) return { success: false, message: 'Administrator privileges required to modify Start Menu recommendation policies.' };
+      const val = enable ? 1 : 0;
+      const script = `
+If (-not (Test-Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Start')) { New-Item -Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Start' -Force | Out-Null }
+If (-not (Test-Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Education')) { New-Item -Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Education' -Force | Out-Null }
+If (-not (Test-Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer')) { New-Item -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer' -Force | Out-Null }
+Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Start' -Name 'HideRecommendedSection' -Value ${val} -Type DWord -Force
+Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Education' -Name 'IsEducationEnvironment' -Value ${val} -Type DWord -Force
+Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer' -Name 'HideRecommendedSection' -Value ${val} -Type DWord -Force
+$r = @{}
+$r.HideRecommendedSection_PM = (Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Start' -Name 'HideRecommendedSection' -ErrorAction SilentlyContinue).HideRecommendedSection
+$r.IsEducationEnvironment = (Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Education' -Name 'IsEducationEnvironment' -ErrorAction SilentlyContinue).IsEducationEnvironment
+$r.HideRecommendedSection_Explorer = (Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer' -Name 'HideRecommendedSection' -ErrorAction SilentlyContinue).HideRecommendedSection
+$r | ConvertTo-Json -Compress
+`;
+      const raw = await runPSScript(script, 8000);
+      _tweakCheckCache = null;
+      return { success: true, message: 'Start Menu recommendations updated', value: raw ? JSON.parse(raw) : null };
+    } catch (e) {
+      return { success: false, message: e.message || String(e) };
+    }
+  });
+
+  ipcMain.handle('pref:check-settings-home', async () => {
+    try {
+      const raw = await runPSScript(`
+$r = @{ exists = $false; value = $null }
+try {
+  $p = Get-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer' -Name 'SettingsPageVisibility' -ErrorAction SilentlyContinue
+  if ($p -and ($p.PSObject.Properties.Name -contains 'SettingsPageVisibility')) { $r.exists = $true; $r.value = $p.SettingsPageVisibility }
+} catch {}
+$r | ConvertTo-Json -Compress
+      `, 4000);
+      if (!raw) return { exists: false, value: null };
+      const parsed = JSON.parse(raw);
+      return { exists: parsed.exists, value: parsed.value };
+    } catch (e) {
+      return { exists: false, value: null, error: e.message || String(e) };
+    }
+  });
+
+  ipcMain.handle('pref:apply-settings-home', async (event, enable) => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
+    try {
+      const val = enable ? 'show:home' : 'hide:home';
+      const script = `
+If (-not (Test-Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer')) { New-Item -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer' -Force | Out-Null }
+Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer' -Name 'SettingsPageVisibility' -Value '${val}' -Force
+Get-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer' -Name 'SettingsPageVisibility' -ErrorAction SilentlyContinue | ConvertTo-Json -Compress
+`;
+      const raw = await runPSScript(script, 4000);
+      _tweakCheckCache = null;
+      return { success: true, message: 'Settings home visibility updated', value: raw ? JSON.parse(raw) : null };
+    } catch (e) {
+      return { success: false, message: e.message || String(e) };
+    }
+  });
+
+  ipcMain.handle('pref:check-bing-search', async () => {
+    try {
+      const raw = await runPSScript(`
+$r = @{}
+try { $r.BingSearchEnabled = (Get-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Search' -Name 'BingSearchEnabled' -ErrorAction SilentlyContinue).BingSearchEnabled } catch {}
+$r | ConvertTo-Json -Compress
+      `, 3000);
+      if (!raw) return { exists: false, value: null };
+      const parsed = JSON.parse(raw);
+      return { exists: parsed.BingSearchEnabled !== undefined, value: parsed.BingSearchEnabled };
+    } catch (e) {
+      return { exists: false, value: null, error: e.message || String(e) };
+    }
+  });
+
+  ipcMain.handle('pref:apply-bing-search', async (event, enable) => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
+    try {
+      // Per mapping: Enabled = ON -> set BingSearchEnabled = 0, Disabled = OFF -> set to 1
+      const val = enable ? 0 : 1;
+      const script = `
+If (-not (Test-Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Search')) { New-Item -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Search' -Force | Out-Null }
+Set-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Search' -Name 'BingSearchEnabled' -Value ${val} -Type DWord -Force
+Get-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Search' -Name 'BingSearchEnabled' -ErrorAction SilentlyContinue | ConvertTo-Json -Compress
+`;
+      const raw = await runPSScript(script, 4000);
+      _tweakCheckCache = null;
+      return { success: true, message: 'Bing Search preference updated', value: raw ? JSON.parse(raw) : null };
+    } catch (e) {
+      return { success: false, message: e.message || String(e) };
+    }
+  });
+
+  ipcMain.handle('pref:check-dark-theme', async () => {
+    try {
+      const raw = await runPSScript(`
+$r = @{}
+try { $p = Get-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize' -Name 'AppsUseLightTheme','SystemUsesLightTheme' -ErrorAction SilentlyContinue; $r.AppsUseLightTheme = $p.AppsUseLightTheme; $r.SystemUsesLightTheme = $p.SystemUsesLightTheme } catch {}
+$r | ConvertTo-Json -Compress
+      `, 3000);
+      if (!raw) return { exists: false, value: null };
+      const parsed = JSON.parse(raw);
+      const applied = (parsed.AppsUseLightTheme === 0 && parsed.SystemUsesLightTheme === 0);
+      return { applied, exists: parsed.AppsUseLightTheme !== undefined || parsed.SystemUsesLightTheme !== undefined, value: parsed };
+    } catch (e) {
+      return { applied: false, exists: false, value: null, error: e.message || String(e) };
+    }
+  });
+
+  ipcMain.handle('pref:apply-dark-theme', async (event, enable) => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
+    try {
+      const val = enable ? 0 : 1; // 0 = dark, 1 = light
+      const script = `
+If (-not (Test-Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize')) { New-Item -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize' -Force | Out-Null }
+Set-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize' -Name 'AppsUseLightTheme' -Value ${val} -Type DWord -Force
+Set-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize' -Name 'SystemUsesLightTheme' -Value ${val} -Type DWord -Force
+Get-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize' -Name 'AppsUseLightTheme','SystemUsesLightTheme' -ErrorAction SilentlyContinue | ConvertTo-Json -Compress
+`;
+      const raw = await runPSScript(script, 4000);
+      _tweakCheckCache = null;
+      return { success: true, message: 'Theme preference updated', value: raw ? JSON.parse(raw) : null };
+    } catch (e) {
+      return { success: false, message: e.message || String(e) };
+    }
   });
 
   ipcMain.handle('tweak:reset-usb-suspend', async () => {
