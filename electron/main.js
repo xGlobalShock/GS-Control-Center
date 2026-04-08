@@ -520,7 +520,13 @@ app.on('ready', async () => {
   }, 80);
 
   // Block until the main window is fully painted AND React reports ready.
-  await Promise.all([readyToShowPromise, appReadyPromise]);
+  // Safety: 20 s cap prevents the splash from getting stuck forever
+  // (e.g. if React auth/profile fetch hangs after an auto-update restart).
+  const bootTimeout = new Promise(r => setTimeout(r, 20000));
+  await Promise.race([
+    Promise.all([readyToShowPromise, appReadyPromise]),
+    bootTimeout,
+  ]);
 
   // Also wait for full hardware info to finish (max 3s so we don't block forever)
   const hwInfoPromise = hardwareInfo.getHwInfoPromise();

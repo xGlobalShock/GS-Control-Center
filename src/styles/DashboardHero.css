@@ -643,8 +643,8 @@
 /* ── Privacy blur ── */
 /* will-change: filter promotes element to own compositor layer,
    isolating filter repaint from the rest of the card's layer */
-.dh-blur-field { cursor: pointer; transition: filter 0.25s ease; will-change: filter; }
-.dh-blurred    { filter: blur(4px); user-select: none; cursor: pointer; transition: filter 0.25s ease; will-change: filter; }
+.dh-blur-field { cursor: pointer; transition: filter 0.25s ease; }
+.dh-blurred    { filter: blur(4px); user-select: none; cursor: pointer; transition: filter 0.25s ease; }
 
 /* ── System RT panel ── */
 .dh-sys-rt        { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; background: rgba(255,255,255,0.025); border-radius: 6px; border: 1px solid rgba(255,255,255,0.04); }

@@ -22,10 +22,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",
-    "electron-is-dev": "^3.0.1",
     "electron-updater": "^6.8.3",
     "framer-motion": "^10.16.4",
-    "is-admin": "^4.0.0",
     "lucide-react": "^0.292.0",
     "node-pty": "^1.1.0",
     "ogl": "^1.0.11",
