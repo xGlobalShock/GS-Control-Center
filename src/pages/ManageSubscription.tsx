@@ -55,6 +55,7 @@ const ManageSubscription: React.FC = () => {
   const [cancelDone, setCancelDone] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [upgradeError, setUpgradeError] = useState<string | null>(null);
+  const [waitingBrowser, setWaitingBrowser] = useState(false);
 
   useEffect(() => {
     if (!loading && !profile) {
@@ -83,6 +84,7 @@ const ManageSubscription: React.FC = () => {
     setUpgradeLoading(true);
     setUpgradeError(null);
     try {
+      // 1) Create PayPal order
       const { data: orderData, error: orderError } = await supabase.functions.invoke(
         'create-paypal-order',
         { body: { user_id: profile.id } }
@@ -90,12 +92,24 @@ const ManageSubscription: React.FC = () => {
       if (orderError || !orderData?.approval_url) {
         throw new Error(orderError?.message || 'Failed to create payment order');
       }
+
+      // 2) Open checkout in system browser
+      setWaitingBrowser(true);
       const result = await (window as any).electron.ipcRenderer.invoke('paypal:checkout', {
         approval_url: orderData.approval_url,
         order_id: orderData.order_id,
       });
-      if (result?.cancelled) return;
+      setWaitingBrowser(false);
+
+      if (result?.cancelled) {
+        if (result?.timeout) {
+          setUpgradeError('Checkout timed out. Please try again.');
+        }
+        return;
+      }
       if (!result?.order_id) throw new Error('No order ID returned from PayPal');
+
+      // 3) Verify & capture payment server-side
       const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
         'verify-payment',
         { body: { user_id: profile.id, transaction_id: result.order_id } }
@@ -103,8 +117,11 @@ const ManageSubscription: React.FC = () => {
       if (verifyError || !verifyData?.success) {
         throw new Error(verifyError?.message || 'Payment verification failed');
       }
+
+      // 4) Refresh — PRO activates instantly
       await refreshProfile();
     } catch (err: any) {
+      setWaitingBrowser(false);
       setUpgradeError(err?.message || 'Payment failed. Please try again.');
     } finally {
       setUpgradeLoading(false);
@@ -136,13 +153,15 @@ const ManageSubscription: React.FC = () => {
             </div>
             {upgradeError && <div className="ms-error-bar">{upgradeError}</div>}
             <button className="ms-btn-upgrade" onClick={handleUpgrade} disabled={upgradeLoading}>
-              {upgradeLoading
-                ? <><Loader2 size={14} className="ms-spin" /> Processing…</>
-                : <><Crown size={14} /> Upgrade — $4.99 / 30 days</>
+              {waitingBrowser
+                ? <><Loader2 size={14} className="ms-spin" /> Complete checkout in your browser…</>
+                : upgradeLoading
+                  ? <><Loader2 size={14} className="ms-spin" /> Processing…</>
+                  : <><Crown size={14} /> Upgrade — $4.99 / 30 days</>
               }
             </button>
             <div className="ms-secure-note">
-              <Lock size={9} /> Secure checkout via PayPal
+              <Lock size={9} /> {waitingBrowser ? 'PayPal checkout is open in your browser' : 'Secure checkout via PayPal'}
             </div>
           </div>
         </div>

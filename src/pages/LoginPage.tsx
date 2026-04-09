@@ -14,17 +14,23 @@ const LogoIcon = () => (
   <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: 36, height: 36 }}>
     <path
       d="M24 4L8 10v12c0 10 6.8 19.4 16 22 9.2-2.6 16-12 16-22V10L24 4z"
-      stroke="#00f2ff"
+      stroke="url(#logoGrad)"
       strokeWidth="2"
       strokeLinejoin="round"
       fill="rgba(0,242,255,0.06)"
     />
     <path
       d="M24 16v8M24 28v2"
-      stroke="#00f2ff"
+      stroke="url(#logoGrad)"
       strokeWidth="2.5"
       strokeLinecap="round"
     />
+    <defs>
+      <linearGradient id="logoGrad" x1="8" y1="4" x2="40" y2="44">
+        <stop stopColor="#00f2ff" />
+        <stop offset="1" stopColor="#7b61ff" />
+      </linearGradient>
+    </defs>
   </svg>
 );
 
@@ -64,35 +70,57 @@ const LoginPage: React.FC = () => {
     <div className="lp-root">
       {/* ── Window controls ── */}
       <div className="lp-wc" aria-label="Window controls">
-        <button className="lp-wc-btn lp-wc-btn--min" onClick={handleMinimize} aria-label="Minimize">
-          <Minus size={12} />
-        </button>
+        <button className="lp-wc-btn lp-wc-btn--min" onClick={handleMinimize} aria-label="Minimize"><Minus size={12} /></button>
         <button className="lp-wc-btn lp-wc-btn--max" onClick={handleMaximize} aria-label={isMaximized ? 'Restore' : 'Maximize'}>
           {isMaximized ? <Copy size={11} /> : <Square size={11} />}
         </button>
-        <button className="lp-wc-btn lp-wc-btn--close" onClick={handleClose} aria-label="Close">
-          <X size={12} />
-        </button>
+        <button className="lp-wc-btn lp-wc-btn--close" onClick={handleClose} aria-label="Close"><X size={12} /></button>
       </div>
-      {/* ── Animated background grid ── */}
-      <div className="lp-grid" aria-hidden />
 
-      {/* ── Radial glow orbs ── */}
-      <div className="lp-orb lp-orb--a" aria-hidden />
-      <div className="lp-orb lp-orb--b" aria-hidden />
-      <div className="lp-orb lp-orb--c" aria-hidden />
+      {/* ── Layered background ── */}
+      <div className="lp-bg-deep" aria-hidden />
 
-      {/* ── Scanline overlay ── */}
-      <div className="lp-scanlines" aria-hidden />
+      {/* ── Nebula clouds ── */}
+      <div className="lp-nebula" aria-hidden>
+        <div className="lp-nebula-cloud" /><div className="lp-nebula-cloud" /><div className="lp-nebula-cloud" />
+      </div>
+
+      {/* ── Hex grid ── */}
+      <div className="lp-hex-grid" aria-hidden />
+
+      {/* ── Orbiting ring structures ── */}
+      <div className="lp-orbit-rings" aria-hidden>
+        <div className="lp-orbit-ring" /><div className="lp-orbit-ring" /><div className="lp-orbit-ring" />
+      </div>
+
+      {/* ── Chromatic aberration streaks ── */}
+      <div className="lp-chroma" aria-hidden>
+        <div className="lp-chroma-streak" /><div className="lp-chroma-streak" /><div className="lp-chroma-streak" />
+        <div className="lp-chroma-streak" /><div className="lp-chroma-streak" />
+      </div>
+
+      {/* ── Volumetric god-rays ── */}
+      <div className="lp-godrays" aria-hidden />
+
+      {/* ── Rising embers ── */}
+      <div className="lp-particles" aria-hidden>
+        <div className="lp-particle" /><div className="lp-particle" /><div className="lp-particle" />
+        <div className="lp-particle" /><div className="lp-particle" /><div className="lp-particle" />
+        <div className="lp-particle" /><div className="lp-particle" /><div className="lp-particle" />
+        <div className="lp-particle" />
+      </div>
+
+      {/* ── Noise overlay ── */}
+      <div className="lp-noise" aria-hidden />
 
       {/* ── Card ── */}
       <motion.div
         className="lp-card"
-        initial={{ opacity: 0, y: 32, scale: 0.96 }}
+        initial={{ opacity: 0, y: 40, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       >
-        {/* Corner brackets */}
+        {/* Corner accents */}
         <span className="lp-corner lp-corner--tl" aria-hidden />
         <span className="lp-corner lp-corner--tr" aria-hidden />
         <span className="lp-corner lp-corner--bl" aria-hidden />
@@ -101,12 +129,12 @@ const LoginPage: React.FC = () => {
         {/* Top accent bar */}
         <div className="lp-accent-bar" aria-hidden />
 
-        {/* Logo */}
+        {/* Logo with rotating ring */}
         <motion.div
           className="lp-logo-wrap"
-          initial={{ opacity: 0, scale: 0.8 }}
+          initial={{ opacity: 0, scale: 0.7 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.15, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ delay: 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         >
           <div className="lp-logo-ring" aria-hidden />
           <LogoIcon />
@@ -115,23 +143,23 @@ const LoginPage: React.FC = () => {
         {/* Heading */}
         <motion.div
           className="lp-heading"
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.22, duration: 0.4 }}
+          transition={{ delay: 0.25, duration: 0.45 }}
         >
           <h1 className="lp-title">GS <span className="lp-title-accent">CENTER</span></h1>
-          <p className="lp-subtitle">SYSTEM ACCESS REQUIRED</p>
+          <p className="lp-subtitle">Performance Control Center</p>
         </motion.div>
 
-        {/* Status bar */}
+        {/* Version / status badge */}
         <motion.div
-          className="lp-status"
+          className="lp-version"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.32, duration: 0.4 }}
+          transition={{ delay: 0.35, duration: 0.4 }}
         >
-          <span className="lp-status-dot" />
-          <span className="lp-status-text">AWAITING AUTHENTICATION</span>
+          <span className="lp-version-dot" />
+          <span>AWAITING AUTHENTICATION</span>
         </motion.div>
 
         {/* Divider */}
@@ -139,15 +167,15 @@ const LoginPage: React.FC = () => {
           className="lp-divider"
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 1 }}
-          transition={{ delay: 0.38, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ delay: 0.4, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         />
 
         {/* Auth buttons */}
         <motion.div
           className="lp-buttons"
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.44, duration: 0.4 }}
+          transition={{ delay: 0.48, duration: 0.45 }}
         >
           <button
             className="lp-btn lp-btn--discord"
@@ -187,7 +215,7 @@ const LoginPage: React.FC = () => {
           className="lp-footer"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.55, duration: 0.4 }}
+          transition={{ delay: 0.58, duration: 0.4 }}
         >
           Sign in to access your GS Center tools
         </motion.p>

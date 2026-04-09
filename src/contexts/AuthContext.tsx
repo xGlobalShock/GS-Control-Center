@@ -20,6 +20,7 @@ import {
 interface AuthContextValue {
   user: User | null;
   profile: UserProfile | null;
+  profileReady: boolean;
   loading: boolean;
   appReady: boolean;
   isExpired: boolean;
@@ -118,15 +119,6 @@ function _providerFromUser(u: User | null): AuthProviderType {
   return null;
 }
 
-/** Extract `sub` (user ID) from a JWT without verification — client-side only. */
-function _decodeJwtSub(token: string): string | null {
-  try {
-    const payload = token.split('.')[1];
-    const decoded = JSON.parse(atob(payload));
-    return decoded?.sub ?? null;
-  } catch { return null; }
-}
-
 const PROFILE_FETCH_TIMEOUT_MS = 2_000;
 const PROFILE_COLUMNS = 'id,email,username,avatar_url,role,pro_source,pro_expires_at,created_at,updated_at';
 
@@ -156,8 +148,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading]               = useState(!hasCached);
   const [appReady, setAppReady]             = useState(hasCached);
   const [currentProvider, setCurrentProvider] = useState<AuthProviderType>(_readProvider);
+  const [profileReady, setProfileReady] = useState(!!cachedP);
 
-  const fetchingRef  = useRef(false);
   const loginLockRef = useRef(false);
 
   /**
@@ -171,19 +163,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cached = _readCachedProfile();
     if (cached && cached.id === u.id) {
       setProfile(cached);
+      setProfileReady(true);
     } else {
       setProfile(_profileFromUser(u));
+      setProfileReady(false);
     }
-  }, []);
-
-  /** Fetch full profile from DB in background and cache it. */
-  const refreshProfileFromDB = useCallback(async (u: User) => {
-    if (fetchingRef.current) return;
-    fetchingRef.current = true;
-    try {
-      const p = await _fetchProfile(u.id);
-      if (p) { setProfile(p); _cacheProfile(p); }
-    } finally { fetchingRef.current = false; }
   }, []);
 
   /* ── Init: restore session + subscribe to auth changes ──────────── */
@@ -193,27 +177,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let mounted = true;
 
     const init = async () => {
-      // Kick off profile fetch immediately using cached user ID — runs in
-      // parallel with getSession() so the DB round-trip overlaps with the
-      // Supabase JWT validation instead of waiting for it.
-      const cachedId = cachedU?.id ?? null;
-      const earlyFetch = cachedId ? _fetchProfile(cachedId) : null;
-
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!mounted) return;
         if (session?.user) {
-          // Validated session — update user with the fresh JWT-backed object
           setUserWithProfile(session.user);
-          // Consume the early fetch if the user ID still matches
-          if (earlyFetch && cachedId === session.user.id) {
-            fetchingRef.current = true;
-            earlyFetch
-              .then(p => { if (p && mounted) { setProfile(p); _cacheProfile(p); } })
-              .finally(() => { fetchingRef.current = false; });
-          } else {
-            refreshProfileFromDB(session.user);
-          }
+          // One-time fetch to hydrate the latest profile from DB.
+          // After this, the realtime subscription handles all updates.
+          const p = await _fetchProfile(session.user.id);
+          if (p && mounted) { setProfile(p); _cacheProfile(p); setProfileReady(true); }
         } else if (hasCached) {
           // getSession() returned null but we had cached state.
           // Session truly expired/revoked — drop to login.
@@ -239,13 +211,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         if (session?.user) {
           setUserWithProfile(session.user);
-          if (event === 'SIGNED_IN') refreshProfileFromDB(session.user);
         }
       },
     );
 
     return () => { mounted = false; subscription.unsubscribe(); };
-  }, [setUserWithProfile, refreshProfileFromDB]);
+  }, [setUserWithProfile]);
 
   /* ── Listen for tokens from Electron OAuth popup ────────────────── */
   useEffect(() => {
@@ -256,23 +227,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubImplicit = ipc.on('auth:callback',
       async ({ access_token, refresh_token }: { access_token: string; refresh_token: string }) => {
         try {
-          await supabase.auth.setSession({ access_token, refresh_token });
-          // Session is now valid — fetch profile immediately rather than
-          // waiting for onAuthStateChange to fire asynchronously.
-          const uid = _decodeJwtSub(access_token);
+          const { data } = await supabase.auth.setSession({ access_token, refresh_token });
+          // Session is now fully stored — fetch profile with valid token.
+          const uid = data?.session?.user?.id;
           if (uid) {
-            fetchingRef.current = true;
-            try {
-              const p = await _fetchProfile(uid);
-              if (p) { setProfile(p); _cacheProfile(p); }
-            } finally { fetchingRef.current = false; }
+            const p = await _fetchProfile(uid);
+            if (p) { setProfile(p); _cacheProfile(p); setProfileReady(true); }
           }
         } catch {}
       },
     );
     const unsubPkce = ipc.on('auth:callback-code',
       async ({ code }: { code: string }) => {
-        try { await supabase.auth.exchangeCodeForSession(code); } catch {}
+        try {
+          const { data } = await supabase.auth.exchangeCodeForSession(code);
+          const uid = data?.session?.user?.id;
+          if (uid) {
+            const p = await _fetchProfile(uid);
+            if (p) { setProfile(p); _cacheProfile(p); setProfileReady(true); }
+          }
+        } catch {}
       },
     );
     return () => {
@@ -280,6 +254,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (typeof unsubPkce === 'function') unsubPkce();
     };
   }, []);
+
+  /* ── Realtime: subscribe to own profile row for instant updates ─── */
+  useEffect(() => {
+    if (!isSupabaseConfigured || !user?.id) return;
+
+    const channel = supabase
+      .channel(`profile-rt:${user.id}`)
+      .on(
+        'postgres_changes' as any,
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        (payload: any) => {
+          if (payload.new) {
+            const updated = payload.new as UserProfile;
+            setProfile(updated);
+            _cacheProfile(updated);
+            setProfileReady(true);
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   /* ── Actions ─────────────────────────────────────────────────────── */
   const login = useCallback(async (provider: 'discord' | 'twitch') => {
@@ -304,14 +308,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const ipc = (window as any).electron?.ipcRenderer;
     if (ipc) { try { await ipc.invoke('auth:clear-session'); } catch {} }
     await supabase.auth.signOut();
-    setUser(null); setProfile(null); setCurrentProvider(null);
+    setUser(null); setProfile(null); setCurrentProvider(null); setProfileReady(false);
     _clearAllAuthStorage();
   }, []);
 
   const refreshProfile = useCallback(async () => {
     if (!user) return;
     const p = await _fetchProfile(user.id);
-    if (p) { setProfile(p); _cacheProfile(p); }
+    if (p) { setProfile(p); _cacheProfile(p); setProfileReady(true); }
   }, [user]);
 
   const cancelSubscription = useCallback(async () => {
@@ -344,7 +348,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={{
-      user, profile, loading, appReady, isExpired, isPro, isAdmin, isOwner,
+      user, profile, profileReady, loading, appReady, isExpired, isPro, isAdmin, isOwner,
       currentProvider, login, logout, cancelSubscription, refreshProfile, grantPro, revokePro,
     }}>
       {children}

@@ -31,7 +31,7 @@ const PROVIDER_MAP: Record<string, { icon: React.ReactNode; name: string; color:
 };
 
 const ProfileDropdown: React.FC = () => {
-  const { profile, user, loading, logout, currentProvider, isOwner } = useAuth();
+  const { profile, user, loading, logout, currentProvider, isOwner, profileReady } = useAuth();
   const [open, setOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -92,8 +92,8 @@ const ProfileDropdown: React.FC = () => {
           )}
         </div>
         <span className="pd-trigger-name">{stableProfile!.username}</span>
-        <span className={`pd-role-chip pd-role-chip--${stableProfile!.role}`}>
-          {role.icon}{role.label}
+        <span className={`pd-role-chip pd-role-chip--${profileReady ? stableProfile!.role : 'loading'}`}>
+          {profileReady ? <>{role.icon}{role.label}</> : <span className="pd-role-shimmer" />}
         </span>
         <ChevronDown size={11} className={`pd-chevron${open ? ' pd-chevron--open' : ''}`} />
       </button>
@@ -124,8 +124,8 @@ const ProfileDropdown: React.FC = () => {
               <div className="pd-hero-info">
                 <span className="pd-hero-name">{stableProfile!.username}</span>
                 <span className="pd-hero-email">{stableProfile!.email}</span>
-                <span className={`pd-role-chip pd-role-chip--${stableProfile!.role}`}>
-                  {role.icon}{role.label}
+                <span className={`pd-role-chip pd-role-chip--${profileReady ? stableProfile!.role : 'loading'}`}>
+                  {profileReady ? <>{role.icon}{role.label}</> : <span className="pd-role-shimmer" />}
                 </span>
               </div>
             </div>

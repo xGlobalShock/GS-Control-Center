@@ -44,11 +44,14 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ pageName, onClose }) => {
     }
   };
 
+  const [waitingBrowser, setWaitingBrowser] = useState(false);
+
   const handlePayPalCheckout = async () => {
     if (!user) return;
     setCheckoutLoading(true);
     setCheckoutError(null);
     try {
+      // 1) Create PayPal order via Supabase Edge Function
       const { data: orderData, error: orderError } = await supabase.functions.invoke(
         'create-paypal-order',
         { body: { user_id: user.id } }
@@ -56,12 +59,25 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ pageName, onClose }) => {
       if (orderError || !orderData?.approval_url) {
         throw new Error(orderError?.message || 'Failed to create payment order');
       }
+
+      // 2) Open checkout in system browser (no more embedded window)
+      setWaitingBrowser(true);
       const result = await (window as any).electron.ipcRenderer.invoke('paypal:checkout', {
         approval_url: orderData.approval_url,
         order_id: orderData.order_id,
       });
-      if (result?.cancelled) { setCheckoutLoading(false); return; }
+      setWaitingBrowser(false);
+
+      if (result?.cancelled) {
+        if (result?.timeout) {
+          setCheckoutError('Checkout timed out. Please try again.');
+        }
+        setCheckoutLoading(false);
+        return;
+      }
       if (!result?.order_id) throw new Error('No order ID returned from PayPal');
+
+      // 3) Verify & capture payment server-side
       const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
         'verify-payment',
         { body: { user_id: user.id, transaction_id: result.order_id } }
@@ -69,9 +85,12 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ pageName, onClose }) => {
       if (verifyError || !verifyData?.success) {
         throw new Error(verifyError?.message || 'Payment verification failed');
       }
+
+      // 4) Refresh profile — PRO activates instantly
       await refreshProfile();
       setSuccessExpiry(verifyData.pro_expires_at ?? null);
     } catch (err: any) {
+      setWaitingBrowser(false);
       setCheckoutError(err?.message || 'Payment failed. Please try again.');
     } finally {
       setCheckoutLoading(false);
@@ -167,13 +186,18 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ pageName, onClose }) => {
                   onClick={handlePayPalCheckout}
                   disabled={checkoutLoading}
                 >
-                  {checkoutLoading
-                    ? <><Loader2 size={16} className="upgrade-spin" /> Processing…</>
-                    : <><Crown size={18} /> Upgrade to Pro — $4.99</>
+                  {waitingBrowser
+                    ? <><Loader2 size={16} className="upgrade-spin" /> Complete checkout in your browser…</>
+                    : checkoutLoading
+                      ? <><Loader2 size={16} className="upgrade-spin" /> Processing…</>
+                      : <><Crown size={18} /> Upgrade to Pro — $4.99</>
                   }
                 </button>
                 <p className="paywall-cta-note">
-                  Secure checkout via PayPal · Pro activates instantly
+                  {waitingBrowser
+                    ? 'PayPal checkout is open in your default browser'
+                    : 'Secure checkout via PayPal · Pro activates instantly'
+                  }
                 </p>
               </div>
             )}
