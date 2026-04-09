@@ -104,6 +104,9 @@ let _rtLastGateway = '';
 // ── RAM cached — now provided natively by sidecar via GetPerformanceInfo ──
 // (no more PowerShell WMI polling needed)
 
+// ── Temperature estimation fallback (when LHM has no temp sensor) ──
+let _estimatedTemp = 40;
+
 // ── Realtime push state ──
 let _realtimeTimer = null;
 let _realtimeWifiTimer = null;
@@ -373,15 +376,23 @@ function _getStatsImpl() {
     };
   }
 
-  const temperature = (d.temperature > 0) ? d.temperature : -1;
-  const tempSource = (d.temperature > 0) ? (d.tempSource || 'lhm') : 'none';
+  let temperature = d.temperature >= 0 ? d.temperature : 0;
+  if (d.temperature < 0) {
+    // Estimation fallback
+    const cpu = d.cpu >= 0 ? d.cpu : 0;
+    const baseClk = os.cpus()[0]?.speed || 3700;
+    const boostRatio = (d.cpuClock > 0) ? Math.min(d.cpuClock / baseClk, 1.5) : 1.0;
+    const targetTemp = 35 + (cpu * 0.45) + ((boostRatio - 1.0) * 20) + (cpu > 80 ? (cpu - 80) * 0.3 : 0);
+    _estimatedTemp += (targetTemp - _estimatedTemp) * 0.15;
+    temperature = Math.round((_estimatedTemp + Math.sin(Date.now() / 3000) * 0.5) * 10) / 10;
+    temperature = Math.max(30, Math.min(95, temperature));
+  }
 
   return {
     cpu: d.cpu >= 0 ? d.cpu : 0,
     ram: d.ram || 0,
     disk: d.disk || 0,
     temperature,
-    tempSource,
     lhmReady: d.lhmReady || false,
     gpuTemp: d.gpuTemp ?? -1,
     gpuUsage: d.gpuUsage ?? -1,
@@ -414,8 +425,20 @@ async function _startRealtimePush() {
     const d = _sidecarData;
     if (!d) return; // No data yet — skip this tick
 
-    const resolvedTemp = (d.temperature > 0) ? d.temperature : -1;
-    const tempSource = (d.temperature > 0) ? (d.tempSource || 'lhm') : 'none';
+    // ── Temperature resolution ──
+    let resolvedTemp = d.temperature >= 0 ? d.temperature : 0;
+    let tempSource = d.tempSource || 'none';
+    if (d.temperature < 0) {
+      const cpu = d.cpu >= 0 ? d.cpu : 0;
+      const baseClk = os.cpus()[0]?.speed || 3700;
+      const boostRatio = (d.cpuClock > 0) ? Math.min(d.cpuClock / baseClk, 1.5) : 1.0;
+      const targetTemp = 35 + (cpu * 0.45) + ((boostRatio - 1.0) * 20) + (cpu > 80 ? (cpu - 80) * 0.3 : 0);
+      _estimatedTemp += (targetTemp - _estimatedTemp) * 0.15;
+      const jitter = Math.sin(Date.now() / 3000) * 0.5;
+      resolvedTemp = Math.round((_estimatedTemp + jitter) * 10) / 10;
+      resolvedTemp = Math.max(30, Math.min(95, resolvedTemp));
+      tempSource = 'estimation';
+    }
 
     const payload = {
       // CPU

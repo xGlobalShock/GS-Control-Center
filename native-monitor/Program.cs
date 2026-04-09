@@ -343,8 +343,10 @@ public static class Program
         {
             foreach (var hw in computer.Hardware)
             {
-                // Collect all sensors recursively (handles nested sub-hardware on Intel hybrid/chiplet CPUs)
-                var allSensors = CollectSensorsRecursive(hw);
+                // Collect all sensors including sub-hardware
+                var allSensors = new List<ISensor>(hw.Sensors);
+                foreach (var sub in hw.SubHardware)
+                    allSensors.AddRange(sub.Sensors);
 
                 switch (hw.HardwareType)
                 {
@@ -419,13 +421,11 @@ public static class Program
         if (diskTemp < 0 && _lastDiskTemp > 0) diskTemp = _lastDiskTemp;
 
         // Fallback chain for CPU temperature
-        // Use motherboard CPU sensor if LHM couldn't read a valid CPU temp (>10°C)
-        if (cpuTemp < 10 && mbCpuTemp > 10) cpuTemp = mbCpuTemp;
+        if (cpuTemp < 0 && mbCpuTemp > 0) cpuTemp = mbCpuTemp;
 
-        // Last resort: WMI ACPI thermal zone — try two sources for broad hardware support
-        if (cpuTemp < 10)
+        // Last resort: WMI ACPI thermal zone (works on many AMD systems where LHM can't read temps)
+        if (cpuTemp < 0)
         {
-            // Source 1: MSAcpi_ThermalZoneTemperature (AMD-friendly, older boards)
             try
             {
                 using var tz = new ManagementObjectSearcher(@"root\WMI",
@@ -442,32 +442,7 @@ public static class Program
                     }
                 }
             }
-            catch { }
-        }
-
-        if (cpuTemp < 10)
-        {
-            // Source 2: Win32_PerfFormattedData_Counters_ThermalZoneInformation (Intel-friendly, no ring0 needed)
-            try
-            {
-                using var tz = new ManagementObjectSearcher("root\\cimv2",
-                    "SELECT Temperature FROM Win32_PerfFormattedData_Counters_ThermalZoneInformation");
-                double maxC = -1;
-                foreach (ManagementObject obj in tz.Get())
-                {
-                    // Reports in tenths of Kelvin
-                    var kelvinTenths = Convert.ToDouble(obj["Temperature"]);
-                    var celsius = (kelvinTenths / 10.0) - 273.15;
-                    if (celsius > 10 && celsius < 120 && celsius > maxC)
-                        maxC = celsius;
-                }
-                if (maxC > 10)
-                {
-                    cpuTemp = Math.Round(maxC, 1);
-                    Log($"ACPI_THERMAL2:{cpuTemp}C");
-                }
-            }
-            catch { }
+            catch { /* WMI thermal zone not available — estimation will kick in on JS side */ }
         }
 
         // Process pending GPU fan control command
@@ -581,8 +556,8 @@ public static class Program
             ["cpuClock"] = cpuClock >= 0 ? cpuClock : -1,
             ["cpuPower"] = cpuPower >= 0 ? cpuPower : -1,
             ["cpuVoltage"] = cpuVoltage >= 0 ? cpuVoltage : -1,
-            ["temperature"] = cpuTemp >= 10 ? cpuTemp : -1,
-            ["tempSource"] = cpuTemp >= 10 ? "lhm" : "none",
+            ["temperature"] = cpuTemp >= 0 ? cpuTemp : -1,
+            ["tempSource"] = cpuTemp >= 0 ? "lhm" : "none",
             ["gpuTemp"] = gpuTemp,
             ["gpuUsage"] = gpuUsage,
             ["gpuVramUsed"] = gpuVramUsed,
@@ -621,15 +596,6 @@ public static class Program
 
     #region Sensor Extractors
 
-    /// <summary>Recursively collect all sensors from hardware and its sub-hardware at any depth.</summary>
-    private static List<ISensor> CollectSensorsRecursive(IHardware hw)
-    {
-        var result = new List<ISensor>(hw.Sensors);
-        foreach (var sub in hw.SubHardware)
-            result.AddRange(CollectSensorsRecursive(sub));
-        return result;
-    }
-
     private static void ExtractCpuMetrics(List<ISensor> sensors, ref double cpuTotal,
         ref double cpuTemp, ref double cpuClock,
         ref double cpuPower, ref double cpuVoltage, List<double> perCoreCpu)
@@ -653,24 +619,18 @@ public static class Program
             if (s.SensorType == SensorType.Temperature)
             {
                 var name = s.Name;
-                // Priority: CPU Package / Intel hybrid names > Tctl/Tdie (AMD) > Core > Core Average > Core Max > Core # / CCD > any valid
-                // Validity: real CPU temp must be > 10°C and < 150°C
-                if ((name == "CPU Package" || name == "Package" ||
-                     name == "CPU IA Cores" || name == "CPU GT Cores" || name == "CPU Ring" ||
-                     name.Contains("Tctl") || name.Contains("Tdie")) && v > 10 && v < 150)
-                {
-                    if (cpuTemp < 10)
-                        cpuTemp = Math.Round(v, 1);
-                }
-                else if ((name == "Core" || name == "CPU") && cpuTemp < 10)
+                // Priority: CPU Package > Tctl/Tdie > Core (AMD) > Core Average > Core Max > first Core # > any
+                if (name == "CPU Package" || name.Contains("Tctl") || name.Contains("Tdie"))
                     cpuTemp = Math.Round(v, 1);
-                else if (name == "Core Average" && cpuTemp < 10)
+                else if ((name == "Core" || name == "CPU") && cpuTemp < 0)
                     cpuTemp = Math.Round(v, 1);
-                else if (name == "Core Max" && cpuTemp < 10)
+                else if (name == "Core Average" && cpuTemp < 0)
                     cpuTemp = Math.Round(v, 1);
-                else if ((name.StartsWith("Core #") || name.StartsWith("CCD")) && cpuTemp < 10 && v > 10 && v < 150)
+                else if (name == "Core Max" && cpuTemp < 0)
                     cpuTemp = Math.Round(v, 1);
-                else if (cpuTemp < 10 && v > 10 && v < 150)
+                else if ((name.StartsWith("Core #") || name.StartsWith("CCD")) && cpuTemp < 0 && v > 0 && v < 150)
+                    cpuTemp = Math.Round(v, 1);
+                else if (cpuTemp < 0 && v > 0 && v < 150)
                     cpuTemp = Math.Round(v, 1);
             }
             else if (s.SensorType == SensorType.Load)
