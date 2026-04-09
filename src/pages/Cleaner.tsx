@@ -276,8 +276,8 @@ const Cleaner: React.FC = () => {
   const preferenceItems = [
     {
       id: 'start-rec',
-      title: 'Disable Start Menu Recommendations',
-      desc: 'Hides the Recommendations section in the Start menu. Does not remove pinned apps. Explorer restarts automatically to apply the change.',
+      title: 'Disable Recommended & Unpin Apps',
+      desc: 'Disable Recommendations and unpin default apps from Start menu to declutter and speed up Start menu performance.',
       onClick: () => applyPref('pref:apply-startmenu-recommendations', !startRecEnabled, setStartLoading, setStartRecEnabled, 'Start menu recommendations updated'),
       enabled: startRecEnabled,
       loading: startLoading,
