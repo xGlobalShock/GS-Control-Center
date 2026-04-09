@@ -640,13 +640,19 @@ Get-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name 'MouseSpeed','MouseTh
       const raw = await runPSScript(`
 $r = @{}
 try { $r.HideRecommendedSection_PM = (Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Start' -Name 'HideRecommendedSection' -ErrorAction SilentlyContinue).HideRecommendedSection } catch {}
-try { $r.IsEducationEnvironment = (Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Education' -Name 'IsEducationEnvironment' -ErrorAction SilentlyContinue).IsEducationEnvironment } catch {}
 try { $r.HideRecommendedSection_Explorer = (Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer' -Name 'HideRecommendedSection' -ErrorAction SilentlyContinue).HideRecommendedSection } catch {}
+# Self-heal: remove IsEducationEnvironment if it exists (legacy key that wipes pinned apps)
+try { Remove-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Education' -Name 'IsEducationEnvironment' -ErrorAction SilentlyContinue } catch {}
+try { Remove-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Edu' -Name 'IsEducationEnvironment' -ErrorAction SilentlyContinue } catch {}
+try {
+  $edPath = 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Education'
+  if ((Test-Path $edPath) -and ((Get-Item $edPath).ValueCount -eq 0)) { Remove-Item $edPath -Force -ErrorAction SilentlyContinue }
+} catch {}
 $r | ConvertTo-Json -Compress
       `, 4000);
       if (!raw) return { applied: false, value: null };
       const parsed = JSON.parse(raw);
-      const applied = (parsed.HideRecommendedSection_PM === 1) || (parsed.IsEducationEnvironment === 1) || (parsed.HideRecommendedSection_Explorer === 1);
+      const applied = (parsed.HideRecommendedSection_PM === 1) || (parsed.HideRecommendedSection_Explorer === 1);
       return { applied, value: parsed };
     } catch (e) {
       return { applied: false, value: null, error: e.message || String(e) };
@@ -660,18 +666,28 @@ $r | ConvertTo-Json -Compress
       const val = enable ? 1 : 0;
       const script = `
 If (-not (Test-Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Start')) { New-Item -Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Start' -Force | Out-Null }
-If (-not (Test-Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Education')) { New-Item -Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Education' -Force | Out-Null }
 If (-not (Test-Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer')) { New-Item -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer' -Force | Out-Null }
 Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Start' -Name 'HideRecommendedSection' -Value ${val} -Type DWord -Force
-Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Education' -Name 'IsEducationEnvironment' -Value ${val} -Type DWord -Force
 Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer' -Name 'HideRecommendedSection' -Value ${val} -Type DWord -Force
+# Clean up IsEducationEnvironment from all known locations — this key causes pinned apps to be wiped
+try { Remove-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Education' -Name 'IsEducationEnvironment' -ErrorAction SilentlyContinue } catch {}
+try { Remove-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Edu' -Name 'IsEducationEnvironment' -ErrorAction SilentlyContinue } catch {}
+try {
+  $edPath = 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Education'
+  if ((Test-Path $edPath) -and ((Get-Item $edPath).ValueCount -eq 0)) { Remove-Item $edPath -Force -ErrorAction SilentlyContinue }
+} catch {}
 $r = @{}
 $r.HideRecommendedSection_PM = (Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Start' -Name 'HideRecommendedSection' -ErrorAction SilentlyContinue).HideRecommendedSection
-$r.IsEducationEnvironment = (Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Education' -Name 'IsEducationEnvironment' -ErrorAction SilentlyContinue).IsEducationEnvironment
 $r.HideRecommendedSection_Explorer = (Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer' -Name 'HideRecommendedSection' -ErrorAction SilentlyContinue).HideRecommendedSection
 $r | ConvertTo-Json -Compress
 `;
       const raw = await runPSScript(script, 8000);
+      // Restart Explorer so the Start menu picks up the registry change immediately
+      try {
+        const { execSync } = require('child_process');
+        execSync('taskkill /F /IM explorer.exe', { windowsHide: true });
+        execSync('start explorer.exe', { shell: true, windowsHide: true });
+      } catch (_) { /* best-effort */ }
       _tweakCheckCache = null;
       return { success: true, message: 'Start Menu recommendations updated', value: raw ? JSON.parse(raw) : null };
     } catch (e) {
@@ -1389,6 +1405,73 @@ If (Test-Path 'HKU:\\.Default\\Control Panel\\Keyboard') {
       const val = enable ? 1 : 0;
       await execAsync(`powershell -Command "if (!(Test-Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System')) { New-Item -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Force | Out-Null }; Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'VerboseStatus' -Value ${val} -Type DWord"`, { timeout: 8000 });
       return { success: true, applied: !!enable, message: "Verbose Status updated." };
+    } catch (e) { return { success: false, message: String(e) }; }
+  });
+
+  // ── GS Ultimate Performance Power Plan ──────────────────────────────────
+  const GS_PLAN_NAME = 'GS Ultimate Performance';
+  const ULTIMATE_PERF_BASE_GUID = 'e9a42b02-d5df-448d-aa00-03f14749eb61';
+  const BALANCED_GUID = '381b4222-f694-41f0-9685-ff5bb260df2e';
+
+  /** Returns the GUID of the GS plan if it exists, else null */
+  async function _findGSPlanGuid() {
+    const { exec } = require('child_process');
+    const execAsync = require('util').promisify(exec);
+    const res = await execAsync('powercfg /l', { timeout: 8000 });
+    const regex = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\s+\(([^)]+)\)/gi;
+    let m;
+    while ((m = regex.exec(res.stdout)) !== null) {
+      if (m[2].trim() === GS_PLAN_NAME) return m[1];
+    }
+    return null;
+  }
+
+  ipcMain.handle('pref:check-gs-powerplan', async () => {
+    try {
+      const { exec } = require('child_process');
+      const execAsync = require('util').promisify(exec);
+      const guid = await _findGSPlanGuid();
+      if (!guid) return { applied: false };
+      // Check if it's the active plan
+      const res = await execAsync('powercfg /getactivescheme', { timeout: 5000 });
+      const applied = res.stdout.toLowerCase().includes(guid.toLowerCase());
+      return { applied, guid };
+    } catch (e) { return { applied: false, error: String(e) }; }
+  });
+
+  ipcMain.handle('pref:apply-gs-powerplan', async (event, enable) => {
+    const blocked = authSession.requirePro(); if (blocked) return blocked;
+    try {
+      const { exec } = require('child_process');
+      const execAsync = require('util').promisify(exec);
+
+      if (!enable) {
+        // Revert: switch to Balanced, delete all GS plan copies
+        await execAsync(`powercfg -setactive ${BALANCED_GUID}`, { timeout: 8000 });
+        let guid = await _findGSPlanGuid();
+        while (guid) {
+          try { await execAsync(`powercfg -delete ${guid}`, { timeout: 5000 }); } catch (_) {}
+          guid = await _findGSPlanGuid();
+        }
+        return { success: true, applied: false, message: 'Reverted to Balanced power plan' };
+      }
+
+      // Check if already exists
+      let guid = await _findGSPlanGuid();
+      if (!guid) {
+        // Duplicate the built-in Ultimate Performance scheme
+        const dupeOut = await execAsync(`powercfg -duplicatescheme ${ULTIMATE_PERF_BASE_GUID}`, { timeout: 10000 });
+        // Extract new GUID from output
+        const newGuidMatch = dupeOut.stdout.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+        if (!newGuidMatch) return { success: false, message: 'Failed to duplicate power scheme' };
+        guid = newGuidMatch[1];
+        // Rename to GS Ultimate Performance
+        await execAsync(`powercfg -changename ${guid} "${GS_PLAN_NAME}" "Unlock Maximum performance for gaming"`, { timeout: 8000 });
+      }
+
+      // Set as active
+      await execAsync(`powercfg -setactive ${guid}`, { timeout: 8000 });
+      return { success: true, applied: true, message: `${GS_PLAN_NAME} power plan activated` };
     } catch (e) { return { success: false, message: String(e) }; }
   });
 

@@ -421,10 +421,11 @@ public static class Program
         if (diskTemp < 0 && _lastDiskTemp > 0) diskTemp = _lastDiskTemp;
 
         // Fallback chain for CPU temperature
-        if (cpuTemp < 0 && mbCpuTemp > 0) cpuTemp = mbCpuTemp;
+        // Use motherboard CPU sensor if LHM couldn't read a valid CPU temp (>10°C)
+        if (cpuTemp < 10 && mbCpuTemp > 10) cpuTemp = mbCpuTemp;
 
         // Last resort: WMI ACPI thermal zone (works on many AMD systems where LHM can't read temps)
-        if (cpuTemp < 0)
+        if (cpuTemp < 10)
         {
             try
             {
@@ -556,8 +557,8 @@ public static class Program
             ["cpuClock"] = cpuClock >= 0 ? cpuClock : -1,
             ["cpuPower"] = cpuPower >= 0 ? cpuPower : -1,
             ["cpuVoltage"] = cpuVoltage >= 0 ? cpuVoltage : -1,
-            ["temperature"] = cpuTemp >= 0 ? cpuTemp : -1,
-            ["tempSource"] = cpuTemp >= 0 ? "lhm" : "none",
+            ["temperature"] = cpuTemp >= 10 ? cpuTemp : -1,
+            ["tempSource"] = cpuTemp >= 10 ? "lhm" : "none",
             ["gpuTemp"] = gpuTemp,
             ["gpuUsage"] = gpuUsage,
             ["gpuVramUsed"] = gpuVramUsed,
@@ -620,17 +621,22 @@ public static class Program
             {
                 var name = s.Name;
                 // Priority: CPU Package > Tctl/Tdie > Core (AMD) > Core Average > Core Max > first Core # > any
-                if (name == "CPU Package" || name.Contains("Tctl") || name.Contains("Tdie"))
+                // Validity: any real CPU temp must be > 10°C and < 150°C; 0 = sensor not readable
+                if ((name == "CPU Package" || name.Contains("Tctl") || name.Contains("Tdie")) && v > 10 && v < 150)
+                {
+                    // Prefer the highest priority reading; only overwrite with another top-priority sensor if current is invalid
+                    if (cpuTemp < 10)
+                        cpuTemp = Math.Round(v, 1);
+                }
+                else if ((name == "Core" || name == "CPU") && cpuTemp < 10)
                     cpuTemp = Math.Round(v, 1);
-                else if ((name == "Core" || name == "CPU") && cpuTemp < 0)
+                else if (name == "Core Average" && cpuTemp < 10)
                     cpuTemp = Math.Round(v, 1);
-                else if (name == "Core Average" && cpuTemp < 0)
+                else if (name == "Core Max" && cpuTemp < 10)
                     cpuTemp = Math.Round(v, 1);
-                else if (name == "Core Max" && cpuTemp < 0)
+                else if ((name.StartsWith("Core #") || name.StartsWith("CCD")) && cpuTemp < 10 && v > 10 && v < 150)
                     cpuTemp = Math.Round(v, 1);
-                else if ((name.StartsWith("Core #") || name.StartsWith("CCD")) && cpuTemp < 0 && v > 0 && v < 150)
-                    cpuTemp = Math.Round(v, 1);
-                else if (cpuTemp < 0 && v > 0 && v < 150)
+                else if (cpuTemp < 10 && v > 10 && v < 150)
                     cpuTemp = Math.Round(v, 1);
             }
             else if (s.SensorType == SensorType.Load)

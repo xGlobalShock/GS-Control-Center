@@ -376,9 +376,11 @@ function _getStatsImpl() {
     };
   }
 
-  let temperature = d.temperature >= 0 ? d.temperature : 0;
-  if (d.temperature < 0) {
-    // Estimation fallback
+  // Treat 0 (sensor not readable) the same as negative — both need estimation
+  let temperature = (d.temperature > 0) ? d.temperature : 0;
+  let tempSource = (d.temperature > 0) ? (d.tempSource || 'lhm') : 'none';
+  if (!(d.temperature > 0)) {
+    // Estimation fallback: derive from CPU load + clock boost
     const cpu = d.cpu >= 0 ? d.cpu : 0;
     const baseClk = os.cpus()[0]?.speed || 3700;
     const boostRatio = (d.cpuClock > 0) ? Math.min(d.cpuClock / baseClk, 1.5) : 1.0;
@@ -386,6 +388,7 @@ function _getStatsImpl() {
     _estimatedTemp += (targetTemp - _estimatedTemp) * 0.15;
     temperature = Math.round((_estimatedTemp + Math.sin(Date.now() / 3000) * 0.5) * 10) / 10;
     temperature = Math.max(30, Math.min(95, temperature));
+    tempSource = 'estimation';
   }
 
   return {
@@ -393,6 +396,7 @@ function _getStatsImpl() {
     ram: d.ram || 0,
     disk: d.disk || 0,
     temperature,
+    tempSource,
     lhmReady: d.lhmReady || false,
     gpuTemp: d.gpuTemp ?? -1,
     gpuUsage: d.gpuUsage ?? -1,
@@ -425,20 +429,21 @@ async function _startRealtimePush() {
     const d = _sidecarData;
     if (!d) return; // No data yet — skip this tick
 
-    // ── Temperature resolution ──
-    let resolvedTemp = d.temperature >= 0 ? d.temperature : 0;
-    let tempSource = d.tempSource || 'none';
-    if (d.temperature < 0) {
-      const cpu = d.cpu >= 0 ? d.cpu : 0;
-      const baseClk = os.cpus()[0]?.speed || 3700;
-      const boostRatio = (d.cpuClock > 0) ? Math.min(d.cpuClock / baseClk, 1.5) : 1.0;
-      const targetTemp = 35 + (cpu * 0.45) + ((boostRatio - 1.0) * 20) + (cpu > 80 ? (cpu - 80) * 0.3 : 0);
-      _estimatedTemp += (targetTemp - _estimatedTemp) * 0.15;
-      const jitter = Math.sin(Date.now() / 3000) * 0.5;
-      resolvedTemp = Math.round((_estimatedTemp + jitter) * 10) / 10;
-      resolvedTemp = Math.max(30, Math.min(95, resolvedTemp));
-      tempSource = 'estimation';
-    }
+  // Temperature resolution — treat 0 or negative as no-reading
+  let resolvedTemp = (d.temperature != null && d.temperature > 0) ? d.temperature : 0;
+  let tempSource = d.tempSource || 'none';
+  if (!(d.temperature > 0)) {
+    // Estimation fallback: derive from CPU load + clock boost
+    const cpu = d.cpu >= 0 ? d.cpu : 0;
+    const baseClk = os.cpus()[0]?.speed || 3700;
+    const boostRatio = (d.cpuClock > 0) ? Math.min(d.cpuClock / baseClk, 1.5) : 1.0;
+    const targetTemp = 35 + (cpu * 0.45) + ((boostRatio - 1.0) * 20) + (cpu > 80 ? (cpu - 80) * 0.3 : 0);
+    _estimatedTemp += (targetTemp - _estimatedTemp) * 0.15;
+    const jitter = Math.sin(Date.now() / 3000) * 0.5;
+    resolvedTemp = Math.round((_estimatedTemp + jitter) * 10) / 10;
+    resolvedTemp = Math.max(30, Math.min(95, resolvedTemp));
+    tempSource = 'estimation';
+  }
 
     const payload = {
       // CPU

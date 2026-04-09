@@ -269,13 +269,15 @@ const Cleaner: React.FC = () => {
   const [taskViewLoading, setTaskViewLoading] = useState(false);
   const [verboseLogonEnabled, setVerboseLogonEnabled] = useState<boolean | null>(null);
   const [verboseLogonLoading, setVerboseLogonLoading] = useState(false);
+  const [gsPowerPlanEnabled, setGsPowerPlanEnabled] = useState<boolean | null>(null);
+  const [gsPowerPlanLoading, setGsPowerPlanLoading] = useState(false);
 
   // Preference items (built after state declarations so they reflect current state)
   const preferenceItems = [
     {
       id: 'start-rec',
-      title: 'Remove Pinned Apps from Start',
-      desc: 'Toggle Start menu recommendations to quickly unpin unwanted apps and declutter your Start menu.',
+      title: 'Disable Start Menu Recommendations',
+      desc: 'Hides the Recommendations section in the Start menu. Does not remove pinned apps. Explorer restarts automatically to apply the change.',
       onClick: () => applyPref('pref:apply-startmenu-recommendations', !startRecEnabled, setStartLoading, setStartRecEnabled, 'Start menu recommendations updated'),
       enabled: startRecEnabled,
       loading: startLoading,
@@ -416,6 +418,15 @@ const Cleaner: React.FC = () => {
       loading: verboseLogonLoading,
       icon: <Wrench size={28} />,
     },
+    {
+      id: 'gs-powerplan',
+      title: 'GS Ultimate Performance',
+      desc: 'Unlock the ultimate performance power plan on supported hardware for maximum performance!',
+      onClick: () => applyPref('pref:apply-gs-powerplan', !gsPowerPlanEnabled, setGsPowerPlanLoading, setGsPowerPlanEnabled, 'Power plan updated'),
+      enabled: gsPowerPlanEnabled,
+      loading: gsPowerPlanLoading,
+      icon: <Zap size={28} />,
+    },
   ];
 
   const categories = [
@@ -481,7 +492,7 @@ const Cleaner: React.FC = () => {
       setPrefsLoading(true);
       try {
         if (!window.electron?.ipcRenderer) return;
-        const [mouseRes, startRes, settingsRes, bingRes, darkRes, revertRes, res0, res1, res2, res3, res4, res5, res6, res7, res8, res9, res10, res11, res12] = await Promise.all([
+        const [mouseRes, startRes, settingsRes, bingRes, darkRes, revertRes, res0, res1, res2, res3, res4, res5, res6, res7, res8, res9, res10, res11, res12, res13] = await Promise.all([
           window.electron.ipcRenderer.invoke('pref:check-mouse-acceleration'),
           window.electron.ipcRenderer.invoke('pref:check-startmenu-recommendations'),
           window.electron.ipcRenderer.invoke('pref:check-settings-home'),
@@ -501,6 +512,7 @@ const Cleaner: React.FC = () => {
           window.electron.ipcRenderer.invoke('pref:check-sticky-keys'),
           window.electron.ipcRenderer.invoke('pref:check-task-view'),
           window.electron.ipcRenderer.invoke('pref:check-verbose-logon'),
+          window.electron.ipcRenderer.invoke('pref:check-gs-powerplan'),
         ]);
         if (!mounted) return;
         setMouseEnabled(!!(mouseRes && mouseRes.applied));
@@ -522,6 +534,7 @@ const Cleaner: React.FC = () => {
         setStickyKeysEnabled(!!(res10 && res10.applied));
         setTaskViewEnabled(!!(res11 && res11.applied));
         setVerboseLogonEnabled(!!(res12 && res12.applied));
+        setGsPowerPlanEnabled(!!(res13 && res13.applied));
       } catch (e) {
         addToast('Failed to load preferences', 'error');
       } finally {
