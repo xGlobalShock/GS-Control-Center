@@ -299,7 +299,8 @@
 ═══════════════════════════════════════════════════════════════ */
 .st-row {
   display: grid;
-  grid-template-columns: 1.2fr 3.2fr 1.2fr 1.2fr 0.6fr;
+  grid-template-columns: 0.75fr 1.6fr 1.2fr 1.2fr 0.6fr;
+  column-gap: 2rem;
   align-items: center;
   padding: 0 20px;
   min-height: 50px;
@@ -407,7 +408,7 @@
   padding: 4px 8px;
   margin: 2px 0;
   cursor: pointer;
-  max-width: 100%;
+  width: 100%;
   min-width: 0;
   text-align: left;
   border-radius: 6px;
@@ -456,6 +457,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   display: block;
+  flex: 1;
+  min-width: 0;
 }
 
 /* ── Publisher ── */

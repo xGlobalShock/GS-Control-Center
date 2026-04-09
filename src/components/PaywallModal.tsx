@@ -12,6 +12,8 @@ const PRO_FEATURES = [
   { icon: <Layers size={16} />,              label: 'Apps Manager',      desc: 'Install, uninstall & debloat' },
   { icon: <SlidersHorizontal size={16} />,   label: 'Utilities',         desc: 'Game cache & system cleanup' },
   { icon: <PieChart size={16} />,            label: 'Disk Analyzer',     desc: 'Storage usage visualization' },
+  { icon: <SlidersHorizontal size={16} />,   label: 'Win Tweaks',        desc: 'Registry & system-level tweaks' },
+  { icon: <SlidersHorizontal size={16} />,   label: 'Win Preferences',   desc: 'Quick Windows preference toggles' },
 ];
 
 interface PaywallModalProps {

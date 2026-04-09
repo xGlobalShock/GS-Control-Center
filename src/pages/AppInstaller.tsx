@@ -53,52 +53,41 @@ const CAT_ICONS: Record<string, React.ReactNode> = {
   'Media': <Music size={14} />,
 };
 
-/* App favicon — fetched via main process (avoids renderer CSP/CORS) */
+/* App icon — fetched via main process (avoids renderer CSP/CORS) */
 const _aiIconCache = new Map<string, string>();
 
-const AppIcon: React.FC<{ domain?: string; name: string; size?: number }> = ({ domain, name, size = 16 }) => {
-  const [iconUrl, setIconUrl] = React.useState<string | null>(
-    () => domain ? (_aiIconCache.get(domain) ?? null) : null
+const AppIcon: React.FC<{ iconUrl?: string; name: string; size?: number }> = ({ iconUrl, name, size = 16 }) => {
+  const [iconData, setIconData] = React.useState<string | null>(
+    () => iconUrl ? (_aiIconCache.get(iconUrl) ?? null) : null
   );
 
   React.useEffect(() => {
-    if (!domain) { setIconUrl(null); return; }
-    if (_aiIconCache.has(domain)) { setIconUrl(_aiIconCache.get(domain)!); return; }
+    if (!iconUrl) { setIconData(null); return; }
+    if (_aiIconCache.has(iconUrl)) { setIconData(_aiIconCache.get(iconUrl)!); return; }
     if (!window.electron?.ipcRenderer) return;
     let cancelled = false;
-    const urls = [
-      `https://logo.clearbit.com/${domain}`,
-      `https://www.google.com/s2/favicons?domain=${domain}&sz=64`,
-    ];
-    (async () => {
-      for (const url of urls) {
-        const r = await window.electron.ipcRenderer.invoke('appicon:fetch', url).catch(() => null);
-        if (cancelled) return;
-        if (r?.success && r.dataUrl) {
-          _aiIconCache.set(domain, r.dataUrl);
-          setIconUrl(r.dataUrl);
-          return;
-        }
-      }
-    })();
+    window.electron.ipcRenderer.invoke('appicon:fetch', iconUrl)
+      .then((r: any) => {
+        if (cancelled || !r?.success || !r.dataUrl) return;
+        _aiIconCache.set(iconUrl, r.dataUrl);
+        setIconData(r.dataUrl);
+      })
+      .catch(() => {});
     return () => { cancelled = true; };
-  }, [domain]);
+  }, [iconUrl]);
 
-  if (iconUrl) {
+  if (iconData) {
     return (
-      <img src={iconUrl} width={size} height={size} alt="" draggable={false}
+      <img src={iconData} width={size} height={size} alt={name} draggable={false}
         style={{ borderRadius: 4, objectFit: 'contain', flexShrink: 0 }} />
     );
   }
-  const hue = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       width: size, height: size, borderRadius: 4, flexShrink: 0,
-      background: `hsla(${hue},55%,45%,0.25)`,
-      color: `hsla(${hue},75%,70%,0.9)`,
-      fontSize: Math.round(size * 0.65), fontWeight: 700, lineHeight: 1,
-    }}>{name.charAt(0).toUpperCase()}</span>
+      background: 'rgba(255,255,255,0.06)',
+    }} />
   );
 };
 
@@ -312,17 +301,17 @@ const AppInstaller: React.FC<AppInstallerProps> = ({ isActive = false, refreshSi
                 <div className="ai-card-icon">
                   {done ? (
                     <span className="ai-card-sel-icon">
-                      <AppIcon domain={app.domain} name={app.name} size={16} />
+                      <AppIcon iconUrl={app.iconUrl} name={app.name} size={16} />
                       <span className="ai-card-check-badge ai-card-check-badge--done"><Check size={8} /></span>
                     </span>
                   ) : busy ? <Loader2 size={15} className="ai-spin" />
                     : sel ? (
                       <span className="ai-card-sel-icon">
-                        <AppIcon domain={app.domain} name={app.name} size={16} />
+                        <AppIcon iconUrl={app.iconUrl} name={app.name} size={16} />
                         <span className="ai-card-check-badge"><Check size={8} /></span>
                       </span>
                     )
-                    : <AppIcon domain={app.domain} name={app.name} size={16} />}
+                    : <AppIcon iconUrl={app.iconUrl} name={app.name} size={16} />}
                 </div>
 
                 <div className="ai-card-info">

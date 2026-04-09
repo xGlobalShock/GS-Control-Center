@@ -753,6 +753,13 @@ public class DeElev {
       });
     });
 
+    /* Apps whose installers require admin rights — skip de-elevation for these */
+    const NEEDS_ELEVATION = new Set([
+      'OBSProject.OBSStudio',
+      'Blizzard.BattleNet',
+      'ElectronicArts.EADesktop',
+    ]);
+
     /* MAIN PIPELINE */
     installCancelled = false;
     const baseCmd = `winget install --id ${cleanId} --accept-source-agreements --accept-package-agreements --force --ignore-security-hash`;
@@ -762,11 +769,11 @@ public class DeElev {
     if (_isElevated) ensureHashOverride();
 
     let result;
-    if (_isElevated) {
+    if (_isElevated && !NEEDS_ELEVATION.has(cleanId)) {
       console.log(TAG, `Installing ${cleanId} via de-elevated path`);
       result = await installViaDeElevated(baseCmd);
     } else {
-      console.log(TAG, `Installing ${cleanId} directly (not elevated)`);
+      console.log(TAG, `Installing ${cleanId} directly (elevated)`);
       result = await installDirect(baseCmd);
     }
     if (result.success || result.cancelled) return result;
@@ -776,7 +783,7 @@ public class DeElev {
     if (outLower.includes('0x80190194') || outLower.includes('not found (404)') || outLower.includes('download failed')) {
       sendProgress({ phase: 'preparing', status: 'Updating sources...', percent: 0 });
       try { await execAsync('winget source update', { timeout: 30000, windowsHide: true }); } catch {}
-      if (_isElevated) {
+      if (_isElevated && !NEEDS_ELEVATION.has(cleanId)) {
         result = await installViaDeElevated(baseCmd);
       } else {
         result = await installDirect(baseCmd);

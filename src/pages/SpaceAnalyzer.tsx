@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   HardDrive, Play, Square, Folder, File, ChevronRight,
   Search, Activity, ChevronLeft, Cpu, Radar, Orbit,
-  AlertTriangle, Crosshair, Sparkles, Trash2, Copy, Zap, X
+  AlertTriangle, Crosshair, Sparkles, Trash2, Copy, Zap, X, ChevronDown
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import '../styles/SpaceAnalyzer.css';
@@ -62,6 +62,17 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, item: SpaceChild } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [availableDrives, setAvailableDrives] = useState<{ letter: string; label: string; freeGB: number; totalGB: number }[]>([]);
+  const [driveOpen, setDriveOpen] = useState(false);
+  const driveDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // Load available drives once on mount
+  useEffect(() => {
+    if (!window.electron?.ipcRenderer) return;
+    window.electron.ipcRenderer.invoke('space:get-drives')
+      .then((drives: any[]) => { if (Array.isArray(drives) && drives.length) setAvailableDrives(drives); })
+      .catch(() => {});
+  }, []);
 
   const cacheRef = React.useRef<Map<string, SpaceResult>>(new Map());
 
@@ -72,10 +83,17 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
     return v.toLowerCase();
   };
 
-  // Close context menu on any global click or escape
+  // Close context menu on any global click or escape; also close drive dropdown on outside click
   useEffect(() => {
-    const handleGlobalClick = () => setContextMenu(null);
-    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setContextMenu(null); };
+    const handleGlobalClick = (e: MouseEvent) => {
+      setContextMenu(null);
+      if (driveDropdownRef.current && !driveDropdownRef.current.contains(e.target as Node)) {
+        setDriveOpen(false);
+      }
+    };
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setContextMenu(null); setDriveOpen(false); }
+    };
     window.addEventListener('click', handleGlobalClick);
     window.addEventListener('keydown', handleEsc);
     return () => {
@@ -324,25 +342,114 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
         transition={{ duration: 0.5, ease: 'easeOut' }}
       >
         {isScanning && (
-           <motion.div 
-             className="sa-scan-laser" 
-             animate={{ x: ['-100%', '300%'] }}
-             transition={{ duration: 2, ease: "linear", repeat: Infinity }}
-           />
+           <div className="sa-scan-laser-clip">
+             <motion.div 
+               className="sa-scan-laser" 
+               animate={{ x: ['-100%', '300%'] }}
+               transition={{ duration: 2, ease: "linear", repeat: Infinity }}
+             />
+           </div>
         )}
         <div className="sa-deck-left">
           <button className="sa-btn-cyber" onClick={handleBack} disabled={history.length === 0 || isScanning}>
             <ChevronLeft size={16} /> Back
           </button>
 
-          <div className="sa-path-input-group">
-            <HardDrive size={18} color="var(--sa-cyan)" />
-            <input
-              value={targetPath}
-              onChange={(e) => setTargetPath(e.target.value)}
+          <div className="sa-drive-select-wrap" ref={driveDropdownRef}>
+            <button
+              className={`sa-drive-trigger${driveOpen ? ' is-open' : ''}`}
               disabled={isScanning}
-              placeholder="e.g. C:\ or D:\Logs"
-            />
+              onClick={(e) => { e.stopPropagation(); setDriveOpen(o => !o); }}
+            >
+              <HardDrive size={13} className="sa-drive-select-icon" />
+              <span className="sa-drive-trigger-label">
+                {(() => {
+                  const d = availableDrives.find(d => targetPath.toUpperCase().startsWith(d.letter));
+                  return d ? `${d.letter}  ${d.label || 'Local Disk'}` : 'Select Drive';
+                })()}
+              </span>
+              <ChevronDown size={11} className="sa-drive-chevron" />
+            </button>
+
+            <AnimatePresence>
+              {driveOpen && (
+                <motion.div
+                  className="sa-drive-dropdown"
+                  initial={{ opacity: 0, y: -6, scaleY: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scaleY: 1 }}
+                  exit={{ opacity: 0, y: -6, scaleY: 0.9 }}
+                  transition={{ duration: 0.14 }}
+                  style={{ originY: 0 }}
+                >
+                  {availableDrives.map(drive => {
+                    const active = targetPath.toUpperCase().startsWith(drive.letter);
+                    return (
+                      <button
+                        key={drive.letter}
+                        className={`sa-drive-opt${active ? ' is-active' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDriveOpen(false);
+                          const root = drive.letter + '\\';
+                          setTargetPath(root);
+                          setHistory([]);
+                          setResult(null);
+                          handleScan(root, false, false);
+                        }}
+                      >
+                        <HardDrive size={11} />
+                        <div className="sa-drive-opt-info">
+                          <span className="sa-drive-opt-letter">{drive.letter}</span>
+                          <span className="sa-drive-opt-label">{drive.label || 'Local Disk'}</span>
+                        </div>
+                        {drive.totalGB > 0 && (
+                          <span className="sa-drive-opt-free">{drive.freeGB} GB free</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* ── Inline stats ── */}
+        <div className="sa-deck-stats">
+          <div className="sa-deck-stat">
+            <Cpu size={11} className="sa-deck-stat-icon" />
+            <div>
+              <div className="sa-deck-stat-val">{!isScanning && !result ? '—' : currentFiles.toLocaleString()}</div>
+              <div className="sa-deck-stat-lbl">Files</div>
+            </div>
+          </div>
+          <div className="sa-deck-stat-div" />
+          <div className="sa-deck-stat">
+            <Radar size={11} className="sa-deck-stat-icon" />
+            <div>
+              <div className="sa-deck-stat-val">{!isScanning && !result ? '—' : currentDirs.toLocaleString()}</div>
+              <div className="sa-deck-stat-lbl">Folders</div>
+            </div>
+          </div>
+          <div className="sa-deck-stat-div" />
+          <div className="sa-deck-stat">
+            <Orbit size={11} className="sa-deck-stat-icon" />
+            <div>
+              <div className="sa-deck-stat-val" style={{ color: 'var(--sa-cyan)' }}>
+                {result && result.driveCapacity > 0 ? formatBytes(result.driveCapacity - result.driveFree) : isScanning ? '…' : '—'}
+              </div>
+              <div className="sa-deck-stat-lbl">{result?.driveCapacity > 0 ? `of ${formatBytes(result.driveCapacity)}` : 'Used'}</div>
+            </div>
+          </div>
+          <div className="sa-deck-stat-div" />
+          <div className="sa-deck-stat">
+            <Sparkles size={11} className="sa-deck-stat-icon" />
+            <div>
+              <div className="sa-deck-stat-val" style={{ color: '#a78bfa' }}>
+                {result && result.driveFree >= 0 ? formatBytes(result.driveFree) : isScanning ? '…' : '—'}
+              </div>
+              <div className="sa-deck-stat-lbl">Free</div>
+            </div>
           </div>
         </div>
 
@@ -361,38 +468,6 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
       {/* ── Core HUD Grid ── */}
       <div className="sa-hud-grid">
         
-        {/* LEFT PANEL: CORE METRICS */}
-        <motion.div 
-          className="sa-metric-stack"
-          initial={{ x: -30, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
-          <div className="sa-metric-card">
-            <div className="sa-metric-header"><Cpu size={14} /> Total Files</div>
-            <div className="sa-metric-value">{!isScanning && !result ? '—' : currentFiles.toLocaleString()}</div>
-            <div className="sa-metric-desc">Files Found</div>
-          </div>
-
-          <div className="sa-metric-card">
-            <div className="sa-metric-header"><Radar size={14} /> Subdirectories</div>
-            <div className="sa-metric-value">{!isScanning && !result ? '—' : currentDirs.toLocaleString()}</div>
-            <div className="sa-metric-desc">Folders Found</div>
-          </div>
-
-          <div className="sa-metric-card">
-            <div className="sa-metric-header"><Orbit size={14} /> Used Space</div>
-            <div className="sa-metric-value" style={{color: "var(--sa-cyan)"}}>{result && result.driveCapacity > 0 ? formatBytes(result.driveCapacity - result.driveFree) : isScanning ? <><span>Scanning</span><AnimatedDots /></> : '—'}</div>
-            <div className="sa-metric-desc">{result?.driveCapacity > 0 ? `of ${formatBytes(result.driveCapacity)}` : 'Disk Usage'}</div>
-          </div>
-          
-          <div className="sa-metric-card">
-            <div className="sa-metric-header"><Sparkles size={14} /> Free Space</div>
-            <div className="sa-metric-value" style={{color: "var(--sa-purple)"}}>{result && result.driveFree >= 0 ? formatBytes(result.driveFree) : isScanning ? <><span>Scanning</span><AnimatedDots /></> : '—'}</div>
-            <div className="sa-metric-desc">Available</div>
-          </div>
-        </motion.div>
-
         {/* CENTER PANEL: VECTOR MAP */}
         <motion.div 
           className="sa-panel sa-dir-panel"
@@ -415,7 +490,7 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
               <div className="sa-empty-state">
                 <Crosshair size={64} strokeWidth={1} />
                 <h3>Ready to Scan</h3>
-                <p>Enter a folder path in the input above to begin the disk space analysis.</p>
+                <p>Select a drive from the dropdown above and click Start Scan to begin the disk space analysis.</p>
               </div>
             )}
 

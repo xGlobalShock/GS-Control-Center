@@ -10,7 +10,6 @@ import OBSPresets from './pages/OBSPresets';
 import Network from './pages/Network';
 import SoftwareUpdates from './pages/SoftwareUpdates';
 import AppsPage from './pages/AppsPage';
-import SpaceAnalyzer from './pages/SpaceAnalyzer';
 import ServiceOptimizer from './pages/ServiceOptimizer';
 import ResolutionManager from './pages/ResolutionManager';
 import AdminPanel from './pages/AdminPanel';
@@ -244,11 +243,6 @@ function AppInner() {
         <div style={pageStyle('apps')}>
           <ProGuard pageName="Apps Manager">
             <AppsPage isActive={currentPage === 'apps'} />
-          </ProGuard>
-        </div>
-        <div style={pageStyle('space')}>
-          <ProGuard pageName="Disk Analyzer">
-            <SpaceAnalyzer isActive={currentPage === 'space'} />
           </ProGuard>
         </div>
         <div style={pageStyle('admin')}>

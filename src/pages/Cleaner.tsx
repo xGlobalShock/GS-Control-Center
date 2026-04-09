@@ -640,6 +640,7 @@ const Cleaner: React.FC = () => {
                   ))}
                 </div>
               ) : activeCategory === 'preferences' ? (
+                <ProLockedWrapper featureName="Win Preferences" message="PRO Feature">
                 <div className="ai-grid" style={{ gap: '12px', gridAutoRows: 'auto', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))' }}>
                   {preferenceItems.map((pref, index) => (
                     <motion.div
@@ -673,11 +674,13 @@ const Cleaner: React.FC = () => {
                     </motion.div>
                   ))}
                 </div>
+                </ProLockedWrapper>
               ) : activeCategory === 'repair' ? (
                 <ProLockedWrapper featureName="Utilities" message="PRO Feature">
                   <SystemRepairPanel />
                 </ProLockedWrapper>
               ) : activeCategory === 'essential' ? (
+                <ProLockedWrapper featureName="Win Tweaks" message="PRO Feature">
                 <div className="ai-grid" style={{ gap: '12px', gridAutoRows: 'auto', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))' }}>
                   {utilityTabs.essential.map((utility, index) => {
                     const busy = cleaningId === utility.id;
@@ -728,6 +731,7 @@ const Cleaner: React.FC = () => {
                     );
                   })}
                 </div>
+                </ProLockedWrapper>
               ) : activeCategory === 'games' ? (
                 <ProLockedWrapper featureName="Utilities" message="PRO Feature">
                   <div className="cleaner-grid cleaner-grid--small">

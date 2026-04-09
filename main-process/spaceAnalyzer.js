@@ -462,6 +462,45 @@ function registerIPC() {
       return { success: false, error: err?.message || 'Delete failed.' };
     }
   });
+
+  ipcMain.handle('space:get-drives', async () => {
+    const { execSync } = require('child_process');
+    try {
+      const psCmd = [
+        'Get-Volume',
+        '| Where-Object { $_.DriveType -eq \'Fixed\' -and $_.DriveLetter }',
+        '| Select-Object DriveLetter,FileSystemLabel,SizeRemaining,Size',
+        '| ConvertTo-Json -Compress'
+      ].join(' ');
+      const out = execSync(
+        `powershell -NoProfile -NonInteractive -Command "${psCmd}"`,
+        { encoding: 'utf8', timeout: 8000, windowsHide: true }
+      );
+      const raw = JSON.parse(out.trim());
+      const arr = Array.isArray(raw) ? raw : [raw];
+      const drives = arr
+        .filter(v => v.DriveLetter && v.Size > 0)
+        .map(v => ({
+          letter: v.DriveLetter + ':',
+          label: v.FileSystemLabel || '',
+          freeGB: Math.round(v.SizeRemaining / 1073741824 * 10) / 10,
+          totalGB: Math.round(v.Size / 1073741824 * 10) / 10,
+        }))
+        .sort((a, b) => a.letter.localeCompare(b.letter));
+      return drives;
+    } catch {
+      // Fallback: simple filesystem probe
+      const drives = [];
+      for (let i = 65; i <= 90; i++) {
+        const letter = String.fromCharCode(i) + ':';
+        try {
+          const st = require('fs').statSync(letter + '\\');
+          if (st) drives.push({ letter: letter.toUpperCase(), label: '', freeGB: 0, totalGB: 0 });
+        } catch {}
+      }
+      return drives;
+    }
+  });
 }
 
 module.exports = { registerIPC };

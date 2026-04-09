@@ -7,6 +7,7 @@ import {
   RefreshCw,
   LayoutGrid,
   Crown,
+  PieChart,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import ProPreviewBanner from '../components/ProPreviewBanner';
@@ -14,6 +15,7 @@ import AppInstaller from './AppInstaller';
 import AppUninstaller from './AppUninstaller';
 import WindowsDebloat from './WindowsDebloat';
 import Startup from './Startup';
+import SpaceAnalyzer from './SpaceAnalyzer';
 import { useAuth } from '../contexts/AuthContext';
 import '../styles/AppsPage.css';
 
@@ -21,13 +23,14 @@ interface AppsPageProps {
   isActive?: boolean;
 }
 
-type Tab = 'install' | 'uninstall' | 'debloat' | 'startup';
+type Tab = 'install' | 'uninstall' | 'debloat' | 'startup' | 'disk';
 
 const NAV_ITEMS: { id: Tab; label: string; desc: string; icon: React.ReactNode; accent: string; premium?: true }[] = [
   { id: 'install',   label: 'Install Apps',    desc: 'Deploy software',     icon: <Download size={16} />,  accent: '#34d399' },
   { id: 'uninstall', label: 'Uninstall Apps',  desc: 'Remove & clean up',   icon: <Trash2 size={16} />,    accent: '#f87171' },
   { id: 'debloat',   label: 'Windows Debloat', desc: 'Remove bloatware',    icon: <PackageX size={16} />,  accent: '#38bdf8', premium: true },
   { id: 'startup',   label: 'Startup Manager', desc: 'Manage boot entries', icon: <Zap size={16} />,       accent: '#00F2FF' },
+  { id: 'disk',      label: 'Disk Analyzer',   desc: 'Storage breakdown',    icon: <PieChart size={16} />,  accent: '#a78bfa', premium: true },  
 ];
 
 const AppsPage: React.FC<AppsPageProps> = ({ isActive = false }) => {
@@ -112,6 +115,9 @@ const AppsPage: React.FC<AppsPageProps> = ({ isActive = false }) => {
           </div>
           <div className={`apps-tab-content${activeTab === 'startup' ? ' apps-tab-content--visible' : ''}`}>
             <Startup refreshSignal={startupRefresh} />
+          </div>
+          <div className={`apps-tab-content${activeTab === 'disk' ? ' apps-tab-content--visible' : ''}`}>
+            <SpaceAnalyzer isActive={isActive && activeTab === 'disk'} />
           </div>
         </div>
       </div>

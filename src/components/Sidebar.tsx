@@ -9,7 +9,6 @@ import {
   Wifi,
   RefreshCw,
   Layers,
-  PieChart,
   Monitor,
   Shield,
   Crown,
@@ -46,7 +45,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
     { id: 'softwareUpdates',   label: 'Updates',   icon: RefreshCw        },
     // { id: 'serviceOptimizer',  label: 'Services',  icon: Shield            },
     { id: 'cleaner',           label: 'Utilities', icon: SlidersHorizontal},
-    { id: 'space',             label: 'Disk',      icon: PieChart         },
   ], []);
 
   return (
