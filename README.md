@@ -1,8 +1,8 @@
-# GS Control Center
+# GS Center
 
 **Set up your gaming or streaming PC in minutes — not hours.**
 
-**GS Control Center** is a powerful desktop utility designed for **gamers, streamers, and PC enthusiasts**. It helps you quickly configure fresh Windows installations, improve performance, monitor system health, and troubleshoot issues — all from a single application.
+**GS Center** is a powerful desktop utility designed for **gamers, streamers, and PC enthusiasts**. It helps you quickly configure fresh Windows installations, improve performance, monitor system health, and troubleshoot issues — all from a single application.
 
 Whether you're setting up a **new gaming rig**, optimizing your **streaming setup**, or simply keeping your PC running smoothly, GS Control Center provides the tools you need.
 
@@ -30,7 +30,7 @@ Download the latest installer from the newest release:
 # Installation
 
 1. Download the latest installer from **[GitHub Releases](https://github.com/xGlobalShock/GS-Control-Center/releases)**
-2. Run: ```GS-Control-Center-Setup-x.x.x.exe```
+2. Run: ```GS-Center-Setup-x.x.x.exe```
 
 ---
 
