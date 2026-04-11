@@ -25,7 +25,8 @@
 .nv-master {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  /* 100vh minus Header(50px) + page-content padding top(14px) + bottom(84px) */
+  height: calc(100vh - 148px);
   position: relative;
   overflow: hidden;
   color: #E2E8F0;
@@ -130,7 +131,8 @@
   position: relative;
   z-index: 10;
   padding-bottom: 20px;
-  height: calc(100% - 60px);
+  min-height: 0;                        /* allow flex shrink */
+  grid-template-rows: minmax(0, 1fr);   /* prevent row expansion */
 }
 
 /* ── GENERIC PANEL ── */
@@ -656,6 +658,479 @@ webview {
   font-size: 9px;
   opacity: 0.5;
   margin-left: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TAB BAR
+═══════════════════════════════════════════════════════════════ */
+
+.nv-tab-bar {
+  display: flex;
+  gap: 4px;
+  padding: 0 24px;
+  margin-bottom: 8px;
+  position: relative;
+  z-index: 2;
+}
+
+.nv-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Inter', sans-serif;
+}
+
+.nv-tab-btn:hover {
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(0, 242, 255, 0.03);
+}
+
+.nv-tab-btn.active {
+  color: var(--nv-cyan);
+  background: var(--nv-panel-bg);
+  border-color: var(--nv-border);
+  box-shadow: 0 -2px 8px rgba(0, 242, 255, 0.08);
+}
+
+.nv-tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--nv-cyan);
+  border-radius: 2px;
+  opacity: 0.5;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TRACE ROUTE LAYOUT
+═══════════════════════════════════════════════════════════════ */
+
+.nv-tr-layout {
+  grid-template-columns: 240px 1fr !important;
+  grid-template-rows: minmax(0, 1fr);   /* prevent row from growing past container */
+  min-height: 0;          /* allow grid to shrink inside flex parent */
+  overflow: hidden;
+}
+
+.nv-tr-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;          /* flex child: allow shrink */
+  overflow: hidden;       /* prevent content from pushing height */
+}
+
+.nv-tr-server-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.nv-tr-server-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.nv-tr-server-list::-webkit-scrollbar-track {
+  background: rgba(0, 242, 255, 0.02);
+  border-radius: 3px;
+}
+
+.nv-tr-server-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 242, 255, 0.18);
+  border-radius: 3px;
+  border: 1px solid rgba(0, 242, 255, 0.06);
+}
+
+.nv-tr-server-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 242, 255, 0.35);
+}
+
+.nv-tr-server-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 242, 255, 0.02);
+  border: 1px solid rgba(0, 242, 255, 0.05);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: left;
+}
+
+.nv-tr-server-btn:hover:not(:disabled) {
+  background: rgba(0, 242, 255, 0.06);
+  border-color: rgba(0, 242, 255, 0.12);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.nv-tr-server-btn.active {
+  background: rgba(0, 242, 255, 0.08);
+  border-color: rgba(0, 242, 255, 0.25);
+  color: var(--nv-cyan);
+  box-shadow: 0 0 8px rgba(0, 242, 255, 0.08);
+}
+
+.nv-tr-server-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.nv-tr-server-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.nv-tr-server-name {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.nv-tr-server-region {
+  font-size: 9px;
+  font-weight: 500;
+  opacity: 0.5;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.nv-tr-custom {
+  padding-top: 4px;
+}
+
+.nv-tr-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(0, 242, 255, 0.03);
+  border: 1px solid rgba(0, 242, 255, 0.1);
+  border-radius: 6px;
+  color: #E2E8F0;
+  font-family: 'Consolas', monospace;
+  font-size: 11px;
+  outline: none;
+  transition: all 0.2s ease;
+  margin-top: 6px;
+}
+
+.nv-tr-input:focus {
+  border-color: rgba(0, 242, 255, 0.3);
+  box-shadow: 0 0 8px rgba(0, 242, 255, 0.1);
+}
+
+.nv-tr-input::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.nv-tr-input:disabled {
+  opacity: 0.4;
+}
+
+.nv-tr-fire {
+  margin-top: 8px;
+  width: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TRACE ROUTE RESULTS PANEL
+═══════════════════════════════════════════════════════════════ */
+
+.nv-tr-results {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;          /* flex child: allow shrink so hop-list scrolls */
+}
+
+.nv-tr-live-badge {
+  margin-left: auto;
+  font-size: 9px;
+  font-weight: 700;
+  color: #FF4D4D;
+  animation: nv-pulse 1s infinite;
+  letter-spacing: 0.5px;
+}
+
+@keyframes nv-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.nv-tr-hop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1 1 0;            /* grow + shrink from zero basis */
+  padding: 8px 12px;
+  min-height: 0;          /* critical: lets flex parent cap the height */
+}
+
+.nv-tr-hop-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.nv-tr-hop-list::-webkit-scrollbar-track {
+  background: rgba(0, 242, 255, 0.02);
+  border-radius: 3px;
+}
+
+.nv-tr-hop-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 242, 255, 0.18);
+  border-radius: 3px;
+  border: 1px solid rgba(0, 242, 255, 0.06);
+  transition: background 0.2s;
+}
+
+.nv-tr-hop-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 242, 255, 0.35);
+}
+
+.nv-tr-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 100%;
+  min-height: 200px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.nv-tr-placeholder-hint {
+  font-size: 10px;
+  opacity: 0.5;
+}
+
+/* ── Individual Hop Row ── */
+
+.nv-tr-hop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  background: rgba(0, 242, 255, 0.02);
+  border: 1px solid rgba(0, 242, 255, 0.04);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.nv-tr-hop:hover {
+  background: rgba(0, 242, 255, 0.05);
+}
+
+.nv-tr-hop-worst {
+  border-color: rgba(255, 77, 77, 0.2) !important;
+  background: rgba(255, 77, 77, 0.04) !important;
+}
+
+.nv-tr-hop-num {
+  font-family: 'Consolas', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.3);
+  min-width: 20px;
+  text-align: center;
+}
+
+.nv-tr-hop-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 12px;
+  position: relative;
+}
+
+.nv-tr-hop-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.nv-tr-dot-green  { background: var(--nv-cyan);  box-shadow: 0 0 6px var(--nv-glow-cyan); }
+.nv-tr-dot-amber  { background: var(--nv-amber); box-shadow: 0 0 6px var(--nv-glow-amber); }
+.nv-tr-dot-orange { background: var(--nv-orange); box-shadow: 0 0 6px rgba(255, 128, 0, 0.4); }
+.nv-tr-dot-red    { background: var(--nv-red);    box-shadow: 0 0 6px rgba(255, 77, 77, 0.4); }
+.nv-tr-dot-neutral { background: #555; }
+.nv-tr-dot-pending { background: rgba(255, 255, 255, 0.15); animation: nv-pulse 1.2s infinite; }
+
+.nv-tr-hop-line {
+  width: 2px;
+  height: 16px;
+  background: rgba(0, 242, 255, 0.08);
+  position: absolute;
+  top: 100%;
+}
+
+.nv-tr-hop-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.nv-tr-hop-ip {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.nv-tr-timeout {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(255, 255, 255, 0.25);
+  font-style: italic;
+  font-weight: 400;
+}
+
+.nv-tr-hop-rtts {
+  display: flex;
+  gap: 6px;
+}
+
+.nv-tr-rtt {
+  font-family: 'Consolas', monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 1px 5px;
+  background: rgba(0, 242, 255, 0.03);
+  border-radius: 3px;
+}
+
+.nv-tr-rtt.timeout {
+  color: rgba(255, 255, 255, 0.15);
+}
+
+.nv-tr-hop-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.nv-tr-avg {
+  font-family: 'Consolas', monospace;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.nv-tr-avg-green  { color: var(--nv-cyan); }
+.nv-tr-avg-amber  { color: var(--nv-amber); }
+.nv-tr-avg-orange { color: var(--nv-orange); }
+.nv-tr-avg-red    { color: var(--nv-red); }
+.nv-tr-avg-neutral { color: #555; }
+
+.nv-tr-delta {
+  font-family: 'Consolas', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.nv-tr-delta.low    { color: var(--nv-cyan); background: rgba(0, 242, 255, 0.06); }
+.nv-tr-delta.medium { color: var(--nv-amber); background: rgba(255, 214, 0, 0.06); }
+.nv-tr-delta.high   { color: var(--nv-red);   background: rgba(255, 77, 77, 0.06); }
+
+.nv-tr-bottleneck {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #FF4D4D;
+  padding: 2px 6px;
+  background: rgba(255, 77, 77, 0.08);
+  border: 1px solid rgba(255, 77, 77, 0.15);
+  border-radius: 4px;
+}
+
+.nv-tr-hop-pending {
+  opacity: 0.4;
+  border-style: dashed;
+}
+
+.nv-tr-discovering {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.25);
+  font-style: italic;
+}
+
+/* Spinner */
+.nv-spin {
+  animation: nv-spin-anim 1s linear infinite;
+}
+
+@keyframes nv-spin-anim {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TRACE ROUTE SUMMARY BAR
+═══════════════════════════════════════════════════════════════ */
+
+.nv-tr-summary {
+  display: flex;
+  gap: 16px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--nv-border);
+  background: rgba(0, 242, 255, 0.02);
+  flex-wrap: wrap;
+}
+
+.nv-tr-summary-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.nv-tr-summary-item strong {
+  font-family: 'Consolas', monospace;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.nv-tr-summary-item .nv-tr-good {
+  color: var(--nv-cyan);
+}
+
+.nv-tr-summary-item .nv-tr-warn {
+  color: var(--nv-red);
 }
 
 

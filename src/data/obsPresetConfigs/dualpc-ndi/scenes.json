@@ -1,0 +1,10 @@
+{
+  "current_scene": "DualPC-NDI",
+  "current_program_scene": "DualPC-NDI",
+  "scene_order": [
+    { "name": "DualPC-NDI" },
+    { "name": "Starting Soon" },
+    { "name": "BRB" },
+    { "name": "Ending" }
+  ]
+}

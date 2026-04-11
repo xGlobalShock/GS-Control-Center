@@ -112,6 +112,18 @@ export interface ExtendedStats {
   activeGateway?: string;
   latencyMs?: number;
   packetLoss?: number;
+  internetLoss?: number;
+  gatewayLoss?: number;
+  gatewayLatency?: number;
+  pingGateway?: string;
+  pingMin?: number;
+  pingMax?: number;
+  pingAvg?: number;
+  pingJitter?: number;
+  pingSent?: number;
+  pingRecv?: number;
+  nicErrors?: number;
+  nicDiscards?: number;
   ramUsedGB: number;
   ramTotalGB: number;
   ramAvailableGB: number;

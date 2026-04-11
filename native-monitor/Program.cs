@@ -100,10 +100,31 @@ public static class Program
 
     // Ping state (written by background thread, read by main loop)
     private static double _latencyMs;
-    private static double _packetLoss = -1;
+    private static double _latencyMin = double.MaxValue;
+    private static double _latencyMax;
+    private static double _latencyAvg;
+    private static double _latencyJitter;        // EWMA of |RTT - avgRTT|
+    private static double _internetLoss = -1;    // loss % to 8.8.8.8
     private static readonly object _pingLock = new();
-    private static readonly Queue<bool> _lossQueue = new(30);
-    private const int LossWindow = 30;
+    // MikroTik-style cumulative counters (reset each epoch)
+    private static long _epochSent;
+    private static long _epochRecv;
+    private const int EpochLength = 120;          // 2 min @ 1 ping/sec → reset
+    private const int MinReportSamples = 5;       // need 5 pings before reporting %
+    private static long _pingSent;                // lifetime counters for UI
+    private static long _pingRecv;
+    // Gateway ping state (written by GatewayPingLoop thread)
+    private static double _gatewayLoss = -1;      // loss % to default gateway
+    private static double _gatewayLatency;
+    private static string _pingGatewayIp = "";
+    private static long _gwEpochSent;
+    private static long _gwEpochRecv;
+    // NIC adapter error counters (updated in CollectSnapshot)
+    private static long _prevNicErrors = -1;
+    private static long _prevNicDiscards = -1;
+    private static double _nicErrorRate;
+    private static double _nicDiscardRate;
+    private static long _lastNicTicks;
     private static PerformanceCounter? _cpuFreqCounter;
     private static PerformanceCounter? _cpuPerfCounter;
     private static bool _cpuFreqCounterFailed;
@@ -308,7 +329,7 @@ public static class Program
             EmitMinimalInit();
         }
 
-        // Start ping thread
+        // Start ping threads
         var pingThread = new Thread(PingLoop)
         {
             IsBackground = true,
@@ -316,6 +337,14 @@ public static class Program
             Name = "PingLoop"
         };
         pingThread.Start();
+
+        var gwPingThread = new Thread(GatewayPingLoop)
+        {
+            IsBackground = true,
+            Priority = ThreadPriority.BelowNormal,
+            Name = "GatewayPingLoop"
+        };
+        gwPingThread.Start();
 
         // Main polling loop — 500ms cycle
         while (_running)
@@ -660,19 +689,42 @@ public static class Program
         try { processCount = Process.GetProcesses().Length; }
         catch { /* non-critical */ }
 
+        // ── NIC adapter error counters ──
+        UpdateNicCounters();
+
         // ── Uptime ──
         long uptimeSec = Environment.TickCount64 / 1000;
         long days = uptimeSec / 86400;
         long hours = (uptimeSec % 86400) / 3600;
         long mins = (uptimeSec % 3600) / 60;
 
-        // ── Ping (from background thread) ──
-        double lat, loss;
+        // ── Ping (from background threads) ──
+        double lat, inetLoss, gwLoss, gwLat, latMin, latMax, latAvg, latJitter;
+        long pSent, pRecv;
+        string gwIp;
         lock (_pingLock)
         {
             lat = _latencyMs;
-            loss = _packetLoss;
+            inetLoss = _internetLoss;
+            gwLoss = _gatewayLoss;
+            gwLat = _gatewayLatency;
+            gwIp = _pingGatewayIp;
+            latMin = _latencyMin == double.MaxValue ? 0 : _latencyMin;
+            latMax = _latencyMax;
+            latAvg = _latencyAvg;
+            latJitter = _latencyJitter;
+            pSent = _pingSent;
+            pRecv = _pingRecv;
         }
+
+        // Headline packetLoss = worst-case of internet + gateway targets
+        double combinedLoss;
+        if (inetLoss >= 0 && gwLoss >= 0)
+            combinedLoss = Math.Max(inetLoss, gwLoss);
+        else if (inetLoss >= 0)
+            combinedLoss = inetLoss;
+        else
+            combinedLoss = gwLoss;
 
         // ── Build JSON payload ──
         var dict = new Dictionary<string, object?>
@@ -711,7 +763,19 @@ public static class Program
             ["networkDown"] = Math.Round(netRx),
             ["networkUp"] = Math.Round(netTx),
             ["latencyMs"] = lat,
-            ["packetLoss"] = loss,
+            ["packetLoss"] = combinedLoss,
+            ["internetLoss"] = inetLoss,
+            ["gatewayLoss"] = gwLoss,
+            ["gatewayLatency"] = gwLat,
+            ["pingGateway"] = gwIp,
+            ["pingMin"] = latMin,
+            ["pingMax"] = latMax,
+            ["pingAvg"] = latAvg,
+            ["pingJitter"] = latJitter,
+            ["pingSent"] = pSent,
+            ["pingRecv"] = pRecv,
+            ["nicErrors"] = _nicErrorRate,
+            ["nicDiscards"] = _nicDiscardRate,
             ["processCount"] = processCount,
             ["systemUptime"] = $"{days}d {hours}h {mins}m",
             ["lhmReady"] = computer != null,
@@ -908,9 +972,15 @@ public static class Program
     private static void PingLoop()
     {
         using var pinger = new Ping();
+        const double alpha = 0.15;          // EWMA smoothing factor for latency
+        double ewmaRtt = -1;
+        double ewmaJitter = 0;
+        double prevRtt = -1;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
 
         while (_running)
         {
+            long loopStart = sw.ElapsedMilliseconds;
             bool success = false;
             long rtt = 0;
 
@@ -924,27 +994,212 @@ public static class Program
 
             lock (_pingLock)
             {
-                if (_lossQueue.Count >= LossWindow)
-                    _lossQueue.Dequeue();
-                _lossQueue.Enqueue(success);
+                // ── MikroTik-style cumulative counters ──
+                // loss% = (sent - received) / sent * 100
+                // Same formula as RouterOS /tool/ping
+                _pingSent++;
+                _epochSent++;
+                if (success) { _pingRecv++; _epochRecv++; }
 
-                // Update latency (raw, no smoothing)
-                if (success && rtt > 0)
-                    _latencyMs = rtt;
-
-                // Update packet loss
-                if (_lossQueue.Count >= 3)
+                // Packet loss: simple ratio, no windowing
+                // MikroTik floors: 3 lost / 63 sent = 4.76% → displays 4%
+                if (_epochSent >= MinReportSamples)
                 {
-                    int ok = 0;
-                    foreach (var r in _lossQueue) { if (r) ok++; }
-                    _packetLoss = Math.Round((1.0 - (double)ok / _lossQueue.Count) * 100, 1);
+                    _internetLoss = (int)(
+                        (_epochSent - _epochRecv) * 100.0 / _epochSent);
+                }
+
+                // Epoch reset: every 2 min, start fresh counters
+                // _internetLoss retains its last value until new epoch has enough samples
+                if (_epochSent >= EpochLength)
+                {
+                    _epochSent = 0;
+                    _epochRecv = 0;
+                }
+
+                // ── Latency stats (EWMA, jitter, min/max) ──
+                if (success && rtt >= 0)
+                {
+                    double r = rtt;
+
+                    // EWMA latency smoothing
+                    if (ewmaRtt < 0)
+                        ewmaRtt = r;
+                    else
+                        ewmaRtt = alpha * r + (1.0 - alpha) * ewmaRtt;
+
+                    // Jitter = EWMA of |current - previous|
+                    if (prevRtt >= 0)
+                    {
+                        double diff = Math.Abs(r - prevRtt);
+                        ewmaJitter = alpha * diff + (1.0 - alpha) * ewmaJitter;
+                    }
+                    prevRtt = r;
+
+                    // Min/max (reset every 600 samples ≈ 10 min)
+                    if (_pingSent % 600 == 0)
+                    {
+                        _latencyMin = r;
+                        _latencyMax = r;
+                    }
+                    if (r < _latencyMin) _latencyMin = r;
+                    if (r > _latencyMax) _latencyMax = r;
+
+                    _latencyMs = Math.Round(ewmaRtt);
+                    _latencyAvg = Math.Round(ewmaRtt, 1);
+                    _latencyJitter = Math.Round(ewmaJitter, 1);
                 }
             }
 
-            // 1-second interval, check _running every 100ms for quick shutdown
-            for (int i = 0; i < 10 && _running; i++)
+            // Precise 1-second interval (Stopwatch drift-compensated)
+            long elapsed = sw.ElapsedMilliseconds - loopStart;
+            int sleepMs = (int)Math.Max(1000 - elapsed, 50);
+            for (int i = 0; i < sleepMs / 100 && _running; i++)
                 Thread.Sleep(100);
+            int remainder = sleepMs % 100;
+            if (remainder > 0 && _running)
+                Thread.Sleep(remainder);
         }
+    }
+
+    #endregion
+
+    #region Gateway Ping
+
+    /// <summary>
+    /// Detect the default IPv4 gateway from the active network adapter.
+    /// </summary>
+    private static string? DetectDefaultGateway()
+    {
+        try
+        {
+            foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (ni.OperationalStatus != OperationalStatus.Up) continue;
+                if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+                var props = ni.GetIPProperties();
+                foreach (var gw in props.GatewayAddresses)
+                {
+                    var addr = gw.Address.ToString();
+                    if (gw.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork
+                        && addr != "0.0.0.0")
+                        return addr;
+                }
+            }
+        }
+        catch { /* non-critical */ }
+        return null;
+    }
+
+    /// <summary>
+    /// Background thread: ICMP ping to the default gateway at 1/sec.
+    /// Catches local network issues (WiFi drops, router problems, cable faults)
+    /// that pinging 8.8.8.8 alone would miss.
+    /// </summary>
+    private static void GatewayPingLoop()
+    {
+        var gateway = DetectDefaultGateway();
+        if (gateway == null) { Log("PING_NO_GATEWAY"); return; }
+
+        lock (_pingLock) { _pingGatewayIp = gateway; }
+        Log($"PING_GATEWAY={gateway}");
+
+        using var pinger = new Ping();
+        const double alpha = 0.15;
+        double ewmaRtt = -1;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        while (_running)
+        {
+            long loopStart = sw.ElapsedMilliseconds;
+            bool success = false;
+            long rtt = 0;
+
+            try
+            {
+                var reply = pinger.Send(gateway, 1500);
+                success = reply.Status == IPStatus.Success;
+                if (success) rtt = reply.RoundtripTime;
+            }
+            catch { /* timeout or network error */ }
+
+            lock (_pingLock)
+            {
+                _gwEpochSent++;
+                if (success) _gwEpochRecv++;
+
+                if (_gwEpochSent >= MinReportSamples)
+                {
+                    _gatewayLoss = (int)(
+                        (_gwEpochSent - _gwEpochRecv) * 100.0 / _gwEpochSent);
+                }
+
+                if (_gwEpochSent >= EpochLength)
+                {
+                    _gwEpochSent = 0;
+                    _gwEpochRecv = 0;
+                }
+
+                if (success && rtt >= 0)
+                {
+                    double r = rtt;
+                    if (ewmaRtt < 0) ewmaRtt = r;
+                    else ewmaRtt = alpha * r + (1.0 - alpha) * ewmaRtt;
+                    _gatewayLatency = Math.Round(ewmaRtt);
+                }
+            }
+
+            // 1-second interval (drift-compensated)
+            long elapsed = sw.ElapsedMilliseconds - loopStart;
+            int sleepMs = (int)Math.Max(1000 - elapsed, 50);
+            for (int i = 0; i < sleepMs / 100 && _running; i++)
+                Thread.Sleep(100);
+            int remainder = sleepMs % 100;
+            if (remainder > 0 && _running)
+                Thread.Sleep(remainder);
+        }
+    }
+
+    #endregion
+
+    #region NIC Counters
+
+    /// <summary>
+    /// Read actual NIC adapter error/discard counters from the OS.
+    /// These catch adapter-level packet drops that ICMP pings cannot detect
+    /// (driver bugs, buffer overflows, CRC errors, etc.).
+    /// </summary>
+    private static void UpdateNicCounters()
+    {
+        try
+        {
+            foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (ni.OperationalStatus != OperationalStatus.Up) continue;
+                if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+
+                var stats = ni.GetIPv4Statistics();
+                long errors = stats.IncomingPacketsWithErrors + stats.OutgoingPacketsWithErrors;
+                long discards = stats.IncomingPacketsDiscarded + stats.OutgoingPacketsDiscarded;
+                long nowTicks = Environment.TickCount64;
+
+                if (_prevNicErrors >= 0 && _lastNicTicks > 0)
+                {
+                    double dt = (nowTicks - _lastNicTicks) / 1000.0;
+                    if (dt > 0.1)
+                    {
+                        _nicErrorRate = Math.Round(Math.Max(0, (errors - _prevNicErrors) / dt), 1);
+                        _nicDiscardRate = Math.Round(Math.Max(0, (discards - _prevNicDiscards) / dt), 1);
+                    }
+                }
+
+                _prevNicErrors = errors;
+                _prevNicDiscards = discards;
+                _lastNicTicks = nowTicks;
+                break; // first active adapter only
+            }
+        }
+        catch { /* non-critical */ }
     }
 
     #endregion

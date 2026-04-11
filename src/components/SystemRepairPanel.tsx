@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldAlert, HardDrive, FileSearch, Wrench, CheckCircle, XCircle, Loader2, AlertTriangle, X, Terminal, Minimize2 } from 'lucide-react';
+import { ShieldAlert, HardDrive, FileSearch, Wrench, Wifi, CheckCircle, XCircle, Loader2, AlertTriangle, X, Terminal, Minimize2 } from 'lucide-react';
 import '../styles/SystemRepairPanel.css';
 
 type ToolStatus = 'idle' | 'running' | 'done' | 'error';
@@ -42,6 +42,15 @@ const TOOLS = [
     color: '#a78bfa',
     channel: 'repair:run-dism',
   },
+  {
+    id: 'netreset',
+    title: 'Network Adapter Reset',
+    subtitle: 'Full Stack Reset',
+    icon: Wifi,
+    description: 'Flushes DNS cache, resets Winsock catalog and TCP/IP stack, then releases and renews your IP address. Fixes connection drops, packet loss, and DNS failures.',
+    color: '#22d3ee',
+    channel: 'repair:run-netreset',
+  },
 ];
 
 // Module-level singleton — survives tab switches (component remounts)
@@ -53,6 +62,7 @@ const SystemRepairPanel: React.FC = () => {
     chkdsk: { status: _activeRuns.has('chkdsk') ? 'running' : 'idle', lines: [], verificationProgress: null },
     sfc:    { status: _activeRuns.has('sfc')    ? 'running' : 'idle', lines: [], verificationProgress: null },
     dism:   { status: _activeRuns.has('dism')   ? 'running' : 'idle', lines: [], verificationProgress: null },
+    netreset: { status: _activeRuns.has('netreset') ? 'running' : 'idle', lines: [], verificationProgress: null },
   }));
   // which tool's modal is open
   const [openModal, setOpenModal] = useState<string | null>(null);

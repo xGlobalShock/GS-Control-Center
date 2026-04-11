@@ -1,0 +1,10 @@
+{
+  "current_scene": "DualPC-Capture",
+  "current_program_scene": "DualPC-Capture",
+  "scene_order": [
+    { "name": "DualPC-Capture" },
+    { "name": "Starting Soon" },
+    { "name": "BRB" },
+    { "name": "Ending" }
+  ]
+}

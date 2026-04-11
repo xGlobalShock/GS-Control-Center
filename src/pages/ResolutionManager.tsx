@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Monitor, RefreshCw, Check } from 'lucide-react';
+import { Monitor, RefreshCw, Check, Mouse } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
+import MousePollingRate from '../components/MousePollingRate';
 import '../styles/ResolutionManager.css';
+
+type DisplayTab = 'display' | 'mouse';
 
 interface Resolution {
   Width: number;
@@ -21,6 +24,7 @@ interface DisplayInfo {
 }
 
 const ResolutionManager: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<DisplayTab>('display');
   const [displays, setDisplays] = useState<DisplayInfo[]>([]);
   const [activeDisplay, setActiveDisplay] = useState<string | null>(null);
   const [resolutions, setResolutions] = useState<Resolution[]>([]);
@@ -134,8 +138,29 @@ const ResolutionManager: React.FC = () => {
 
   return (
     <motion.div className="rm-page" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
-      <PageHeader icon={<Monitor size={16} />} title="Display Manager" />
+      <PageHeader icon={<Monitor size={16} />} title="Devices" />
 
+      {/* ── Tab Bar ──────────────────────────────────────────── */}
+      <div className="rm-tab-bar">
+        <button
+          className={`rm-tab-btn ${activeTab === 'display' ? 'active' : ''}`}
+          onClick={() => setActiveTab('display')}
+        >
+          <Monitor size={14} />
+          <span>Display</span>
+        </button>
+        <button
+          className={`rm-tab-btn ${activeTab === 'mouse' ? 'active' : ''}`}
+          onClick={() => setActiveTab('mouse')}
+        >
+          <Mouse size={14} />
+          <span>Mouse / Polling Rate</span>
+        </button>
+      </div>
+
+      {/* ── Display Tab ─────────────────────────────────────── */}
+      {activeTab === 'display' && (
+      <>
       <div className="rm-layout">
         {/* ── Left: Display selector ─────────────────────────── */}
         <div className="rm-displays">
@@ -297,6 +322,11 @@ const ResolutionManager: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      </>
+      )}
+
+      {/* ── Mouse / Polling Rate Tab ────────────────────────── */}
+      {activeTab === 'mouse' && <MousePollingRate />}
     </motion.div>
   );
 };

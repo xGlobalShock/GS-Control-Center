@@ -9,7 +9,7 @@ import {
   Wifi,
   RefreshCw,
   Layers,
-  Monitor,
+  MonitorSmartphone,
   Shield,
   Crown,
 } from 'lucide-react';
@@ -39,7 +39,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
     { id: 'performance',       label: 'Tweaks',    icon: Activity         },
     { id: 'gameLibrary',       label: 'Games',     icon: Gamepad2         },
     { id: 'obsPresets',        label: 'Stream',    icon: Video            },
-    { id: 'resolutionManager', label: 'Display',   icon: Monitor          },
+    { id: 'resolutionManager', label: 'Devices',  icon: MonitorSmartphone },
     { id: 'network',           label: 'Network',   icon: Wifi             },
     { id: 'apps',              label: 'Apps',      icon: Layers           },
     { id: 'softwareUpdates',   label: 'Updates',   icon: RefreshCw        },

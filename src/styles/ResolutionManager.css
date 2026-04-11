@@ -9,6 +9,54 @@
   height: 100%;
 }
 
+/* ── Tab Bar ────────────────────────────────────────────────── */
+.rm-tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: -4px;
+  position: relative;
+  z-index: 2;
+}
+.rm-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Inter', sans-serif;
+}
+.rm-tab-btn:hover {
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(0, 242, 255, 0.03);
+}
+.rm-tab-btn.active {
+  color: #00F2FF;
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 -2px 8px rgba(0, 242, 255, 0.08);
+}
+.rm-tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #00F2FF;
+  border-radius: 2px;
+  opacity: 0.5;
+}
+
 /* ── Two-panel layout ───────────────────────────────────────── */
 .rm-layout {
   display: flex;

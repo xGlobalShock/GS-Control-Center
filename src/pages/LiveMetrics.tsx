@@ -4,6 +4,7 @@ import Loader from '../components/Loader';
 import PageHeader from '../components/PageHeader';
 import HealthScore from '../components/HealthScore';
 import AdvisorPanel from '../components/AdvisorPanel';
+import AntiCheatChecker from '../components/AntiCheatChecker';
 import { Monitor } from 'lucide-react';
 import type { HardwareInfo, ExtendedStats } from '../App';
 
@@ -57,7 +58,7 @@ class RingBuffer {
 }
 
 const LiveMetrics: React.FC<LiveMetricsProps> = React.memo(({ systemStats, hardwareInfo, extendedStats }) => {
-  const [openPanel, setOpenPanel] = useState<'health' | 'advisor' | null>(null);
+  const [openPanel, setOpenPanel] = useState<'health' | 'advisor' | 'anticheat' | null>(null);
 
   // Ring buffers — stable refs, never cause re-renders on their own
   const bufsRef = useRef({
@@ -89,8 +90,8 @@ const LiveMetrics: React.FC<LiveMetricsProps> = React.memo(({ systemStats, hardw
     b.cpu.push(systemStats?.cpu ?? 0);
     b.gpu.push(Math.max(extendedStats?.gpuUsage ?? 0, 0));
     b.ram.push(systemStats?.ram ?? 0);
-    b.net.push(Math.max(extendedStats?.latencyMs ?? 0, 0));
-    b.loss.push(Math.max(extendedStats?.packetLoss ?? 0, 0));
+    b.net.push(Math.round(Math.max(extendedStats?.latencyMs ?? 0, 0)));
+    b.loss.push(Math.round(Math.max(extendedStats?.packetLoss ?? 0, 0)));
     b.disk.push(systemStats?.disk ?? 0);
     b.proc.push(Math.min(extendedStats?.processCount ?? 0, 500));
 
@@ -143,6 +144,11 @@ const LiveMetrics: React.FC<LiveMetricsProps> = React.memo(({ systemStats, hardw
               compact
               isExpanded={openPanel === 'advisor'}
               onToggle={() => setOpenPanel(p => p === 'advisor' ? null : 'advisor')}
+            />
+            <AntiCheatChecker
+              compact
+              isExpanded={openPanel === 'anticheat'}
+              onToggle={() => setOpenPanel(p => p === 'anticheat' ? null : 'anticheat')}
             />
           </>
         }

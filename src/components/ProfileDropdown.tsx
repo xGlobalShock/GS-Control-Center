@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, Crown, Shield, User, ChevronDown, ShieldCheck, Zap, CreditCard, Settings as SettingsIcon, X } from 'lucide-react';
+import { LogOut, Crown, Shield, User, ChevronDown, ShieldCheck, Zap, CreditCard, Share2, Settings as SettingsIcon, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import SettingsPage from '../pages/Settings';
+import ReportCardButton from './ReportCardButton';
+import type { ReportCardHandle } from './ReportCardButton';
 import '../styles/Auth.css';
 
 const ROLE_CONFIG: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
@@ -35,6 +37,7 @@ const ProfileDropdown: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const reportRef = useRef<ReportCardHandle>(null);
 
   // Cache the last valid profile so a brief auth-state flicker (token refresh
   // emitting a null session) doesn't unmount the component and reset open state.
@@ -169,6 +172,14 @@ const ProfileDropdown: React.FC = () => {
               <span>Manage Subscription</span>
             </button>
 
+            <button
+              className="pd-action pd-action--report"
+              onClick={() => { reportRef.current?.generate(); setOpen(false); }}
+            >
+              <span className="pd-action-icon"><Share2 size={14} /></span>
+              <span>Share Hardware Report</span>
+            </button>
+
             {/* Subscription section */}
             <button
               className="pd-action pd-action--settings"
@@ -185,6 +196,7 @@ const ProfileDropdown: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      <ReportCardButton ref={reportRef} headless />
       {showSettings && createPortal(
         <div
           className="settings-overlay"

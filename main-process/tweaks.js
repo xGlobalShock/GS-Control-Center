@@ -1090,6 +1090,78 @@ Get-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\The
     });
   });
 
+  // ──────────────────────────────────────────────────────────────
+  // SYSTEM REPAIR — Network Adapter Reset
+  // ──────────────────────────────────────────────────────────────
+
+  ipcMain.handle('repair:run-netreset', async (event) => {
+    if (!_isElevated) {
+      return { success: false, message: 'Administrator privileges required to reset network stack. Please restart the app as administrator.' };
+    }
+
+    const sendLine = (line) => {
+      try {
+        if (!event.sender.isDestroyed()) {
+          event.sender.send('repair:progress', { tool: 'netreset', line });
+        }
+      } catch (_) {}
+    };
+
+    const steps = [
+      { label: 'Flushing DNS Cache',           cmd: 'ipconfig /flushdns' },
+      { label: 'Resetting Winsock Catalog',     cmd: 'netsh winsock reset' },
+      { label: 'Resetting TCP/IP Stack',        cmd: 'netsh int ip reset' },
+      { label: 'Releasing IP Address',           cmd: 'ipconfig /release' },
+      { label: 'Renewing IP Address',            cmd: 'ipconfig /renew' },
+    ];
+
+    sendLine('Network stack reset starting...');
+    sendLine(`Running ${steps.length} steps sequentially.`);
+    sendLine('');
+
+    const results = [];
+    let allSuccess = true;
+
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
+      sendLine(`[${i + 1}/${steps.length}] ${step.label}...`);
+      sendLine(`> ${step.cmd}`);
+      try {
+        const { stdout, stderr } = await execAsync(step.cmd, { timeout: 30000, shell: true });
+        const output = (stdout || '').trim();
+        if (output) {
+          output.split('\n').forEach(l => { if (l.trim()) sendLine('  ' + l.trim()); });
+        }
+        if (stderr && stderr.trim()) {
+          stderr.trim().split('\n').forEach(l => { if (l.trim()) sendLine('  [warn] ' + l.trim()); });
+        }
+        sendLine(`  ✓ ${step.label} — OK`);
+        results.push({ step: step.label, success: true });
+      } catch (err) {
+        const msg = (err.stdout || err.message || '').trim();
+        if (msg) sendLine('  ' + msg);
+        sendLine(`  ✗ ${step.label} — FAILED`);
+        results.push({ step: step.label, success: false, error: msg });
+        allSuccess = false;
+      }
+      sendLine('');
+    }
+
+    const passed = results.filter(r => r.success).length;
+    sendLine('─'.repeat(40));
+    sendLine(`Network reset complete: ${passed}/${steps.length} steps succeeded.`);
+    if (!allSuccess) {
+      sendLine('Some steps failed. A system reboot may be needed for full effect.');
+    } else {
+      sendLine('All steps completed successfully. Network stack has been reset.');
+    }
+
+    return {
+      success: allSuccess,
+      message: `Network reset complete: ${passed}/${steps.length} steps succeeded.`,
+    };
+  });
+
 
   ipcMain.handle('pref:check-center-taskbar', async () => {
     try {

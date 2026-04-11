@@ -3,8 +3,9 @@ import { OBS_PRESETS } from '../data/obsPresets';
 import { applyObsPreset, launchObs } from '../services/obsPresetsService';
 import { useToast } from '../contexts/ToastContext';
 import { motion } from 'framer-motion';
-import { Check, Zap, Radio } from 'lucide-react';
+import { Check, Zap, Radio, MonitorPlay } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
+import DualPCWizard from '../components/DualPCWizard';
 import '../styles/OBSPresets.css';
 
 const ICON_MAP: Record<string, React.ReactNode> = {
@@ -18,6 +19,7 @@ const GAMING_PRESET = OBS_PRESETS.find(p => p.id === 'gaming') ?? OBS_PRESETS[0]
 const OBSPresets: React.FC = () => {
   const [loadingPreset, setLoadingPreset]   = useState<string | null>(null);
   const [applyingPreset, setApplyingPreset] = useState<string | null>(null);
+  const [tab, setTab] = useState<'preset' | 'dualpc'>('preset');
   const { addToast } = useToast();
 
   const preset = GAMING_PRESET;
@@ -49,10 +51,32 @@ const OBSPresets: React.FC = () => {
 
   return (
     <div className="aur" style={{ '--a-accent': preset.color } as React.CSSProperties}>
-      {/* OG Page Header */}
-      <PageHeader icon={<Radio size={16} />} title="OBS Presets" />
+      {/* OG Page Header with tab toggle */}
+      <PageHeader
+        icon={<Radio size={16} />}
+        title="Stream"
+        actions={
+          <div className="aur-tabs">
+            <button
+              className={`aur-tab ${tab === 'preset' ? 'aur-tab--active' : ''}`}
+              onClick={() => setTab('preset')}
+            >
+              <Radio size={13} /> OBS Preset
+            </button>
+            <button
+              className={`aur-tab ${tab === 'dualpc' ? 'aur-tab--active' : ''}`}
+              onClick={() => setTab('dualpc')}
+            >
+              <MonitorPlay size={13} /> Dual-PC Guide
+            </button>
+          </div>
+        }
+      />
 
-      {/* Single preset showcase */}
+      {tab === 'dualpc' ? (
+        <DualPCWizard />
+      ) : (
+      /* Single preset showcase */
       <motion.div
         className="aur-slide"
         initial={{ opacity: 0, y: 20, scale: 0.97 }}
@@ -112,6 +136,7 @@ const OBSPresets: React.FC = () => {
           )}
         </motion.button>
       </motion.div>
+      )}
     </div>
   );
 };

@@ -1,0 +1,99 @@
+{
+  "name": "DualPC-Capture",
+  "settings": {},
+  "hotkeys": {},
+  "sources": [
+    {
+      "prev_ver": 30,
+      "name": "Capture Card",
+      "uuid": "e5f6a7b8-c9d0-1234-efab-345678901234",
+      "id": "dshow_input",
+      "versioned_id": "dshow_input",
+      "settings": {
+        "video_device_id": "",
+        "res_type": 1,
+        "resolution": "1920x1080",
+        "fps": 60,
+        "audio_output_mode": 1,
+        "deactivate_when_not_showing": true
+      },
+      "mixers": 255,
+      "flags": 0,
+      "volume": 1.0,
+      "balance": 0.5,
+      "enabled": true
+    },
+    {
+      "prev_ver": 30,
+      "name": "Webcam",
+      "uuid": "f6a7b8c9-d0e1-2345-fabc-456789012345",
+      "id": "dshow_input",
+      "versioned_id": "dshow_input",
+      "settings": {
+        "video_device_id": "",
+        "res_type": 1,
+        "resolution": "1920x1080",
+        "fps": 30,
+        "deactivate_when_not_showing": true
+      },
+      "mixers": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "enabled": true
+    },
+    {
+      "prev_ver": 30,
+      "name": "Mic/Aux",
+      "uuid": "a7b8c9d0-e1f2-3456-abcd-567890123456",
+      "id": "wasapi_input_capture",
+      "versioned_id": "wasapi_input_capture_v2",
+      "settings": {
+        "device_id": "default"
+      },
+      "mixers": 255,
+      "flags": 0,
+      "volume": 1.0,
+      "balance": 0.5,
+      "enabled": true,
+      "filters": [
+        {
+          "name": "Noise Suppression",
+          "id": "noise_suppress_filter_v2",
+          "settings": { "method": "rnnoise", "suppress_level": -30 },
+          "enabled": true
+        },
+        {
+          "name": "Noise Gate",
+          "id": "noise_gate_filter",
+          "settings": { "open_threshold": -32, "close_threshold": -40 },
+          "enabled": true
+        },
+        {
+          "name": "Compressor",
+          "id": "compressor_filter",
+          "settings": { "ratio": 4, "threshold": -18, "attack_time": 6, "release_time": 60, "output_gain": 3 },
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "prev_ver": 30,
+      "name": "Alert Box",
+      "uuid": "b8c9d0e1-f2a3-4567-bcde-678901234567",
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "settings": {
+        "url": "",
+        "width": 800,
+        "height": 600,
+        "reroute_audio": true,
+        "restart_when_active": false,
+        "shutdown": true
+      },
+      "mixers": 255,
+      "flags": 0,
+      "volume": 1.0,
+      "enabled": true
+    }
+  ]
+}

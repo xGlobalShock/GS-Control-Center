@@ -48,6 +48,18 @@ export interface RealtimeHWPayload {
   networkDown: number;        // bytes/sec
   latencyMs: number;
   packetLoss: number;
+  internetLoss: number;
+  gatewayLoss: number;
+  gatewayLatency: number;
+  pingGateway: string;
+  pingMin: number;
+  pingMax: number;
+  pingAvg: number;
+  pingJitter: number;
+  pingSent: number;
+  pingRecv: number;
+  nicErrors: number;
+  nicDiscards: number;
   ssid?: string;
   wifiSignal: number;
   activeAdapterName?: string;
@@ -106,6 +118,18 @@ export interface RealtimeExtendedStats {
   activeGateway?: string;
   latencyMs?: number;
   packetLoss?: number;
+  internetLoss?: number;
+  gatewayLoss?: number;
+  gatewayLatency?: number;
+  pingGateway?: string;
+  pingMin?: number;
+  pingMax?: number;
+  pingAvg?: number;
+  pingJitter?: number;
+  pingSent?: number;
+  pingRecv?: number;
+  nicErrors?: number;
+  nicDiscards?: number;
   ramUsedGB: number;
   ramTotalGB: number;
   ramAvailableGB: number;
@@ -131,6 +155,9 @@ const EMPTY_EXT: RealtimeExtendedStats = {
   wifiSignal: -1, ramUsedGB: 0, ramTotalGB: 0, ramAvailableGB: 0, ramCachedGB: 0,
   diskReadSpeed: 0, diskWriteSpeed: 0, diskTemp: -1, diskLife: -1,
   processCount: 0, systemUptime: '', latencyMs: 0, packetLoss: -1,
+  internetLoss: -1, gatewayLoss: -1, gatewayLatency: 0, pingGateway: '',
+  pingMin: 0, pingMax: 0, pingAvg: 0, pingJitter: 0, pingSent: 0, pingRecv: 0,
+  nicErrors: 0, nicDiscards: 0,
 };
 
 interface UseRealtimeHardwareOptions {
@@ -214,6 +241,18 @@ export function useRealtimeHardware(options: UseRealtimeHardwareOptions = {}) {
           activeGateway: p.activeGateway,
           latencyMs: p.latencyMs,
           packetLoss: p.packetLoss,
+          internetLoss: p.internetLoss ?? -1,
+          gatewayLoss: p.gatewayLoss ?? -1,
+          gatewayLatency: p.gatewayLatency ?? 0,
+          pingGateway: p.pingGateway ?? '',
+          pingMin: p.pingMin ?? 0,
+          pingMax: p.pingMax ?? 0,
+          pingAvg: p.pingAvg ?? 0,
+          pingJitter: p.pingJitter ?? 0,
+          pingSent: p.pingSent ?? 0,
+          pingRecv: p.pingRecv ?? 0,
+          nicErrors: p.nicErrors ?? 0,
+          nicDiscards: p.nicDiscards ?? 0,
           ramUsedGB: p.ramUsedGB,
           ramTotalGB: p.ramTotalGB,
           ramAvailableGB: p.ramAvailableGB,

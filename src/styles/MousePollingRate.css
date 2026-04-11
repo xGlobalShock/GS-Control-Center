@@ -1,0 +1,548 @@
+/* ═══════════════════════════════════════════════════════════════
+   Mouse / Polling Rate Config — Peripheral HUD
+═══════════════════════════════════════════════════════════════ */
+
+.mp-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.mp-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 0;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 12px;
+  letter-spacing: 0.4px;
+}
+.mp-spin { animation: mp-spin-anim 1s linear infinite; }
+@keyframes mp-spin-anim { to { transform: rotate(360deg); } }
+
+/* ── Section ────────────────────────────────────────────────── */
+.mp-section {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+.mp-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(0, 242, 255, 0.5);
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0, 242, 255, 0.1);
+  margin-bottom: 14px;
+}
+.mp-section-head .mp-icon-btn {
+  margin-left: auto;
+}
+
+/* ── Device card ────────────────────────────────────────────── */
+.mp-device-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+}
+.mp-device-icon-wrap {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 242, 255, 0.06);
+  border: 1px solid rgba(0, 242, 255, 0.12);
+  border-radius: 10px;
+  color: #00F2FF;
+  flex-shrink: 0;
+}
+.mp-device-info {
+  flex: 1;
+  min-width: 0;
+}
+.mp-device-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(228, 228, 231, 0.95);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+.mp-device-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.mp-meta-tag {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(0, 242, 255, 0.06);
+  border: 1px solid rgba(0, 242, 255, 0.1);
+  color: rgba(0, 242, 255, 0.7);
+}
+.mp-device-id {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.2);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mp-empty {
+  padding: 24px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.2);
+  font-size: 12px;
+}
+
+/* Extra devices */
+.mp-extra-devices {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+.mp-extra-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.25);
+  letter-spacing: 0.3px;
+  display: block;
+  margin-bottom: 6px;
+}
+.mp-extra-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 11px;
+}
+.mp-extra-name { color: rgba(255, 255, 255, 0.5); }
+.mp-extra-status { color: rgba(255, 255, 255, 0.25); }
+
+/* ── Polling rate display ────────────────────────────────────── */
+.mp-polling-display {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  background: rgba(0, 242, 255, 0.03);
+  border: 1px solid rgba(0, 242, 255, 0.08);
+  border-radius: 8px;
+}
+.mp-poll-hz {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.mp-poll-hz-value {
+  font-size: 32px;
+  font-weight: 800;
+  color: #00F2FF;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  line-height: 1;
+  text-shadow: 0 0 16px rgba(0, 242, 255, 0.3);
+}
+.mp-poll-hz-unit {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(0, 242, 255, 0.5);
+  letter-spacing: 1px;
+}
+.mp-poll-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mp-poll-badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 3px 10px;
+  border-radius: 4px;
+}
+.mp-poll-badge--default {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.4);
+}
+.mp-poll-badge--override {
+  background: rgba(0, 242, 255, 0.08);
+  border: 1px solid rgba(0, 242, 255, 0.15);
+  color: rgba(0, 242, 255, 0.7);
+}
+
+/* ── Settings ───────────────────────────────────────────────── */
+.mp-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+.mp-setting-row:last-child { border-bottom: none; }
+
+.mp-setting-info { flex: 1; min-width: 0; }
+.mp-setting-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(228, 228, 231, 0.9);
+  margin-bottom: 2px;
+}
+.mp-setting-desc {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  line-height: 1.4;
+}
+.mp-setting-desc strong {
+  color: #00F2FF;
+  font-weight: 600;
+}
+
+/* ── Toggle switch ──────────────────────────────────────────── */
+.mp-toggle {
+  position: relative;
+  width: 50px;
+  height: 26px;
+  border-radius: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.mp-toggle--on {
+  background: rgba(255, 45, 85, 0.2);
+  border-color: rgba(255, 45, 85, 0.3);
+}
+.mp-toggle--off {
+  background: rgba(0, 242, 255, 0.12);
+  border-color: rgba(0, 242, 255, 0.25);
+}
+.mp-toggle-knob {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  top: 2px;
+  transition: all 0.25s ease;
+}
+.mp-toggle--on .mp-toggle-knob {
+  left: 27px;
+  background: #FF2D55;
+  box-shadow: 0 0 8px rgba(255, 45, 85, 0.4);
+}
+.mp-toggle--off .mp-toggle-knob {
+  left: 2px;
+  background: #00F2FF;
+  box-shadow: 0 0 8px rgba(0, 242, 255, 0.4);
+}
+.mp-toggle-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  position: absolute;
+}
+.mp-toggle--on .mp-toggle-label {
+  left: 7px;
+  color: rgba(255, 45, 85, 0.6);
+}
+.mp-toggle--off .mp-toggle-label {
+  right: 5px;
+  color: rgba(0, 242, 255, 0.6);
+}
+
+/* ── Slider ─────────────────────────────────────────────────── */
+.mp-slider-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.mp-slider {
+  -webkit-appearance: none;
+  width: 140px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+.mp-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #00F2FF;
+  border: 2px solid rgba(0, 242, 255, 0.3);
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0, 242, 255, 0.3);
+  transition: transform 0.15s ease;
+}
+.mp-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+.mp-slider-val {
+  min-width: 24px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #00F2FF;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* ── Queue size pills ───────────────────────────────────────── */
+.mp-queue-btns {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.mp-queue-pill {
+  padding: 5px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.mp-queue-pill:hover {
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(0, 242, 255, 0.04);
+  border-color: rgba(0, 242, 255, 0.15);
+}
+.mp-queue-pill--active {
+  color: #00F2FF;
+  background: rgba(0, 242, 255, 0.08);
+  border-color: rgba(0, 242, 255, 0.25);
+  box-shadow: 0 0 8px rgba(0, 242, 255, 0.1);
+}
+
+/* ── Advanced / HID properties ──────────────────────────────── */
+.mp-advanced-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s;
+}
+.mp-advanced-toggle:hover {
+  color: rgba(255, 255, 255, 0.5);
+}
+.mp-advanced-grid {
+  overflow: hidden;
+  margin-top: 10px;
+}
+.mp-adv-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  font-size: 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.025);
+}
+.mp-adv-row:last-child { border-bottom: none; }
+.mp-adv-row span:first-child {
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: 500;
+}
+.mp-adv-row span:last-child {
+  color: rgba(228, 228, 231, 0.75);
+  font-weight: 600;
+}
+.mp-adv-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9px !important;
+  max-width: 260px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* ── Icon button ────────────────────────────────────────────── */
+.mp-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.mp-icon-btn:hover {
+  border-color: rgba(0, 242, 255, 0.2);
+  color: #00F2FF;
+  background: rgba(0, 242, 255, 0.04);
+}
+
+/* ── DPI / Sensitivity ──────────────────────────────────────── */
+.mp-dpi-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.mp-custom-dpi {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.mp-dpi-input {
+  width: 90px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: #e4e4e7;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.mp-dpi-input:focus {
+  border-color: rgba(0, 242, 255, 0.3);
+}
+.mp-dpi-input::-webkit-inner-spin-button,
+.mp-dpi-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.mp-dpi-apply {
+  padding: 5px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #00F2FF;
+  background: rgba(0, 242, 255, 0.08);
+  border: 1px solid rgba(0, 242, 255, 0.2);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.mp-dpi-apply:hover {
+  background: rgba(0, 242, 255, 0.14);
+  border-color: rgba(0, 242, 255, 0.35);
+}
+
+/* DPI stats readout */
+.mp-dpi-stats {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-top: 12px;
+  padding: 14px 18px;
+  background: rgba(0, 242, 255, 0.03);
+  border: 1px solid rgba(0, 242, 255, 0.08);
+  border-radius: 8px;
+}
+.mp-dpi-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.mp-dpi-stat-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(0, 242, 255, 0.45);
+  text-transform: uppercase;
+}
+.mp-dpi-stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #00F2FF;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  line-height: 1.2;
+  text-shadow: 0 0 12px rgba(0, 242, 255, 0.25);
+}
+.mp-dpi-stat-sub {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.mp-dpi-stat-divider {
+  width: 1px;
+  margin: 4px 16px;
+  background: rgba(0, 242, 255, 0.1);
+}
+.mp-igs-input {
+  width: 48px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: #00F2FF;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  outline: none;
+  text-align: center;
+}
+.mp-igs-input:focus {
+  border-color: rgba(0, 242, 255, 0.3);
+}
+.mp-igs-input::-webkit-inner-spin-button,
+.mp-igs-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ── Status toast ───────────────────────────────────────────── */
+.mp-status {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: rgba(228, 228, 231, 0.9);
+  background: rgba(0, 242, 255, 0.1);
+  border: 1px solid rgba(0, 242, 255, 0.2);
+  border-radius: 8px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  white-space: nowrap;
+}

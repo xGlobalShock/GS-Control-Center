@@ -317,7 +317,7 @@ function analyzeSystem(stats, hw) {
         severity: 'critical',
         icon: 'network',
         title: 'Packet Loss Detected',
-        description: `${packetLoss.toFixed(1)}% packet loss — significant data drops causing lag spikes and disconnects in online games.`,
+        description: `${Math.round(packetLoss)}% packet loss — significant data drops causing lag spikes and disconnects in online games.`,
         suggestions: [
           'Check Ethernet cable connections for damage',
           'Restart your router/modem',
@@ -330,7 +330,7 @@ function analyzeSystem(stats, hw) {
         severity: 'warning',
         icon: 'network',
         title: 'Minor Packet Loss',
-        description: `${packetLoss.toFixed(1)}% packet loss — occasional micro-stutters in online games.`,
+        description: `${Math.round(packetLoss)}% packet loss — occasional micro-stutters in online games.`,
         suggestions: [
           'Prefer wired connection over Wi-Fi',
           'Reduce network congestion from other devices',

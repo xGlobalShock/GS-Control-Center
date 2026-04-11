@@ -1060,8 +1060,8 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
         <HeroCard
           icon={isWifi ? <Wifi size={15} /> : <Network size={15} />}
           cardLabel="NETWORK" subtitle={ext?.activeAdapterName || hw?.networkAdapter}
-          mainValue={ext?.latencyMs ? `${ext.latencyMs}` : '—'} mainSuffix={ext?.latencyMs ? ' ms' : undefined}
-          statusPct={ext?.latencyMs ? Math.min((ext.latencyMs / 300) * 100, 100) : 0}
+          mainValue={ext?.latencyMs ? `${Math.round(ext.latencyMs)}` : '—'} mainSuffix={ext?.latencyMs ? ' ms' : undefined}
+          statusPct={ext?.latencyMs ? Math.min((Math.round(ext.latencyMs) / 300) * 100, 100) : 0}
           chipLabel={ext?.latencyMs && ext.latencyMs > 150 ? 'High Latency' : isWifi || ext?.activeAdapterName ? 'Connected' : 'Offline'}
           accentColor="#00F2FF"
           history={netHistory} gradId="dhGradNetPing"
@@ -1090,14 +1090,18 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
             </div>
           }
         >
-          {/* Quality tiles: PING · PACKET LOSS · LINK · (SSID / SIGNAL if WiFi) */}
+          {/* Quality tiles: PING · PACKET LOSS · JITTER · LINK · (SSID / SIGNAL if WiFi) */}
           {(() => {
-            const ms  = ext?.latencyMs ?? 0;
+            const ms  = Math.round(ext?.latencyMs ?? 0);
             const mc  = ms <= 95 ? '#FFFFFF' : ms <= 210 ? '#FFD600' : '#FF2D55';
-            const pl  = ext?.packetLoss ?? -1;
+            // packetLoss = -1 means "collecting samples"; show 0% while latency is valid
+            const rawPl = ext?.packetLoss ?? -1;
+            const pl  = rawPl >= 0 ? Math.round(rawPl) : (ms > 0 ? 0 : -1);
             const plIsZero = pl === 0;
             const plDotColor = plIsZero ? '#FFFFFF' : '#FF2D55';
             const plValColor = plIsZero ? '#FFFFFF' : '#FF2D55';
+            const jitter = ext?.pingJitter ?? 0;
+            const jc = jitter <= 5 ? '#FFFFFF' : jitter <= 20 ? '#FFD600' : '#FF2D55';
             const link = ext?.activeLinkSpeed || hw?.networkLinkSpeed;
             if (!ms && !link) return null;
             return (
@@ -1117,6 +1121,15 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
                     <div>
                       <span className="dh-net-q-label">PACKET LOSS</span>
                       <span className="dh-net-q-val" style={{ color: plValColor }}>{pl}<small>%</small></span>
+                    </div>
+                  </div>
+                )}
+                {ms > 0 && jitter >= 0 && (
+                  <div className="dh-net-q-tile">
+                    <span className="dh-net-q-dot" style={{ background: jc === '#FFFFFF' ? '#00F2FF' : jc, boxShadow: `0 0 6px ${jc === '#FFFFFF' ? '#00F2FF66' : jc}` }} />
+                    <div>
+                      <span className="dh-net-q-label">JITTER</span>
+                      <span className="dh-net-q-val" style={{ color: jc }}>{Math.round(jitter)}<small> ms</small></span>
                     </div>
                   </div>
                 )}

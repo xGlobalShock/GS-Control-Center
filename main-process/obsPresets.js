@@ -271,6 +271,95 @@ function registerIPC() {
     }
   });
 
+  // ── Dual-PC Wizard: detect network adapters ──────────────────────────────
+  ipcMain.handle('obs:get-network-adapters', async () => {
+    try {
+      const ps = `Get-NetAdapter -Physical | Where-Object { $_.Status -eq 'Up' } | Select-Object Name, InterfaceDescription, LinkSpeed, MacAddress | ConvertTo-Json -Compress`;
+      const { stdout } = await execAsync(
+        `powershell -NoProfile -NonInteractive -Command "${ps}"`,
+        { timeout: 8000 }
+      );
+      const raw = JSON.parse(stdout.trim());
+      const adapters = (Array.isArray(raw) ? raw : [raw]).map(a => ({
+        name: a.Name || '',
+        description: a.InterfaceDescription || '',
+        linkSpeed: a.LinkSpeed || '',
+        mac: a.MacAddress || '',
+      }));
+      return { success: true, adapters };
+    } catch (error) {
+      console.error('Error detecting network adapters:', error);
+      return { success: false, adapters: [], message: error.message };
+    }
+  });
+
+  // ── Dual-PC Wizard: apply streaming-PC OBS preset ──────────────────────
+  ipcMain.handle('obs:apply-dualpc-preset', async (event, presetId) => {
+    try {
+      const roamingAppData = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+      const obsConfigPath = path.join(roamingAppData, 'obs-studio');
+
+      if (!fs.existsSync(obsConfigPath)) {
+        return { success: false, message: 'OBS configuration directory not found. Please launch OBS at least once first.' };
+      }
+
+      const appPath = app.isPackaged
+        ? path.join(process.resourcesPath, 'data', 'obsPresetConfigs')
+        : path.join(__dirname, '..', 'src', 'data', 'obsPresetConfigs');
+
+      const presetPath = path.join(appPath, presetId);
+      if (!fs.existsSync(presetPath)) {
+        return { success: false, message: `Dual-PC preset not found: ${presetId}` };
+      }
+
+      // Find profile directory (same logic as regular preset apply)
+      let profileDir = null;
+      const profilesIniPath = path.join(obsConfigPath, 'profiles.ini');
+      if (fs.existsSync(profilesIniPath)) {
+        try {
+          const content = fs.readFileSync(profilesIniPath, 'utf-8');
+          const m = content.match(/Default=(.*)/);
+          if (m) profileDir = path.join(obsConfigPath, 'basic', 'profiles', m[1].trim());
+        } catch (_) {}
+      }
+      if (!profileDir) {
+        const profilesPath = path.join(obsConfigPath, 'basic', 'profiles');
+        if (fs.existsSync(profilesPath)) {
+          const dirs = fs.readdirSync(profilesPath).filter(f => fs.statSync(path.join(profilesPath, f)).isDirectory());
+          if (dirs.length > 0) profileDir = path.join(profilesPath, dirs[0]);
+        }
+      }
+      if (!profileDir) profileDir = path.join(obsConfigPath, 'basic', 'profiles', 'Untitled');
+      if (!fs.existsSync(profileDir)) fs.mkdirSync(profileDir, { recursive: true });
+
+      // Copy profile configs
+      const presetProfileDir = path.join(presetPath, 'profile');
+      if (fs.existsSync(presetProfileDir)) {
+        for (const f of fs.readdirSync(presetProfileDir).filter(f => !f.includes('.bak'))) {
+          fs.copyFileSync(path.join(presetProfileDir, f), path.join(profileDir, f));
+        }
+      }
+
+      // Copy scenes
+      const basicScenesDir = path.join(obsConfigPath, 'basic', 'scenes');
+      if (!fs.existsSync(basicScenesDir)) fs.mkdirSync(basicScenesDir, { recursive: true });
+      const presetScenesDir = path.join(presetPath, 'scenes');
+      if (fs.existsSync(presetScenesDir)) {
+        for (const f of fs.readdirSync(presetScenesDir).filter(f => f.endsWith('.json'))) {
+          fs.copyFileSync(path.join(presetScenesDir, f), path.join(basicScenesDir, f));
+        }
+      }
+
+      const srcScenes = path.join(presetPath, 'scenes.json');
+      if (fs.existsSync(srcScenes)) fs.copyFileSync(srcScenes, path.join(profileDir, 'scenes.json'));
+
+      return { success: true, message: `Dual-PC streaming preset applied. Restart OBS to see changes.`, presetId };
+    } catch (error) {
+      console.error('Error applying dual-PC preset:', error);
+      return { success: false, message: `Failed: ${error.message}` };
+    }
+  });
+
 } // end registerIPC
 
 module.exports = { registerIPC };

@@ -30,35 +30,7 @@ const _hwInfoSidecarPromise = new Promise((resolve) => { _hwInfoSidecarResolve =
 function getHwInfoFromSidecarPromise() { return _hwInfoSidecarPromise; }
 function getHwInfoFromSidecar() { return _hwInfoFromSidecar; }
 
-// ── Sidecar cache (persist last-known-good data for instant startup) ──
-function _getSidecarCachePath() {
-  try { return path.join(app.getPath('userData'), 'gs_monitor_cache.json'); }
-  catch { return path.join(os.tmpdir(), 'gs_monitor_cache.json'); }
-}
 
-function _saveSidecarCache() {
-  if (!_sidecarData) return;
-  try {
-    fs.writeFileSync(_getSidecarCachePath(), JSON.stringify({
-      _ts: Date.now(), ..._sidecarData,
-    }), 'utf8');
-  } catch { }
-}
-
-function _loadSidecarCache() {
-  try {
-    const raw = fs.readFileSync(_getSidecarCachePath(), 'utf8');
-    const data = JSON.parse(raw);
-    // Only use cache if less than 60 seconds old
-    if (data._ts && Date.now() - data._ts < 60000) {
-      _sidecarData = data;
-      return true;
-    }
-  } catch { }
-  return false;
-}
-
-let _cacheTimer = null;
 
 // ── GPU Fan persistence ──
 function _getFanSettingPath() {
@@ -153,12 +125,6 @@ function _getDriversDir() {
 }
 
 function startLHMService() {
-  // Load cached data for instant display while sidecar starts
-  _loadSidecarCache();
-
-  // Start periodic cache save
-  _cacheTimer = setInterval(_saveSidecarCache, 30000);
-
   const exePath = _getSidecarExePath();
   if (!fs.existsSync(exePath)) {
     console.error(`[HardwareMonitor] Sidecar not found at: ${exePath}`);
@@ -288,8 +254,6 @@ function _spawnSidecar(exePath) {
 }
 
 function stopLHMService() {
-  _saveSidecarCache();
-  if (_cacheTimer) { clearInterval(_cacheTimer); _cacheTimer = null; }
   if (_sidecarProcess) {
     try {
       // Close stdin to signal graceful shutdown
@@ -477,6 +441,18 @@ async function _startRealtimePush() {
       networkDown: d.networkDown || 0,
       latencyMs: d.latencyMs || 0,
       packetLoss: d.packetLoss ?? -1,
+      internetLoss: d.internetLoss ?? -1,
+      gatewayLoss: d.gatewayLoss ?? -1,
+      gatewayLatency: d.gatewayLatency || 0,
+      pingGateway: d.pingGateway || '',
+      pingMin: d.pingMin || 0,
+      pingMax: d.pingMax || 0,
+      pingAvg: d.pingAvg || 0,
+      pingJitter: d.pingJitter || 0,
+      pingSent: d.pingSent || 0,
+      pingRecv: d.pingRecv || 0,
+      nicErrors: d.nicErrors || 0,
+      nicDiscards: d.nicDiscards || 0,
       // WiFi / Adapter (from JS-side poll)
       ssid: _rtLastSsid,
       wifiSignal: _rtLastWifiSignal,
