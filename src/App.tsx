@@ -169,16 +169,17 @@ function AppInner() {
     fetchHardwareInfo();
 
     let unsub: (() => void) | undefined;
+    let unsubWdebloat: (() => void) | undefined;
     if (window.electron?.ipcRenderer) {
       unsub = window.electron.ipcRenderer.on('hw-info-update', (partial: Partial<HardwareInfo>) => {
         setHardwareInfo(prev => prev ? { ...prev, ...partial } : prev);
       });
 
-      window.electron.ipcRenderer.on('wdebloat:preloaded', (data: any) => {
+      unsubWdebloat = window.electron.ipcRenderer.on('wdebloat:preloaded', (data: any) => {
         (window as any).__WDEBLOAT_PRELOADED__ = data;
       });
     }
-    return () => { unsub?.(); };
+    return () => { unsub?.(); unsubWdebloat?.(); };
   }, []);
 
   useEffect(() => {

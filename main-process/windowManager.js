@@ -5,6 +5,7 @@ let mainWindow = null;
 let splashWindow = null;
 let _minimizeToTray = false;
 let _mainWindowLoadPromise = null;
+let _windowIpcRegistered = false;
 
 function setMinimizeToTray(val) {
   _minimizeToTray = !!val;
@@ -98,6 +99,41 @@ function createWindow() {
     mainWindow = null;
   }
 
+  // Register window-control IPC handlers exactly once, regardless of how
+  // many times createWindow() is called. ipcMain.handle() throws on a second
+  // registration for the same channel, and ipcMain.on() stacks handlers —
+  // either error breaks window controls on any re-create (e.g. app.activate).
+  if (!_windowIpcRegistered) {
+    _windowIpcRegistered = true;
+
+    ipcMain.on('window-minimize', () => {
+      if (_minimizeToTray && mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.hide();
+      } else {
+        mainWindow?.minimize();
+      }
+    });
+    ipcMain.on('window-maximize', () => {
+      if (mainWindow?.isMaximized()) {
+        mainWindow.unmaximize();
+      } else {
+        mainWindow?.maximize();
+      }
+    });
+    ipcMain.on('window-close', () => {
+      if (_minimizeToTray && mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.hide();
+      } else {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.close();
+        }
+        // Force application shutdown so background processes are not left running.
+        app.quit();
+      }
+    });
+    ipcMain.handle('window-is-maximized', () => mainWindow?.isMaximized());
+  }
+
   try {
     const mainIconPath = isDev
       ? path.join(_rootDir, 'public', 'app-icons', 'gs-center.png')
@@ -127,34 +163,6 @@ function createWindow() {
     });
 
     mainWindow.setMenuBarVisibility(false);
-
-    // Custom window control IPC handlers
-    ipcMain.on('window-minimize', () => {
-      if (_minimizeToTray && mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.hide();
-      } else {
-        mainWindow?.minimize();
-      }
-    });
-    ipcMain.on('window-maximize', () => {
-      if (mainWindow?.isMaximized()) {
-        mainWindow.unmaximize();
-      } else {
-        mainWindow?.maximize();
-      }
-    });
-    ipcMain.on('window-close', () => {
-      if (_minimizeToTray && mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.hide();
-      } else {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.close();
-        }
-        // Force application shutdown so background processes are not left running.
-        app.quit();
-      }
-    });
-    ipcMain.handle('window-is-maximized', () => mainWindow?.isMaximized());
 
     // Notify renderer when maximize state changes
     mainWindow.on('maximize', () => mainWindow?.webContents.send('window-maximized-changed', true));
