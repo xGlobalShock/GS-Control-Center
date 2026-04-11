@@ -35,18 +35,21 @@ const MousePollingRate: React.FC = () => {
   const [settings, setSettings] = useState<MouseSettings | null>(null);
   const [polling, setPolling] = useState<PollingInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [applying, setApplying] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [dpi, setDpi] = useState<number>(() => {
     const saved = localStorage.getItem('gc_mouse_dpi');
-    return saved ? parseInt(saved, 10) : 800;
+    const parsed = saved ? parseInt(saved, 10) : NaN;
+    return !isNaN(parsed) && parsed >= 100 && parsed <= 32000 ? parsed : 800;
   });
   const [customDpi, setCustomDpi] = useState<string>('');
   const [showCustomDpi, setShowCustomDpi] = useState(false);
   const [inGameSens, setInGameSens] = useState<number>(() => {
     const saved = localStorage.getItem('gc_mouse_igs');
-    return saved ? parseFloat(saved) : 1.0;
+    const parsed = saved ? parseFloat(saved) : NaN;
+    return !isNaN(parsed) && parsed > 0 && parsed <= 100 ? parsed : 1.0;
   });
 
   const ipc = window.electron?.ipcRenderer;
@@ -54,6 +57,7 @@ const MousePollingRate: React.FC = () => {
   const loadAll = useCallback(async () => {
     if (!ipc) return;
     setLoading(true);
+    setLoadError(false);
     try {
       const [devs, sett, poll] = await Promise.all([
         ipc.invoke('mouse:get-devices'),
@@ -63,7 +67,9 @@ const MousePollingRate: React.FC = () => {
       setDevices(devs || []);
       setSettings(sett);
       setPolling(poll);
-    } catch { }
+    } catch {
+      setLoadError(true);
+    }
     setLoading(false);
   }, [ipc]);
 
@@ -180,6 +186,17 @@ const MousePollingRate: React.FC = () => {
       <div className="mp-loading">
         <RefreshCw size={16} className="mp-spin" />
         <span>Detecting mouse devices…</span>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="mp-loading">
+        <span>Failed to load mouse settings.</span>
+        <button className="mp-icon-btn" onClick={loadAll} title="Retry" style={{ marginLeft: 8 }}>
+          <RefreshCw size={14} />
+        </button>
       </div>
     );
   }

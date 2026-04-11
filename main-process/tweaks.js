@@ -1139,6 +1139,18 @@ Get-ItemProperty -Path 'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\The
         results.push({ step: step.label, success: true });
       } catch (err) {
         const msg = (err.stdout || err.message || '').trim();
+        // netsh int ip reset exits non-zero if even 1 of 30+ items fails.
+        // Treat it as success when most components were reset successfully.
+        if (step.cmd === 'netsh int ip reset' && msg) {
+          const okCount = (msg.match(/\bOK[!]?/gi) || []).length;
+          if (okCount >= 10) {
+            msg.split('\n').forEach(l => { if (l.trim()) sendLine('  ' + l.trim()); });
+            sendLine(`  ✓ ${step.label} — OK (${okCount} components reset, minor items skipped)`);
+            results.push({ step: step.label, success: true });
+            sendLine('');
+            continue;
+          }
+        }
         if (msg) sendLine('  ' + msg);
         sendLine(`  ✗ ${step.label} — FAILED`);
         results.push({ step: step.label, success: false, error: msg });
@@ -1576,6 +1588,15 @@ If (Test-Path 'HKU:\\.Default\\Control Panel\\Keyboard') {
       }
       return { success: true, message: 'Ultimate Performance Profiles Removed' };
     } catch (e) { return { success: false, message: String(e) }; }
+  });
+
+  // ── System Reboot ─────────────────────────────────────────────────────────
+  ipcMain.handle('system:reboot', async () => {
+    try {
+      const { exec } = require('child_process');
+      exec('shutdown /r /t 5 /c "GS Center: Restarting to apply changes"');
+      return { ok: true };
+    } catch (e) { return { ok: false, message: String(e) }; }
   });
 
 } // end registerIPC

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldAlert, HardDrive, FileSearch, Wrench, Wifi, CheckCircle, XCircle, Loader2, AlertTriangle, X, Terminal, Minimize2 } from 'lucide-react';
+import { ShieldAlert, HardDrive, FileSearch, Wrench, Wifi, CheckCircle, XCircle, Loader2, AlertTriangle, X, Terminal, Minimize2, RotateCcw } from 'lucide-react';
 import '../styles/SystemRepairPanel.css';
 
 type ToolStatus = 'idle' | 'running' | 'done' | 'error';
@@ -67,6 +67,7 @@ const SystemRepairPanel: React.FC = () => {
   // which tool's modal is open
   const [openModal, setOpenModal] = useState<string | null>(null);
   const [showChkdskConfirm, setShowChkdskConfirm] = useState(false);
+  const [showRestartPrompt, setShowRestartPrompt] = useState(false);
   const logRef = useRef<HTMLDivElement | null>(null);
   const activeRunRef = useRef<Set<string>>(_activeRuns);
 
@@ -149,6 +150,10 @@ const SystemRepairPanel: React.FC = () => {
               : [result.message || 'Operation complete.'],
         },
       }));
+      // Show restart prompt after network reset completes
+      if (toolId === 'netreset') {
+        setShowRestartPrompt(true);
+      }
     } catch (err: any) {
       setToolStates(prev => ({
         ...prev,
@@ -332,6 +337,61 @@ const SystemRepairPanel: React.FC = () => {
                       }}
                     >
                       <HardDrive size={13} /> Schedule Scan
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {/* Restart prompt — shown after network reset completes */}
+      {createPortal(
+        <AnimatePresence>
+          {showRestartPrompt && (
+            <>
+              <motion.div
+                className="repair-modal-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18 }}
+                onClick={() => setShowRestartPrompt(false)}
+              />
+              <div className="repair-modal-wrapper">
+                <motion.div
+                  className="repair-confirm-dialog"
+                  initial={{ opacity: 0, scale: 0.95, y: 16 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 16 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+                  style={{ '--repair-color': '#22d3ee' } as React.CSSProperties}
+                >
+                  <div className="repair-confirm-icon">
+                    <RotateCcw size={22} />
+                  </div>
+                  <div className="repair-confirm-title">Restart Recommended</div>
+                  <div className="repair-confirm-body">
+                    A system restart is recommended for the network reset to take full effect.
+                    Would you like to restart now?
+                  </div>
+                  <div className="repair-confirm-actions">
+                    <button
+                      className="repair-confirm-btn repair-confirm-btn--dismiss"
+                      onClick={() => setShowRestartPrompt(false)}
+                    >
+                      Later
+                    </button>
+                    <button
+                      className="repair-confirm-btn repair-confirm-btn--confirm"
+                      onClick={() => {
+                        setShowRestartPrompt(false);
+                        window.electron?.ipcRenderer.invoke('system:reboot');
+                      }}
+                    >
+                      <RotateCcw size={13} /> Restart Now
                     </button>
                   </div>
                 </motion.div>
