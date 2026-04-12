@@ -1,5 +1,6 @@
 const { ipcMain } = require('electron');
 const fs = require('fs');
+const fsp = fs.promises;
 const path = require('path');
 const os = require('os');
 const { spawn } = require('child_process');
@@ -106,9 +107,20 @@ Set-ItemProperty -Path "${reg.Path}" -Name "${reg.Name}" -Value ${safeValue} -Ty
 
       return new Promise((resolve) => {
         let lastReadPos = 0;
-        const interval = setInterval(() => {
-          if (fs.existsSync(logPath)) {
-            const content = fs.readFileSync(logPath, 'utf8');
+        let resolved = false;
+        const POLL_TIMEOUT = 5 * 60 * 1000; // 5 minutes max
+
+        const finish = (result) => {
+          if (resolved) return;
+          resolved = true;
+          clearInterval(interval);
+          clearTimeout(timeout);
+          resolve(result);
+        };
+
+        async function pollLog() {
+          try {
+            const content = await fsp.readFile(logPath, 'utf8');
             if (content.length > lastReadPos) {
               const newContent = content.substring(lastReadPos);
               const lastNewlineIndex = newContent.lastIndexOf('\n');
@@ -131,57 +143,62 @@ Set-ItemProperty -Path "${reg.Path}" -Name "${reg.Name}" -Value ${safeValue} -Ty
                 });
               }
             }
-          }
-        }, 100);
+          } catch {}
+        }
+
+        const interval = setInterval(pollLog, 250);
+
+        const timeout = setTimeout(() => {
+          if (child && !child.killed) child.kill();
+          const state = { id: tweakId, progress: 100, status: 'error', line: 'Tweak timed out after 5 minutes' };
+          repairOverlay.pushProgress(state);
+          sendTweakProgress(state);
+          finish({ success: false, message: 'Tweak timed out after 5 minutes' });
+        }, POLL_TIMEOUT);
 
         const child = spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', tmpPath], { windowsHide: true });
         
-        child.on('close', (code) => {
-          clearInterval(interval);
-          
+        child.on('close', async (code) => {
           // Final flush of remaining log content
           try {
-            if (fs.existsSync(logPath)) {
-              const content = fs.readFileSync(logPath, 'utf8');
-              if (content.length > lastReadPos) {
-                const completeChunks = content.substring(lastReadPos);
-                const lines = completeChunks.split('\n');
-                lines.forEach(line => {
-                  const match = line.match(/CTTWEAK_PROGRESS:(\d+)\|(.+)/);
-                  if (match) {
-                    const state = { id: tweakId, progress: parseInt(match[1]), line: match[2].trim(), status: 'running' };
-                    repairOverlay.pushProgress(state);
-                    sendTweakProgress(state);
-                  }
-                });
-              }
+            const content = await fsp.readFile(logPath, 'utf8');
+            if (content.length > lastReadPos) {
+              const completeChunks = content.substring(lastReadPos);
+              const lines = completeChunks.split('\n');
+              lines.forEach(line => {
+                const match = line.match(/CTTWEAK_PROGRESS:(\d+)\|(.+)/);
+                if (match) {
+                  const state = { id: tweakId, progress: parseInt(match[1]), line: match[2].trim(), status: 'running' };
+                  repairOverlay.pushProgress(state);
+                  sendTweakProgress(state);
+                }
+              });
             }
           } catch (e) {}
 
-          try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch {}
-          try { if (fs.existsSync(logPath)) fs.unlinkSync(logPath); } catch {}
+          try { await fsp.unlink(tmpPath); } catch {}
+          try { await fsp.unlink(logPath); } catch {}
           
           if (code === 0) {
             const state = { id: tweakId, progress: 100, status: 'done', line: `${tweak.Content} Applied Successfully!` };
             repairOverlay.pushProgress(state);
             sendTweakProgress(state);
-            resolve({ success: true, message: `${tweak.Content} Applied!` });
+            finish({ success: true, message: `${tweak.Content} Applied!` });
           } else {
             const state = { id: tweakId, progress: 100, status: 'error', line: `Tweak execution returned error code ${code}` };
             repairOverlay.pushProgress(state);
             sendTweakProgress(state);
-            resolve({ success: false, message: `Failed to apply tweak: script exited with code ${code}` });
+            finish({ success: false, message: `Failed to apply tweak: script exited with code ${code}` });
           }
         });
 
         child.on('error', (err) => {
-          clearInterval(interval);
-          try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch {}
-          try { if (fs.existsSync(logPath)) fs.unlinkSync(logPath); } catch {}
+          fsp.unlink(tmpPath).catch(() => {});
+          fsp.unlink(logPath).catch(() => {});
           const state = { id: tweakId, progress: 100, status: 'error', line: `Spawn error: ${err.message}` };
           repairOverlay.pushProgress(state);
           sendTweakProgress(state);
-          resolve({ success: false, message: `Failed to spawn tweak script: ${err.message}` });
+          finish({ success: false, message: `Failed to spawn tweak script: ${err.message}` });
         });
       });
     });

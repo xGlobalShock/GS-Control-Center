@@ -123,10 +123,13 @@ async function getDirSizeConcurrency(startPath, isCancelled, onProgress) {
     files: []
   };
 
-  let dirsToProcess = [{ path: startPath, node: rootNode }];
+  let dirsToProcess = [{ path: startPath, node: rootNode, depth: 0 }];
+  const MAX_SCAN_DEPTH = 50;
+  const MAX_SCAN_DIRS = 100000;
 
   while (dirsToProcess.length > 0) {
     if (isCancelled()) return null;
+    if (scannedDirs >= MAX_SCAN_DIRS) break; // Safety breadth limit
 
     // Process directories in batches to utilize threadpool without overwhelming event loop
     const batch = dirsToProcess.splice(0, 100);
@@ -163,7 +166,10 @@ async function getDirSizeConcurrency(startPath, isCancelled, onProgress) {
             };
             item.node.children.set(entry.name, childNode);
             item.node.folderCount++;
-            dirsToProcess.push({ path: fullPath, node: childNode });
+            // Only recurse if within depth limit
+            if ((item.depth || 0) < MAX_SCAN_DEPTH) {
+              dirsToProcess.push({ path: fullPath, node: childNode, depth: (item.depth || 0) + 1 });
+            }
           } else if (entry.isFile()) {
             statTasks.push({ path: fullPath, parentNode: item.node, name: entry.name });
           }
@@ -225,6 +231,20 @@ async function getDirSizeConcurrency(startPath, isCancelled, onProgress) {
 
 // In-memory scan cache keyed by normalized root path (lowercase)
 const scanCache = new Map();
+const MAX_CACHED_SCANS = 3;        // Keep at most 3 scan results in memory
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30-minute TTL — stale scans require rescan
+
+/** Evict oldest entries when cache exceeds MAX_CACHED_SCANS */
+function _evictScanCache() {
+  if (scanCache.size <= MAX_CACHED_SCANS) return;
+  // Sort by timestamp ascending and delete oldest
+  const sorted = [...scanCache.entries()].sort((a, b) => (a[1].ts || 0) - (b[1].ts || 0));
+  while (sorted.length > MAX_CACHED_SCANS) {
+    const [key] = sorted.shift();
+    scanCache.delete(key);
+  }
+}
+
 let activeScan = {
   path: null,
   cancel: null,
@@ -275,6 +295,9 @@ async function scanDirectory(targetPath, forceRescan = false) {
 
   if (!forceRescan && scanCache.size > 0) {
     for (const [cachedPath, cacheEntry] of scanCache.entries()) {
+      // Skip stale cache entries
+      if (Date.now() - (cacheEntry.ts || 0) > CACHE_TTL_MS) continue;
+
       const driveInfo = {
         driveCapacity: cacheEntry.driveCapacity || 0,
         driveFree: cacheEntry.driveFree || 0
@@ -349,6 +372,7 @@ async function scanDirectory(targetPath, forceRescan = false) {
         driveFree: driveInfo.driveFree,
         ts: Date.now()
       });
+      _evictScanCache();
 
       return await formatNodeResult(result.rootNode, result.scannedFiles, result.scannedDirs, false, driveInfo);
     } finally {

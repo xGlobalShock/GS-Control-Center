@@ -5,10 +5,61 @@
 
 const { ipcMain, app } = require('electron');
 const fs = require('fs');
+const fsp = fs.promises;
 const path = require('path');
 const os = require('os');
 const { execAsync, isPermissionError } = require('./utils');
 const authSession = require('./authSession');
+
+/** Async flat-directory clean: delete all entries in a dir without blocking the event loop. */
+async function asyncCleanFlat(dirPath, filter) {
+  let filesDeleted = 0, sizeFreed = 0, filesBefore = 0;
+  let entries;
+  try { entries = await fsp.readdir(dirPath); } catch { return { filesDeleted, sizeFreed, filesBefore }; }
+  if (filter) entries = entries.filter(filter);
+  filesBefore = entries.length;
+  const BATCH = 50;
+  for (let i = 0; i < entries.length; i += BATCH) {
+    const batch = entries.slice(i, i + BATCH);
+    const results = await Promise.allSettled(batch.map(async (name) => {
+      const fp = path.join(dirPath, name);
+      const stats = await fsp.stat(fp);
+      const size = stats.isDirectory() ? 0 : stats.size;
+      await fsp.rm(fp, { recursive: true, force: true });
+      return size;
+    }));
+    for (const r of results) {
+      if (r.status === 'fulfilled') { filesDeleted++; sizeFreed += r.value; }
+    }
+  }
+  return { filesDeleted, sizeFreed, filesBefore };
+}
+
+/** Async recursive directory clean: walks the tree deleting files, yields between entries. */
+async function asyncCleanRecursive(dirPath) {
+  let filesDeleted = 0, sizeFreed = 0, filesBefore = 0;
+  async function walk(dir) {
+    let entries;
+    try { entries = await fsp.readdir(dir, { withFileTypes: true }); } catch { return; }
+    for (const entry of entries) {
+      filesBefore++;
+      const fp = path.join(dir, entry.name);
+      try {
+        if (entry.isDirectory()) {
+          await walk(fp);
+          try { await fsp.rmdir(fp); } catch { }
+        } else {
+          const st = await fsp.stat(fp);
+          sizeFreed += st.size;
+          await fsp.rm(fp, { force: true });
+          filesDeleted++;
+        }
+      } catch { }
+    }
+  }
+  await walk(dirPath);
+  return { filesDeleted, sizeFreed, filesBefore };
+}
 
 function registerIPC() {
 
@@ -23,23 +74,7 @@ ipcMain.handle('cleaner:clear-forza-shaders', async () => {
       return { success: false, message: 'Forza Horizon 5 shader cache not found. Game may not be installed.' };
     }
 
-    let filesBefore = 0;
-    let filesDeleted = 0;
-    let sizeFreed = 0;
-
-    const files = fs.readdirSync(forzaCachePath);
-    filesBefore = files.length;
-    for (const file of files) {
-      const filePath = path.join(forzaCachePath, file);
-      try {
-        const stats = fs.statSync(filePath);
-        sizeFreed += stats.size;
-        fs.rmSync(filePath, { force: true });
-        filesDeleted++;
-      } catch (e) {
-        // Ignore errors for individual files
-      }
-    }
+    const { filesDeleted, sizeFreed, filesBefore } = await asyncCleanFlat(forzaCachePath);
 
     const sizeInMB = (sizeFreed / (1024 * 1024)).toFixed(2);
     return {
@@ -80,7 +115,7 @@ ipcMain.handle('cleaner:clear-nvidia-cache', async () => {
       if (fs.existsSync(cachePath)) {
         anyCacheExists = true;
         try {
-          const items = fs.readdirSync(cachePath);
+          const items = await fsp.readdir(cachePath);
           totalBefore += items.length;
         } catch (e) { }
       }
@@ -91,29 +126,16 @@ ipcMain.handle('cleaner:clear-nvidia-cache', async () => {
 
     for (const cachePath of caches) {
       if (fs.existsSync(cachePath)) {
-        try {
-          const items = fs.readdirSync(cachePath);
-          for (const item of items) {
-            try {
-              const itemPath = path.join(cachePath, item);
-              const stats = fs.statSync(itemPath);
-              totalSize += stats.size;
-              if (stats.isDirectory()) {
-                fs.rmSync(itemPath, { recursive: true, force: true });
-              } else {
-                fs.rmSync(itemPath, { force: true });
-              }
-              totalDeleted++;
-            } catch (e) { }
-          }
-        } catch (e) { }
+        const result = await asyncCleanFlat(cachePath);
+        totalDeleted += result.filesDeleted;
+        totalSize += result.sizeFreed;
       }
     }
 
     for (const cachePath of caches) {
       if (fs.existsSync(cachePath)) {
         try {
-          const items = fs.readdirSync(cachePath);
+          const items = await fsp.readdir(cachePath);
           totalRemaining += items.length;
         } catch (e) { }
       }
@@ -198,28 +220,10 @@ ipcMain.handle('cleaner:clear-cod-shaders', async () => {
       if (fs.existsSync(codCachePath)) {
         pathFound = true;
         try {
-          const files = fs.readdirSync(codCachePath, { recursive: true });
-          filesBefore += files.length;
-
-          const deleteDir = (dir) => {
-            try {
-              const items = fs.readdirSync(dir);
-              for (const item of items) {
-                const itemPath = path.join(dir, item);
-                const stats = fs.statSync(itemPath);
-                if (stats.isDirectory()) {
-                  deleteDir(itemPath);
-                } else {
-                  sizeFreed += stats.size;
-                  fs.rmSync(itemPath, { force: true });
-                  filesDeleted++;
-                }
-              }
-              fs.rmdirSync(dir, { force: true });
-            } catch (e) { }
-          };
-
-          deleteDir(codCachePath);
+          const result = await asyncCleanRecursive(codCachePath);
+          filesDeleted += result.filesDeleted;
+          sizeFreed += result.sizeFreed;
+          filesBefore += result.filesBefore;
         } catch (e) { }
       }
     }
@@ -264,24 +268,10 @@ ipcMain.handle('cleaner:clear-cs2-shaders', async () => {
       if (fs.existsSync(cs2CachePath)) {
         pathFound = true;
         try {
-          const deleteDir = (dir) => {
-            try {
-              const items = fs.readdirSync(dir);
-              for (const item of items) {
-                const itemPath = path.join(dir, item);
-                const stats = fs.statSync(itemPath);
-                if (stats.isDirectory()) {
-                  deleteDir(itemPath);
-                } else {
-                  sizeFreed += stats.size;
-                  fs.rmSync(itemPath, { force: true });
-                  filesDeleted++;
-                  filesBefore++;
-                }
-              }
-            } catch (e) { }
-          };
-          deleteDir(cs2CachePath);
+          const result = await asyncCleanRecursive(cs2CachePath);
+          filesDeleted += result.filesDeleted;
+          sizeFreed += result.sizeFreed;
+          filesBefore += result.filesBefore;
         } catch (e) { }
       }
     }
@@ -314,33 +304,11 @@ ipcMain.handle('cleaner:clear-fortnite-shaders', async () => {
     const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
     const fortniteCachePath = path.join(localAppData, 'FortniteGame', 'Saved', 'ShaderCache');
 
-    let filesDeleted = 0;
-    let sizeFreed = 0;
-    let filesBefore = 0;
-
     if (!fs.existsSync(fortniteCachePath)) {
       return { success: false, message: 'Fortnite shader cache not found.' };
     }
 
-    const deleteDir = (dir) => {
-      try {
-        const items = fs.readdirSync(dir);
-        for (const item of items) {
-          const itemPath = path.join(dir, item);
-          const stats = fs.statSync(itemPath);
-          if (stats.isDirectory()) {
-            deleteDir(itemPath);
-          } else {
-            sizeFreed += stats.size;
-            fs.rmSync(itemPath, { force: true });
-            filesDeleted++;
-          }
-        }
-      } catch (e) { }
-    };
-
-    filesBefore = fs.readdirSync(fortniteCachePath, { recursive: true }).length;
-    deleteDir(fortniteCachePath);
+    const { filesDeleted, sizeFreed, filesBefore } = await asyncCleanRecursive(fortniteCachePath);
 
     const sizeInMB = (sizeFreed / (1024 * 1024)).toFixed(2);
     return {
@@ -366,33 +334,11 @@ ipcMain.handle('cleaner:clear-lol-shaders', async () => {
     const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
     const lolCachePath = path.join(localAppData, 'RADS');
 
-    let filesDeleted = 0;
-    let sizeFreed = 0;
-    let filesBefore = 0;
-
     if (!fs.existsSync(lolCachePath)) {
       return { success: false, message: 'League of Legends cache not found.' };
     }
 
-    const deleteDir = (dir) => {
-      try {
-        const items = fs.readdirSync(dir);
-        for (const item of items) {
-          const itemPath = path.join(dir, item);
-          const stats = fs.statSync(itemPath);
-          if (stats.isDirectory()) {
-            deleteDir(itemPath);
-          } else {
-            sizeFreed += stats.size;
-            fs.rmSync(itemPath, { force: true });
-            filesDeleted++;
-          }
-        }
-      } catch (e) { }
-    };
-
-    filesBefore = fs.readdirSync(lolCachePath, { recursive: true }).length;
-    deleteDir(lolCachePath);
+    const { filesDeleted, sizeFreed, filesBefore } = await asyncCleanRecursive(lolCachePath);
 
     const sizeInMB = (sizeFreed / (1024 * 1024)).toFixed(2);
     return {
@@ -430,24 +376,10 @@ ipcMain.handle('cleaner:clear-overwatch-shaders', async () => {
       if (fs.existsSync(owCachePath)) {
         pathFound = true;
         try {
-          const deleteDir = (dir) => {
-            try {
-              const items = fs.readdirSync(dir);
-              for (const item of items) {
-                const itemPath = path.join(dir, item);
-                const stats = fs.statSync(itemPath);
-                if (stats.isDirectory()) {
-                  deleteDir(itemPath);
-                } else {
-                  sizeFreed += stats.size;
-                  fs.rmSync(itemPath, { force: true });
-                  filesDeleted++;
-                  filesBefore++;
-                }
-              }
-            } catch (e) { }
-          };
-          deleteDir(owCachePath);
+          const result = await asyncCleanRecursive(owCachePath);
+          filesDeleted += result.filesDeleted;
+          sizeFreed += result.sizeFreed;
+          filesBefore += result.filesBefore;
         } catch (e) { }
       }
     }
@@ -492,24 +424,10 @@ ipcMain.handle('cleaner:clear-r6-shaders', async () => {
       if (fs.existsSync(r6CachePath)) {
         pathFound = true;
         try {
-          const deleteDir = (dir) => {
-            try {
-              const items = fs.readdirSync(dir);
-              for (const item of items) {
-                const itemPath = path.join(dir, item);
-                const stats = fs.statSync(itemPath);
-                if (stats.isDirectory()) {
-                  deleteDir(itemPath);
-                } else {
-                  sizeFreed += stats.size;
-                  fs.rmSync(itemPath, { force: true });
-                  filesDeleted++;
-                  filesBefore++;
-                }
-              }
-            } catch (e) { }
-          };
-          deleteDir(r6CachePath);
+          const result = await asyncCleanRecursive(r6CachePath);
+          filesDeleted += result.filesDeleted;
+          sizeFreed += result.sizeFreed;
+          filesBefore += result.filesBefore;
         } catch (e) { }
       }
     }
@@ -542,33 +460,11 @@ ipcMain.handle('cleaner:clear-rocket-league-shaders', async () => {
     const userProfile = process.env.USERPROFILE || os.homedir();
     const rlCachePath = path.join(userProfile, 'AppData', 'Roaming', 'Rocket League');
 
-    let filesDeleted = 0;
-    let sizeFreed = 0;
-    let filesBefore = 0;
-
     if (!fs.existsSync(rlCachePath)) {
       return { success: false, message: 'Rocket League cache not found.' };
     }
 
-    const deleteDir = (dir) => {
-      try {
-        const items = fs.readdirSync(dir);
-        for (const item of items) {
-          const itemPath = path.join(dir, item);
-          const stats = fs.statSync(itemPath);
-          if (stats.isDirectory()) {
-            deleteDir(itemPath);
-          } else {
-            sizeFreed += stats.size;
-            fs.rmSync(itemPath, { force: true });
-            filesDeleted++;
-          }
-        }
-      } catch (e) { }
-    };
-
-    filesBefore = fs.readdirSync(rlCachePath, { recursive: true }).length;
-    deleteDir(rlCachePath);
+    const { filesDeleted, sizeFreed, filesBefore } = await asyncCleanRecursive(rlCachePath);
 
     const sizeInMB = (sizeFreed / (1024 * 1024)).toFixed(2);
     return {
@@ -594,33 +490,11 @@ ipcMain.handle('cleaner:clear-valorant-shaders', async () => {
     const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
     const valorantCachePath = path.join(localAppData, 'VALORANT');
 
-    let filesDeleted = 0;
-    let sizeFreed = 0;
-    let filesBefore = 0;
-
     if (!fs.existsSync(valorantCachePath)) {
       return { success: false, message: 'Valorant cache not found.' };
     }
 
-    const deleteDir = (dir) => {
-      try {
-        const items = fs.readdirSync(dir);
-        for (const item of items) {
-          const itemPath = path.join(dir, item);
-          const stats = fs.statSync(itemPath);
-          if (stats.isDirectory()) {
-            deleteDir(itemPath);
-          } else {
-            sizeFreed += stats.size;
-            fs.rmSync(itemPath, { force: true });
-            filesDeleted++;
-          }
-        }
-      } catch (e) { }
-    };
-
-    filesBefore = fs.readdirSync(valorantCachePath, { recursive: true }).length;
-    deleteDir(valorantCachePath);
+    const { filesDeleted, sizeFreed, filesBefore } = await asyncCleanRecursive(valorantCachePath);
 
     const sizeInMB = (sizeFreed / (1024 * 1024)).toFixed(2);
     return {
@@ -648,17 +522,10 @@ ipcMain.handle('cleaner:clear-windows-temp', async () => {
     const winTemp = path.join(process.env.WINDIR || 'C:\\Windows', 'Temp');
     let filesDeleted = 0, totalSize = 0, filesBefore = 0;
     if (fs.existsSync(winTemp)) {
-      const entries = fs.readdirSync(winTemp);
-      filesBefore = entries.length;
-      for (const entry of entries) {
-        try {
-          const fp = path.join(winTemp, entry);
-          const stats = fs.statSync(fp);
-          totalSize += stats.isDirectory() ? 0 : stats.size;
-          fs.rmSync(fp, { recursive: true, force: true });
-          filesDeleted++;
-        } catch (e) { }
-      }
+      const result = await asyncCleanFlat(winTemp);
+      filesDeleted = result.filesDeleted;
+      totalSize = result.sizeFreed;
+      filesBefore = result.filesBefore;
     }
     return { success: true, message: 'Cleared Windows Temp', filesDeleted, filesBefore, filesAfter: filesBefore - filesDeleted, spaceSaved: `${(totalSize / (1024 * 1024)).toFixed(2)} MB` };
   } catch (error) {
@@ -678,20 +545,10 @@ ipcMain.handle('cleaner:clear-error-reports', async () => {
     let filesDeleted = 0, totalSize = 0, filesBefore = 0;
     for (const dir of werDirs) {
       if (!fs.existsSync(dir)) continue;
-      const walk = (d) => {
-        try {
-          for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
-            const fp = path.join(d, entry.name);
-            filesBefore++;
-            try {
-              if (!entry.isDirectory()) totalSize += fs.statSync(fp).size;
-              fs.rmSync(fp, { recursive: true, force: true });
-              filesDeleted++;
-            } catch (e) { }
-          }
-        } catch (e) { }
-      };
-      walk(dir);
+      const result = await asyncCleanFlat(dir);
+      filesDeleted += result.filesDeleted;
+      totalSize += result.sizeFreed;
+      filesBefore += result.filesBefore;
     }
     return { success: true, message: 'Cleared Windows Error Reports', filesDeleted, filesBefore, filesAfter: filesBefore - filesDeleted, spaceSaved: `${(totalSize / (1024 * 1024)).toFixed(2)} MB` };
   } catch (error) {
@@ -707,20 +564,10 @@ ipcMain.handle('cleaner:clear-delivery-optimization', async () => {
     const doDir = path.join('C:\\Windows', 'SoftwareDistribution', 'DeliveryOptimization');
     let filesDeleted = 0, totalSize = 0, filesBefore = 0;
     if (fs.existsSync(doDir)) {
-      const walk = (d) => {
-        try {
-          for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
-            const fp = path.join(d, entry.name);
-            filesBefore++;
-            try {
-              if (!entry.isDirectory()) totalSize += fs.statSync(fp).size;
-              fs.rmSync(fp, { recursive: true, force: true });
-              filesDeleted++;
-            } catch (e) { }
-          }
-        } catch (e) { }
-      };
-      walk(doDir);
+      const result = await asyncCleanFlat(doDir);
+      filesDeleted = result.filesDeleted;
+      totalSize = result.sizeFreed;
+      filesBefore = result.filesBefore;
     }
     return { success: true, message: 'Cleared Delivery Optimization cache', filesDeleted, filesBefore, filesAfter: filesBefore - filesDeleted, spaceSaved: `${(totalSize / (1024 * 1024)).toFixed(2)} MB` };
   } catch (error) {
@@ -736,17 +583,10 @@ ipcMain.handle('cleaner:clear-recent-files', async () => {
     const recentDir = path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'Microsoft', 'Windows', 'Recent');
     let filesDeleted = 0, totalSize = 0, filesBefore = 0;
     if (fs.existsSync(recentDir)) {
-      const entries = fs.readdirSync(recentDir);
-      filesBefore = entries.length;
-      for (const entry of entries) {
-        try {
-          const fp = path.join(recentDir, entry);
-          const stats = fs.statSync(fp);
-          totalSize += stats.isDirectory() ? 0 : stats.size;
-          fs.rmSync(fp, { recursive: true, force: true });
-          filesDeleted++;
-        } catch (e) { }
-      }
+      const result = await asyncCleanFlat(recentDir);
+      filesDeleted = result.filesDeleted;
+      totalSize = result.sizeFreed;
+      filesBefore = result.filesBefore;
     }
     return { success: true, message: 'Cleared Recent Files list', filesDeleted, filesBefore, filesAfter: filesBefore - filesDeleted, spaceSaved: `${(totalSize / (1024 * 1024)).toFixed(2)} MB` };
   } catch (error) {
@@ -762,17 +602,10 @@ ipcMain.handle('cleaner:clear-thumbnail-cache', async () => {
     const explorerDir = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'Microsoft', 'Windows', 'Explorer');
     let filesDeleted = 0, totalSize = 0, filesBefore = 0;
     if (fs.existsSync(explorerDir)) {
-      const files = fs.readdirSync(explorerDir).filter(f => /^thumbcache_/i.test(f));
-      filesBefore = files.length;
-      for (const file of files) {
-        try {
-          const fp = path.join(explorerDir, file);
-          const stats = fs.statSync(fp);
-          totalSize += stats.size;
-          fs.rmSync(fp, { force: true });
-          filesDeleted++;
-        } catch (e) { }
-      }
+      const result = await asyncCleanFlat(explorerDir, f => /^thumbcache_/i.test(f));
+      filesDeleted = result.filesDeleted;
+      totalSize = result.sizeFreed;
+      filesBefore = result.filesBefore;
     }
     return { success: true, message: 'Cleared Thumbnail Cache', filesDeleted, filesBefore, filesAfter: filesBefore - filesDeleted, spaceSaved: `${(totalSize / (1024 * 1024)).toFixed(2)} MB` };
   } catch (error) {
@@ -788,22 +621,10 @@ ipcMain.handle('cleaner:clear-windows-logs', async () => {
     const logsDir = path.join(process.env.WINDIR || 'C:\\Windows', 'Logs');
     let filesDeleted = 0, totalSize = 0, filesBefore = 0;
     if (fs.existsSync(logsDir)) {
-      const walkAndDelete = (dir) => {
-        try {
-          const entries = fs.readdirSync(dir, { withFileTypes: true });
-          for (const entry of entries) {
-            const fp = path.join(dir, entry.name);
-            filesBefore++;
-            try {
-              const stats = fs.statSync(fp);
-              totalSize += entry.isDirectory() ? 0 : stats.size;
-              fs.rmSync(fp, { recursive: true, force: true });
-              filesDeleted++;
-            } catch (e) { }
-          }
-        } catch (e) { }
-      };
-      walkAndDelete(logsDir);
+      const result = await asyncCleanFlat(logsDir);
+      filesDeleted = result.filesDeleted;
+      totalSize = result.sizeFreed;
+      filesBefore = result.filesBefore;
     }
     return { success: true, message: 'Cleared Windows Logs', filesDeleted, filesBefore, filesAfter: filesBefore - filesDeleted, spaceSaved: `${(totalSize / (1024 * 1024)).toFixed(2)} MB` };
   } catch (error) {
@@ -819,17 +640,10 @@ ipcMain.handle('cleaner:clear-crash-dumps', async () => {
     const dumpsDir = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'CrashDumps');
     let filesDeleted = 0, totalSize = 0, filesBefore = 0;
     if (fs.existsSync(dumpsDir)) {
-      const files = fs.readdirSync(dumpsDir);
-      filesBefore = files.length;
-      for (const file of files) {
-        try {
-          const fp = path.join(dumpsDir, file);
-          const stats = fs.statSync(fp);
-          totalSize += stats.size;
-          fs.rmSync(fp, { recursive: true, force: true });
-          filesDeleted++;
-        } catch (e) { }
-      }
+      const result = await asyncCleanFlat(dumpsDir);
+      filesDeleted = result.filesDeleted;
+      totalSize = result.sizeFreed;
+      filesBefore = result.filesBefore;
     }
     return { success: true, message: 'Cleared Crash Dumps', filesDeleted, filesBefore, filesAfter: filesBefore - filesDeleted, spaceSaved: `${(totalSize / (1024 * 1024)).toFixed(2)} MB` };
   } catch (error) {
@@ -845,17 +659,10 @@ ipcMain.handle('cleaner:clear-font-cache', async () => {
     const fontCacheDir = path.join(process.env.WINDIR || 'C:\\Windows', 'ServiceProfiles', 'LocalService', 'AppData', 'Local', 'FontCache');
     let filesDeleted = 0, totalSize = 0, filesBefore = 0;
     if (fs.existsSync(fontCacheDir)) {
-      const files = fs.readdirSync(fontCacheDir).filter(f => /\.dat$/i.test(f));
-      filesBefore = files.length;
-      for (const file of files) {
-        try {
-          const fp = path.join(fontCacheDir, file);
-          const stats = fs.statSync(fp);
-          totalSize += stats.size;
-          fs.rmSync(fp, { force: true });
-          filesDeleted++;
-        } catch (e) { }
-      }
+      const result = await asyncCleanFlat(fontCacheDir, f => /\.dat$/i.test(f));
+      filesDeleted = result.filesDeleted;
+      totalSize = result.sizeFreed;
+      filesBefore = result.filesBefore;
     }
     return { success: true, message: 'Cleared Font Cache', filesDeleted, filesBefore, filesAfter: filesBefore - filesDeleted, spaceSaved: `${(totalSize / (1024 * 1024)).toFixed(2)} MB` };
   } catch (error) {
@@ -874,21 +681,10 @@ ipcMain.handle('cleaner:clear-temp-files', async () => {
     let filesBefore = 0;
 
     if (fs.existsSync(tempDir)) {
-      const files = fs.readdirSync(tempDir);
-      filesBefore = files.length;
-      for (const file of files) {
-        try {
-          const filePath = path.join(tempDir, file);
-          const stats = fs.statSync(filePath);
-          totalSize += stats.size;
-          if (stats.isDirectory()) {
-            fs.rmSync(filePath, { recursive: true, force: true });
-          } else {
-            fs.rmSync(filePath, { force: true });
-          }
-          filesDeleted++;
-        } catch (e) { }
-      }
+      const result = await asyncCleanFlat(tempDir);
+      filesDeleted = result.filesDeleted;
+      totalSize = result.sizeFreed;
+      filesBefore = result.filesBefore;
     }
 
     const filesAfter = filesBefore - filesDeleted;
@@ -918,21 +714,10 @@ ipcMain.handle('cleaner:clear-prefetch', async () => {
     let filesAfter = 0;
 
     if (fs.existsSync(prefetch)) {
-      const allFiles = fs.readdirSync(prefetch);
-      filesBefore = allFiles.filter(f => f.endsWith('.pf')).length;
-
-      for (const file of allFiles) {
-        if (file.endsWith('.pf')) {
-          try {
-            const filePath = path.join(prefetch, file);
-            const stats = fs.statSync(filePath);
-            totalSize += stats.size;
-            fs.rmSync(filePath, { force: true });
-            filesDeleted++;
-          } catch (e) { }
-        }
-      }
-
+      const result = await asyncCleanFlat(prefetch, f => f.endsWith('.pf'));
+      filesDeleted = result.filesDeleted;
+      totalSize = result.sizeFreed;
+      filesBefore = result.filesBefore;
       filesAfter = filesBefore - filesDeleted;
     }
 
@@ -964,23 +749,12 @@ ipcMain.handle('cleaner:clear-memory-dumps', async () => {
     if (!fs.existsSync(dumpDir)) {
       return { success: false, message: 'Minidump folder not found.' };
     }
-    const files = fs.readdirSync(dumpDir);
-    filesBefore = files.length;
+    const dumpResult = await asyncCleanFlat(dumpDir);
+    filesDeleted = dumpResult.filesDeleted;
+    totalSize = dumpResult.sizeFreed;
+    filesBefore = dumpResult.filesBefore;
     if (filesBefore === 0) {
       return { success: true, message: 'Minidump folder found, but no dump files to delete.', filesDeleted: 0, filesBefore: 0, filesAfter: 0, spaceSaved: '0 MB', details: 'No files to delete.' };
-    }
-    for (const file of files) {
-      try {
-        const filePath = path.join(dumpDir, file);
-        const stats = fs.statSync(filePath);
-        totalSize += stats.size;
-        if (stats.isDirectory()) {
-          fs.rmSync(filePath, { recursive: true, force: true });
-        } else {
-          fs.rmSync(filePath, { force: true });
-        }
-        filesDeleted++;
-      } catch (e) { }
     }
     filesAfter = filesBefore - filesDeleted;
     const sizeInMB = (totalSize / (1024 * 1024)).toFixed(2);

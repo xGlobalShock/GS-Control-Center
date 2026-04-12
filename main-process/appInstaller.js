@@ -577,7 +577,7 @@ public class DeElev {
         execSync(`schtasks /run /tn "${taskName}"`,
           { stdio: 'ignore', windowsHide: true, timeout: 10000 });
         console.log(TAG, 'De-elevated via schtasks');
-        setTimeout(() => { try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch {} }, 5000);
+        setTimeout(() => { try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true, timeout: 10000 }); } catch {} }, 5000);
         return true;
       } catch (e) {
         console.error(TAG, 'schtasks failed:', (e.message || '').substring(0, 200));
@@ -615,11 +615,13 @@ public class DeElev {
       let elapsed = 0;
       const pollMs = 1500;
       const maxWait = 300000;
+      const noLogTimeout = 15000; // early bail if log file never appears
       let lastLen = 0;
       let staleSince = 0;
       const staleLimit = 30000;
       let downloadSeen = false;
       let installSeen = false;
+      let logEverSeen = false;
 
       const poll = setInterval(() => {
         if (installCancelled) {
@@ -636,6 +638,18 @@ public class DeElev {
         let log = '';
         try { log = fs.readFileSync(tmpLog, 'utf8'); } catch {}
         const lower = log.toLowerCase();
+
+        if (log.length > 0) logEverSeen = true;
+
+        // Early bail: if log file never appears within noLogTimeout, the process didn't start
+        if (!logEverSeen && elapsed >= noLogTimeout) {
+          clearInterval(poll);
+          try { fs.unlinkSync(tmpBat); } catch {}
+          try { fs.unlinkSync(tmpLog); } catch {}
+          sendProgress({ phase: 'error', status: 'Installer process did not start', percent: 0 });
+          resolve({ success: false, message: 'De-elevated installer did not produce output within 15s.' });
+          return;
+        }
 
         if (log.length === lastLen) { staleSince += pollMs; }
         else { lastLen = log.length; staleSince = 0; }
@@ -700,7 +714,8 @@ public class DeElev {
       activeInstallProc = proc;
 
       const timeout = setTimeout(() => {
-        cancelled = true; proc.kill();
+        cancelled = true;
+        try { spawn('taskkill', ['/F', '/T', '/PID', String(proc.pid)], { windowsHide: true }); } catch {}
         sendProgress({ phase: 'error', status: 'Installation timed out', percent: 0 });
         resolve({ success: false, message: 'Installation timed out', output: fullOutput });
       }, 300000);

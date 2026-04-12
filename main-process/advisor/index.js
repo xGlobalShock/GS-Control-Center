@@ -15,6 +15,8 @@ const { generateLiveInsights }            = require('./explanationEngine');
 let _cachedHwHash = '';
 let _cachedProfile = null;
 let _cachedDeepAnalysis = null;
+let _cachedAt = 0;
+const ADVISOR_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 function hashHw(hw) {
   if (!hw) return '';
@@ -27,7 +29,8 @@ function hashHw(hw) {
 
 function runDeepAnalysis(hw) {
   const hwHash = hashHw(hw);
-  if (hwHash === _cachedHwHash && _cachedProfile) {
+  const cacheAge = Date.now() - _cachedAt;
+  if (hwHash === _cachedHwHash && _cachedProfile && cacheAge < ADVISOR_CACHE_TTL) {
     return { profile: _cachedProfile, deep: _cachedDeepAnalysis };
   }
 
@@ -44,6 +47,7 @@ function runDeepAnalysis(hw) {
     _cachedHwHash = hwHash;
     _cachedProfile = profile;
     _cachedDeepAnalysis = deep;
+    _cachedAt = Date.now();
 
     return { profile, deep };
   } catch (err) {

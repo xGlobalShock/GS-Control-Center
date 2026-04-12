@@ -176,6 +176,8 @@ function _spawnSidecar(exePath) {
           }
         } else if (obj.type === 'data') {
           _sidecarData = obj;
+          // Sidecar is healthy — reset restart counter
+          if (_sidecarRestartCount > 0) _sidecarRestartCount = 0;
           if (!_sidecarReady) {
             _sidecarReady = true;
             // First data tick — sidecar has discovered fan control handle, restore user's setting
@@ -236,13 +238,22 @@ function _spawnSidecar(exePath) {
   });
 
   _sidecarProcess.on('exit', (code) => {
+    // Clear stderr flush timer to prevent leaked timers
+    if (_stderrTimer) { clearTimeout(_stderrTimer); _stderrTimer = null; }
+    // Remove all listeners from the dying process before nulling ref
+    try { _sidecarProcess.removeAllListeners(); } catch {}
+    try { _sidecarProcess.stdout.removeAllListeners(); } catch {}
+    try { _sidecarProcess.stderr.removeAllListeners(); } catch {}
     _sidecarProcess = null;
 
-    if (_sidecarRestartCount < MAX_SIDECAR_RESTARTS && code !== 0) {
+    if (code === 0) {
+      // Graceful exit — reset restart counter
+      _sidecarRestartCount = 0;
+    } else if (_sidecarRestartCount < MAX_SIDECAR_RESTARTS) {
       _sidecarRestartCount++;
       console.warn(`[HardwareMonitor] Sidecar exited with code ${code}, restarting (${_sidecarRestartCount}/${MAX_SIDECAR_RESTARTS})...`);
       setTimeout(() => _spawnSidecar(exePath), 2000);
-    } else if (code !== 0) {
+    } else {
       console.error(`[HardwareMonitor] Sidecar failed after ${MAX_SIDECAR_RESTARTS} restarts`);
     }
   });

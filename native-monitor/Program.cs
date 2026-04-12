@@ -90,6 +90,9 @@ public static class Program
     // Persist last valid disk temp so transient LHM null reads don't blank the UI
     private static double _lastDiskTemp = -1;
 
+    // Persist last valid CPU temp so transient LHM null reads don't blank the UI
+    private static double _lastCpuTemp = -1;
+
     // LHM re-init state — if CPU temp stays null for too long, try reopening
     private static int _cpuTempNullTicks = 0;
     private static bool _lhmReinitAttempted = false;
@@ -133,6 +136,16 @@ public static class Program
     private static IControl? _gpuFanControl;
     private static readonly object _fanLock = new();
     private static int _pendingFanSpeed = -1; // -1 = no change, 0 = auto, 1-100 = manual %
+
+    // Background thread references for graceful shutdown
+    private static Thread? _pingThread;
+    private static Thread? _gwPingThread;
+
+    // LHM Accept() timeout — prevents sidecar hang if a sensor driver blocks
+    private const int LhmAcceptTimeoutMs = 3000;
+
+    // Max per-core CPU entries to prevent huge JSON payloads on high-core-count systems
+    private const int MaxPerCoreCpuEntries = 64;
 
     public static void Main(string[] args)
     {
@@ -336,6 +349,7 @@ public static class Program
             Priority = ThreadPriority.BelowNormal,
             Name = "PingLoop"
         };
+        _pingThread = pingThread;
         pingThread.Start();
 
         var gwPingThread = new Thread(GatewayPingLoop)
@@ -344,6 +358,7 @@ public static class Program
             Priority = ThreadPriority.BelowNormal,
             Name = "GatewayPingLoop"
         };
+        _gwPingThread = gwPingThread;
         gwPingThread.Start();
 
         // Main polling loop — 500ms cycle
@@ -352,7 +367,16 @@ public static class Program
             try
             {
                 if (computer != null)
-                    computer.Accept(visitor);
+                {
+                    // Wrap LHM sensor update in a timeout to prevent indefinite hang
+                    // if a sensor driver (PawnIO, GPU, storage) blocks
+                    var acceptTask = Task.Run(() => computer.Accept(visitor));
+                    if (!acceptTask.Wait(LhmAcceptTimeoutMs))
+                    {
+                        Log("LHM_ACCEPT_TIMEOUT:skipping this tick");
+                        // Don't kill the computer — just skip this reading
+                    }
+                }
 
                 // If CPU temp has been null too long, try re-initializing LHM
                 computer = TryReinitLhm(computer, visitor);
@@ -372,6 +396,11 @@ public static class Program
 
         // Keep fan at user's chosen speed — don't reset to auto on shutdown
         try { computer?.Close(); } catch { /* best-effort cleanup */ }
+
+        // Wait for background threads to exit gracefully (2s max each)
+        try { _pingThread?.Join(2000); } catch { }
+        try { _gwPingThread?.Join(2000); } catch { }
+
         Log("SHUTDOWN");
     }
 
@@ -566,6 +595,10 @@ public static class Program
 
         // Use last valid disk temp if LHM returned null this tick
         if (diskTemp < 0 && _lastDiskTemp > 0) diskTemp = _lastDiskTemp;
+
+        // Use last valid CPU temp if LHM returned null this tick (transient sensor glitch)
+        if (cpuTemp > 0) _lastCpuTemp = cpuTemp;
+        else if (cpuTemp < 0 && _lastCpuTemp > 0) cpuTemp = _lastCpuTemp;
 
         // Fallback chain for CPU temperature — track source for diagnostics
         string tempSource = "none";
@@ -827,7 +860,7 @@ public static class Program
             {
                 if (s.Name == "CPU Total")
                     cpuTotal = Math.Round(v, 1);
-                else if (s.Name.StartsWith("CPU Core #"))
+                else if (s.Name.StartsWith("CPU Core #") && perCoreCpu.Count < MaxPerCoreCpuEntries)
                     perCoreCpu.Add(Math.Round(v, 1));
             }
             else if (s.SensorType == SensorType.Clock && s.Name.StartsWith("Core #"))
@@ -1460,7 +1493,7 @@ static class PawnIoHelper
             if (proc == null) return "FAILED:could not start pnputil";
             var stdout = proc.StandardOutput.ReadToEnd();
             var stderr = proc.StandardError.ReadToEnd();
-            proc.WaitForExit(15000);
+            proc.WaitForExit(5000);
             var exit = proc.ExitCode;
             var output = (stdout + " " + stderr).Replace("\r", "").Replace("\n", " ").Trim();
             return exit == 0 ? $"OK:{output}" : $"FAILED(exit={exit}):{output}";

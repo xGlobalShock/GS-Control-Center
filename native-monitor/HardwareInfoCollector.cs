@@ -18,6 +18,17 @@ namespace GCMonitor;
 
 public static class HardwareInfoCollector
 {
+    private const int WmiTimeoutMs = 5000;
+
+    private static void RunTimed(Action action, string label)
+    {
+        var task = Task.Run(action);
+        if (!task.Wait(WmiTimeoutMs))
+            Log($"{label}_TIMEOUT:exceeded {WmiTimeoutMs}ms");
+        else if (task.IsFaulted)
+            throw task.Exception!.InnerException ?? task.Exception;
+    }
+
     /// <summary>
     /// Collect all "fast" hardware info (runs in ~1-2 seconds).
     /// Called once at startup on a background thread.
@@ -26,23 +37,23 @@ public static class HardwareInfoCollector
     {
         var info = new Dictionary<string, object?> { ["type"] = "hwinfo" };
 
-        try { CollectCpu(info); } catch (Exception ex) { Log($"CPU_ERR:{ex.Message}"); }
-        try { CollectGpu(info, computer); } catch (Exception ex) { Log($"GPU_ERR:{ex.Message}"); }
-        try { CollectRam(info); } catch (Exception ex) { Log($"RAM_ERR:{ex.Message}"); }
-        try { CollectDisk(info); } catch (Exception ex) { Log($"DISK_ERR:{ex.Message}"); }
-        try { CollectAllDrives(info); } catch (Exception ex) { Log($"DRIVES_ERR:{ex.Message}"); }
-        try { CollectNetwork(info); } catch (Exception ex) { Log($"NET_ERR:{ex.Message}"); }
-        try { CollectWindows(info); } catch (Exception ex) { Log($"WIN_ERR:{ex.Message}"); }
-        try { CollectUptime(info); } catch (Exception ex) { Log($"UPTIME_ERR:{ex.Message}"); }
-        try { CollectPowerPlan(info); } catch (Exception ex) { Log($"POWER_ERR:{ex.Message}"); }
-        try { CollectBattery(info); } catch (Exception ex) { Log($"BATT_ERR:{ex.Message}"); }
-        try { CollectMotherboard(info); } catch (Exception ex) { Log($"MOBO_ERR:{ex.Message}"); }
-        try { CollectBios(info); } catch (Exception ex) { Log($"BIOS_ERR:{ex.Message}"); }
-        try { CollectSecureBoot(info); } catch (Exception ex) { Log($"SBOOT_ERR:{ex.Message}"); }
-        try { CollectKeyboard(info); } catch (Exception ex) { Log($"KB_ERR:{ex.Message}"); }
-        try { CollectMemoryStats(info); } catch (Exception ex) { Log($"MEMSTAT_ERR:{ex.Message}"); }
-        try { CollectTopProcesses(info); } catch (Exception ex) { Log($"PROC_ERR:{ex.Message}"); }
-        try { CollectPhysicalDisks(info); } catch (Exception ex) { Log($"PDISK_ERR:{ex.Message}"); }
+        try { RunTimed(() => CollectCpu(info), "CPU"); } catch (Exception ex) { Log($"CPU_ERR:{ex.Message}"); }
+        try { RunTimed(() => CollectGpu(info, computer), "GPU"); } catch (Exception ex) { Log($"GPU_ERR:{ex.Message}"); }
+        try { RunTimed(() => CollectRam(info), "RAM"); } catch (Exception ex) { Log($"RAM_ERR:{ex.Message}"); }
+        try { RunTimed(() => CollectDisk(info), "DISK"); } catch (Exception ex) { Log($"DISK_ERR:{ex.Message}"); }
+        try { RunTimed(() => CollectAllDrives(info), "DRIVES"); } catch (Exception ex) { Log($"DRIVES_ERR:{ex.Message}"); }
+        try { RunTimed(() => CollectNetwork(info), "NET"); } catch (Exception ex) { Log($"NET_ERR:{ex.Message}"); }
+        try { RunTimed(() => CollectWindows(info), "WIN"); } catch (Exception ex) { Log($"WIN_ERR:{ex.Message}"); }
+        try { RunTimed(() => CollectUptime(info), "UPTIME"); } catch (Exception ex) { Log($"UPTIME_ERR:{ex.Message}"); }
+        try { RunTimed(() => CollectPowerPlan(info), "POWER"); } catch (Exception ex) { Log($"POWER_ERR:{ex.Message}"); }
+        try { RunTimed(() => CollectBattery(info), "BATT"); } catch (Exception ex) { Log($"BATT_ERR:{ex.Message}"); }
+        try { RunTimed(() => CollectMotherboard(info), "MOBO"); } catch (Exception ex) { Log($"MOBO_ERR:{ex.Message}"); }
+        try { RunTimed(() => CollectBios(info), "BIOS"); } catch (Exception ex) { Log($"BIOS_ERR:{ex.Message}"); }
+        try { RunTimed(() => CollectSecureBoot(info), "SBOOT"); } catch (Exception ex) { Log($"SBOOT_ERR:{ex.Message}"); }
+        try { RunTimed(() => CollectKeyboard(info), "KB"); } catch (Exception ex) { Log($"KB_ERR:{ex.Message}"); }
+        try { RunTimed(() => CollectMemoryStats(info), "MEMSTAT"); } catch (Exception ex) { Log($"MEMSTAT_ERR:{ex.Message}"); }
+        try { RunTimed(() => CollectTopProcesses(info), "PROC"); } catch (Exception ex) { Log($"PROC_ERR:{ex.Message}"); }
+        try { RunTimed(() => CollectPhysicalDisks(info), "PDISK"); } catch (Exception ex) { Log($"PDISK_ERR:{ex.Message}"); }
 
         return info;
     }
@@ -1159,7 +1170,14 @@ public static class HardwareInfoCollector
         var top = new List<Dictionary<string, object>>();
         try
         {
-            var grouped = Process.GetProcesses()
+            var getProcsTask = Task.Run(() => Process.GetProcesses());
+            if (!getProcsTask.Wait(3000))
+            {
+                Log("PROC_TIMEOUT:GetProcesses exceeded 3s");
+                info["ramTopProcesses"] = top;
+                return;
+            }
+            var grouped = getProcsTask.Result
                 .GroupBy(p => p.ProcessName)
                 .Select(g => new { Name = g.Key, TotalWS = g.Sum(p => { try { return p.WorkingSet64; } catch { return 0L; } }) })
                 .OrderByDescending(g => g.TotalWS)
