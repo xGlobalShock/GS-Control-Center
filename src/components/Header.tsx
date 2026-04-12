@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Minus, Square, X, Copy, ArrowDownCircle, Download, RefreshCw, CheckCircle, AlertTriangle, XCircle, Sparkles, Radio } from 'lucide-react';
+import { Minus, X, ArrowDownCircle, Download, RefreshCw, CheckCircle, AlertTriangle, XCircle, Sparkles, Radio } from 'lucide-react';
 import ProfileDropdown from './ProfileDropdown';
 import changelog from '../data/changelog';
 import devUpdatesDefault from '../data/devUpdates';

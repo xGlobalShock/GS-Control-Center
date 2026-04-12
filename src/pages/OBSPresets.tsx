@@ -3,7 +3,7 @@ import { OBS_PRESETS } from '../data/obsPresets';
 import { applyObsPreset, launchObs } from '../services/obsPresetsService';
 import { useToast } from '../contexts/ToastContext';
 import { motion } from 'framer-motion';
-import { Check, Zap, Radio, MonitorPlay } from 'lucide-react';
+import { Check, Radio, MonitorPlay } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import DualPCWizard from '../components/DualPCWizard';
 import '../styles/OBSPresets.css';

@@ -5,9 +5,8 @@ import {
 } from 'recharts';
 import {
   Cpu, MonitorSpeaker, MemoryStick, HardDrive, Network, Wifi,
-  Monitor, TrendingUp, TrendingDown, Minus as FlatIcon, CheckCircle,
+  Monitor, TrendingUp, TrendingDown, CheckCircle,
   ArrowUp, ArrowDown, Info, X as XIcon,
-  Weight,
 } from 'lucide-react';
 import type { HardwareInfo, ExtendedStats } from '../App';
 import '../styles/DashboardHero.css';

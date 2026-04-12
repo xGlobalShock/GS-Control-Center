@@ -8,7 +8,7 @@ import CacheCleanupToast from '../components/CacheCleanupToast';
 import PageHeader from '../components/PageHeader';
 import SystemRepairPanel from '../components/SystemRepairPanel';
 import TweakExecutionModal from '../components/TweakExecutionModal';
-import { Monitor, ShieldAlert, Info, Loader2, Gamepad2, Settings, Server, Box, Globe, Wrench, Shield, Trash2, Zap, LayoutDashboard, Search, EyeOff, X, Cpu, Sparkles, SlidersHorizontal, Crown, Check, Download, Square, CheckSquare } from 'lucide-react';
+import { Monitor, Info, Loader2, Gamepad2, Settings, Server, Globe, Wrench, Shield, Trash2, Zap, LayoutDashboard, Search, EyeOff, X, Cpu, Sparkles, SlidersHorizontal, Crown, Check, Download } from 'lucide-react';
 import '../styles/Cleaner.css';
 import '../styles/AppInstaller.css';
 import ProPreviewBanner from '../components/ProPreviewBanner';
