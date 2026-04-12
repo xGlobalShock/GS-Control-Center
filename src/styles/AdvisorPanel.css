@@ -297,4 +297,268 @@
   margin-top: 2px;
 }
 
+/* ── View Details Button ───────────────────────────────────── */
+.advisor-view-details-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(0, 242, 255, 0.85);
+  background: rgba(0, 242, 255, 0.06);
+  border: 1px solid rgba(0, 242, 255, 0.18);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  letter-spacing: 0.3px;
+}
+.advisor-view-details-btn:hover {
+  background: rgba(0, 242, 255, 0.14);
+  border-color: rgba(0, 242, 255, 0.35);
+  color: #00F2FF;
+}
+
+/* ── Overlay / Modal ───────────────────────────────────────── */
+.advisor-overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.advisor-overlay-panel {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: rgba(10, 12, 22, 0.97);
+  border: 1px solid rgba(0, 242, 255, 0.18);
+  border-left: 4px solid rgba(0, 242, 255, 0.5);
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 16px 64px rgba(0, 0, 0, 0.7), 0 0 40px rgba(0, 242, 255, 0.06);
+}
+
+.advisor-overlay-panel.advisor-severity-critical {
+  border-left-color: #ef4444;
+  box-shadow: 0 16px 64px rgba(0, 0, 0, 0.7), 0 0 40px rgba(239, 68, 68, 0.08);
+}
+.advisor-overlay-panel.advisor-severity-warning {
+  border-left-color: #f59e0b;
+  box-shadow: 0 16px 64px rgba(0, 0, 0, 0.7), 0 0 40px rgba(245, 158, 11, 0.08);
+}
+.advisor-overlay-panel.advisor-severity-good {
+  border-left-color: #00F2FF;
+}
+
+.advisor-overlay-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(228, 228, 231, 0.5);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.advisor-overlay-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(228, 228, 231, 0.9);
+}
+
+.advisor-overlay-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding-right: 32px;
+}
+
+.advisor-overlay-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(0, 242, 255, 0.08);
+  color: rgba(228, 228, 231, 0.7);
+}
+.advisor-overlay-icon.advisor-severity-critical {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+.advisor-overlay-icon.advisor-severity-warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+.advisor-overlay-icon.advisor-severity-good {
+  background: rgba(0, 242, 255, 0.1);
+  color: #00F2FF;
+}
+
+.advisor-overlay-title-area {
+  flex: 1;
+  min-width: 0;
+}
+
+.advisor-overlay-severity-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+.advisor-badge-critical {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+.advisor-badge-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+.advisor-badge-good {
+  background: rgba(0, 242, 255, 0.12);
+  color: #00F2FF;
+  border: 1px solid rgba(0, 242, 255, 0.25);
+}
+
+.advisor-overlay-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: rgba(228, 228, 231, 0.95);
+  margin: 0;
+  line-height: 1.35;
+}
+
+.advisor-overlay-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.advisor-overlay-desc {
+  font-size: 12.5px;
+  color: rgba(228, 228, 231, 0.7);
+  line-height: 1.7;
+  margin: 0;
+}
+
+.advisor-overlay-suggestions {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.advisor-overlay-suggestions-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: rgba(228, 228, 231, 0.75);
+  margin-bottom: 10px;
+}
+.advisor-overlay-suggestions-label svg {
+  color: #f59e0b;
+}
+
+.advisor-overlay-suggestions ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.advisor-overlay-suggestions li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(228, 228, 231, 0.65);
+  line-height: 1.6;
+}
+.advisor-overlay-suggestions li svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: #f59e0b;
+}
+
+/* Smooth scrollbar for overlay */
+.advisor-overlay-panel::-webkit-scrollbar {
+  width: 5px;
+}
+.advisor-overlay-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+.advisor-overlay-panel::-webkit-scrollbar-thumb {
+  background: rgba(0, 242, 255, 0.15);
+  border-radius: 10px;
+}
+
+/* ── Full Analysis Overlay ─────────────────────────────────── */
+.advisor-overlay-full {
+  max-width: 560px;
+  border-left-color: rgba(0, 242, 255, 0.5);
+}
+
+.advisor-overlay-insight {
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.02);
+}
+.advisor-overlay-insight.advisor-severity-critical {
+  border-left: 3px solid #ef4444;
+}
+.advisor-overlay-insight.advisor-severity-warning {
+  border-left: 3px solid #f59e0b;
+}
+
+.advisor-overlay-insight-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.advisor-overlay-insight-icon {
+  color: rgba(228, 228, 231, 0.6);
+  display: flex;
+  align-items: center;
+}
+
+.advisor-overlay-insight-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(228, 228, 231, 0.9);
+}
+
+.advisor-overlay-upgrades {
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
 

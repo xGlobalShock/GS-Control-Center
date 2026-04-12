@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Cpu, Thermometer, HardDrive, Wifi, MemoryStick, MonitorCheck, ChevronDown, ChevronUp, Lightbulb, ArrowUpCircle, Zap, BatteryCharging, Activity } from 'lucide-react';
+import { Brain, Cpu, Thermometer, HardDrive, Wifi, MemoryStick, MonitorCheck, ChevronDown, ChevronUp, Lightbulb, ArrowUpCircle, Zap, BatteryCharging, Activity, Eye, X, Monitor } from 'lucide-react';
 import '../styles/AdvisorPanel.css';
 
 interface Insight {
@@ -55,6 +56,21 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   zap: <Zap size={15} />,
   'battery-charging': <BatteryCharging size={15} />,
   activity: <Activity size={15} />,
+  monitor: <Monitor size={15} />,
+};
+
+const ICON_MAP_LG: Record<string, React.ReactNode> = {
+  cpu: <Cpu size={22} />,
+  gpu: <MonitorCheck size={22} />,
+  thermometer: <Thermometer size={22} />,
+  memory: <MemoryStick size={22} />,
+  disk: <HardDrive size={22} />,
+  network: <Wifi size={22} />,
+  check: <MonitorCheck size={22} />,
+  zap: <Zap size={22} />,
+  'battery-charging': <BatteryCharging size={22} />,
+  activity: <Activity size={22} />,
+  monitor: <Monitor size={22} />,
 };
 
 const severityClass: Record<string, string> = {
@@ -68,7 +84,7 @@ const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ systemStats, extendedStats,
   const [expandedInternal, setExpandedInternal] = useState(false);
   const expanded = isExpanded !== undefined ? isExpanded : expandedInternal;
   const handleToggle = onToggle ?? (() => setExpandedInternal(v => !v));
-  const [expandedInsight, setExpandedInsight] = useState<string | null>(null);
+  const [showOverlay, setShowOverlay] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inflightRef = useRef(false);
   const latestPropsRef = useRef({ systemStats, extendedStats, hardwareInfo });
@@ -137,59 +153,116 @@ const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ systemStats, extendedStats,
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.25 }}
           >
-            {data.insights.map((insight) => (
-              <div key={insight.id} className={`advisor-insight ${severityClass[insight.severity] || ''}`}>
-                <div
-                  className="advisor-insight-header"
-                  onClick={(e) => { e.stopPropagation(); setExpandedInsight(expandedInsight === insight.id ? null : insight.id); }}
-                >
-                  <span className="advisor-insight-icon">{ICON_MAP[insight.icon] || <Brain size={15} />}</span>
-                  <span className="advisor-insight-title">{insight.title}</span>
-                  {insight.suggestions.length > 0 && (
-                    <span className="advisor-insight-expand">
-                      {expandedInsight === insight.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                    </span>
-                  )}
+            {isAllGood ? (
+              <div className="advisor-insight advisor-severity-good">
+                <div className="advisor-insight-header">
+                  <span className="advisor-insight-icon">{ICON_MAP['check']}</span>
+                  <span className="advisor-insight-title">No Issues Detected</span>
                 </div>
-                <p className="advisor-insight-desc">{insight.description}</p>
-                <AnimatePresence>
-                  {expandedInsight === insight.id && insight.suggestions.length > 0 && (
-                    <motion.ul
-                      className="advisor-suggestions"
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      {insight.suggestions.map((s, i) => (
-                        <li key={i}><Lightbulb size={11} /> {s}</li>
-                      ))}
-                    </motion.ul>
-                  )}
-                </AnimatePresence>
+                <p className="advisor-insight-desc">Your system is running smoothly.</p>
               </div>
-            ))}
-
-            {data.upgrades.length > 0 && (
-              <div className="advisor-upgrades">
-                <div className="advisor-upgrades-title">
-                  <ArrowUpCircle size={14} /> Upgrade Recommendations
+            ) : (
+              <div className="advisor-insight advisor-severity-warning">
+                <div className="advisor-insight-header">
+                  <span className="advisor-insight-icon"><Activity size={15} /></span>
+                  <span className="advisor-insight-title">Issue Detected</span>
                 </div>
-                {data.upgrades.map((u, i) => (
-                  <div key={i} className="advisor-upgrade-row">
-                    <div className="advisor-upgrade-header">
-                      <span className="advisor-upgrade-component">{u.component}</span>
-                      <span className="advisor-upgrade-impact">{u.impact}</span>
-                    </div>
-                    <p className="advisor-upgrade-reason">{u.reason}</p>
-                    <span className="advisor-upgrade-specifics">{u.specifics}</span>
-                  </div>
-                ))}
+                <p className="advisor-insight-desc">We've detected an issue with your PC, click view details for more info.</p>
+                <button
+                  className="advisor-view-details-btn"
+                  onClick={(e) => { e.stopPropagation(); setShowOverlay(true); }}
+                >
+                  <Eye size={11} /> View Details
+                </button>
               </div>
             )}
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Full Analysis Overlay ── */}
+      {ReactDOM.createPortal(
+        <AnimatePresence>
+          {showOverlay && data && !isAllGood && (
+            <motion.div
+              className="advisor-overlay-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setShowOverlay(false)}
+            >
+              <motion.div
+                className="advisor-overlay-panel advisor-overlay-full"
+                initial={{ opacity: 0, y: 30, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 20, scale: 0.97 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button className="advisor-overlay-close" onClick={() => setShowOverlay(false)}>
+                  <X size={16} />
+                </button>
+
+                <div className="advisor-overlay-header">
+                  <div className="advisor-overlay-icon advisor-severity-warning">
+                    <Brain size={22} />
+                  </div>
+                  <div className="advisor-overlay-title-area">
+                    <h3 className="advisor-overlay-title">System Analysis</h3>
+                  </div>
+                </div>
+
+                <div className="advisor-overlay-body">
+                  {data.insights.filter(i => i.id !== 'all-good').map((insight) => (
+                    <div key={insight.id} className={`advisor-overlay-insight ${severityClass[insight.severity] || ''}`}>
+                      <div className="advisor-overlay-insight-header">
+                        <span className="advisor-overlay-insight-icon">{ICON_MAP[insight.icon] || <Brain size={15} />}</span>
+                        <span className={`advisor-overlay-severity-badge advisor-badge-${insight.severity}`}>
+                          {insight.severity}
+                        </span>
+                        <span className="advisor-overlay-insight-title">{insight.title}</span>
+                      </div>
+                      <p className="advisor-overlay-desc">{insight.description}</p>
+                      {insight.suggestions.length > 0 && (
+                        <div className="advisor-overlay-suggestions">
+                          <div className="advisor-overlay-suggestions-label">
+                            <Lightbulb size={13} /> Recommendations
+                          </div>
+                          <ul>
+                            {insight.suggestions.filter(Boolean).map((s, i) => (
+                              <li key={i}><Lightbulb size={11} /> {s}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {data.upgrades.length > 0 && (
+                    <div className="advisor-overlay-upgrades">
+                      <div className="advisor-upgrades-title">
+                        <ArrowUpCircle size={14} /> Upgrade Recommendations
+                      </div>
+                      {data.upgrades.map((u, i) => (
+                        <div key={i} className="advisor-upgrade-row">
+                          <div className="advisor-upgrade-header">
+                            <span className="advisor-upgrade-component">{u.component}</span>
+                            <span className="advisor-upgrade-impact">{u.impact}</span>
+                          </div>
+                          <p className="advisor-upgrade-reason">{u.reason}</p>
+                          <span className="advisor-upgrade-specifics">{u.specifics}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 };
