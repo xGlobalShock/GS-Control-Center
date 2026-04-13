@@ -121,15 +121,15 @@
 }
 
 .repair-status--running {
-  background: rgba(0, 242, 255, 0.07);
-  color: #00F2FF;
-  border-color: rgba(0, 242, 255, 0.18);
+  background: rgba(var(--accent), 0.07);
+  color: rgb(var(--accent));
+  border-color: rgba(var(--accent), 0.18);
 }
 
 .repair-status--done {
-  background: rgba(0, 242, 255, 0.07);
-  color: #00F2FF;
-  border-color: rgba(0, 242, 255, 0.18);
+  background: rgba(var(--accent), 0.07);
+  color: rgb(var(--accent));
+  border-color: rgba(var(--accent), 0.18);
 }
 
 .repair-status--error {
@@ -212,7 +212,7 @@
 }
 
 .repair-log-line--progress {
-  color: var(--repair-color, #00F2FF);
+  color: var(--repair-color, rgb(var(--accent)));
   font-weight: 600;
 }
 
@@ -533,19 +533,19 @@
   justify-content: center;
   width: 30px;
   height: 30px;
-  background: rgba(0, 242, 255, 0.06);
-  border: 1px solid rgba(0, 242, 255, 0.15);
+  background: rgba(var(--accent), 0.06);
+  border: 1px solid rgba(var(--accent), 0.15);
   border-radius: 8px;
-  color: rgba(0, 242, 255, 0.7);
+  color: rgba(var(--accent), 0.7);
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .repair-modal-minimize:hover {
-  background: rgba(0, 242, 255, 0.14);
-  color: #00F2FF;
-  border-color: rgba(0, 242, 255, 0.35);
+  background: rgba(var(--accent), 0.14);
+  color: rgb(var(--accent));
+  border-color: rgba(var(--accent), 0.35);
 }
 
 /* Minimize button — modal footer */
@@ -555,10 +555,10 @@
   justify-content: center;
   gap: 6px;
   padding: 8px 16px;
-  background: rgba(0, 242, 255, 0.06);
-  border: 1px solid rgba(0, 242, 255, 0.18);
+  background: rgba(var(--accent), 0.06);
+  border: 1px solid rgba(var(--accent), 0.18);
   border-radius: 8px;
-  color: rgba(0, 242, 255, 0.8);
+  color: rgba(var(--accent), 0.8);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -567,9 +567,9 @@
 }
 
 .repair-minimize-btn:hover {
-  background: rgba(0, 242, 255, 0.14);
-  color: #00F2FF;
-  border-color: rgba(0, 242, 255, 0.35);
+  background: rgba(var(--accent), 0.14);
+  color: rgb(var(--accent));
+  border-color: rgba(var(--accent), 0.35);
 }
 
 /* Modal Log Area */
@@ -614,7 +614,7 @@
 
 .repair-progress-pct {
   font-weight: 700;
-  color: var(--repair-color, #00F2FF);
+  color: var(--repair-color, rgb(var(--accent)));
   font-size: 11px;
 }
 
@@ -628,12 +628,12 @@
 .repair-progress-fill {
   height: 100%;
   width: 100%;
-  background: var(--repair-color, #00F2FF);
+  background: var(--repair-color, rgb(var(--accent)));
   border-radius: 99px;
   transform-origin: left center;
   transition: transform 0.3s ease;
   will-change: transform;
-  box-shadow: 0 0 8px color-mix(in srgb, var(--repair-color, #00F2FF) 50%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--repair-color, rgb(var(--accent))) 50%, transparent);
 }
 
 /* Modal Footer */

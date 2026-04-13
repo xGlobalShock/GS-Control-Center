@@ -52,10 +52,10 @@
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: #00F2FF;
+  background: rgb(var(--accent));
   box-shadow:
-    0 0 6px 2px rgba(0, 242, 255, 0.65),
-    0 0 14px rgba(0, 242, 255, 0.35);
+    0 0 6px 2px rgba(var(--accent), 0.65),
+    0 0 14px rgba(var(--accent), 0.35);
   z-index: 2;
 }
 
@@ -78,10 +78,10 @@
   inset: 0;
   background: linear-gradient(
     90deg,
-    rgba(0, 242, 255, 0.22)   0%,
-    rgba(0, 242, 255, 0.36)  20%,
-    rgba(0, 242, 255, 0.18)  70%,
-    rgba(0, 242, 255, 0.04) 100%
+    rgba(var(--accent), 0.22)   0%,
+    rgba(var(--accent), 0.36)  20%,
+    rgba(var(--accent), 0.18)  70%,
+    rgba(var(--accent), 0.04) 100%
   );
 }
 
@@ -167,8 +167,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #00F2FF;
-  filter: drop-shadow(0 0 4px rgba(0, 242, 255, 0.4));
+  color: rgb(var(--accent));
+  filter: drop-shadow(0 0 4px rgba(var(--accent), 0.4));
 }
 .hud-section-title {
   margin: 0;
@@ -180,5 +180,5 @@
 .hud-section-line {
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, rgba(0, 242, 255, 0.25), transparent);
+  background: linear-gradient(90deg, rgba(var(--accent), 0.25), transparent);
 }

@@ -23,7 +23,7 @@ interface NetworkAdapter {
   mac: string;
 }
 
-const ACCENT = '#00F2FF';
+const ACCENT = 'rgb(var(--accent))';
 
 /** Pick best NDI preset based on detected link speed */
 function recommendNDI(adapters: NetworkAdapter[]): NDISettings {

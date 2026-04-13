@@ -1,6 +1,6 @@
 .health-score-card {
   background: rgba(6, 8, 16, 0.72);
-  border: 1px solid rgba(0, 242, 255, 0.18);
+  border: 1px solid rgba(var(--accent), 0.18);
   border-radius: 12px;
   padding: 14px 16px;
   margin-bottom: 12px;
@@ -31,7 +31,7 @@
   bottom: 14px;
   width: 2px;
   border-radius: 0 2px 2px 0;
-  background: linear-gradient(180deg, rgba(0, 242, 255, 0.9) 0%, rgba(0, 242, 255, 0.25) 100%);
+  background: linear-gradient(180deg, rgba(var(--accent), 0.9) 0%, rgba(var(--accent), 0.25) 100%);
   pointer-events: none;
 }
 
@@ -44,7 +44,7 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  box-shadow: 0 0 0 1px rgba(0, 242, 255, 0.2), 0 6px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 1px rgba(var(--accent), 0.2), 0 6px 24px rgba(0, 0, 0, 0.4);
   opacity: 0.2;
   transition: opacity 0.25s ease;
   pointer-events: none;
@@ -160,12 +160,12 @@
   transition: transform 0.6s ease-out;
   will-change: transform;
 }
-.health-bar-good { background: #00F2FF; }
+.health-bar-good { background: rgb(var(--accent)); }
 .health-bar-warning { background: #f59e0b; }
 .health-bar-critical { background: #ef4444; }
 .health-bar-unknown { background: rgba(255, 255, 255, 0.2); }
 /* ── Status Icons ───────────────────────────────────────────────────── */
-.health-icon-good { color: #00F2FF; }
+.health-icon-good { color: rgb(var(--accent)); }
 .health-icon-warning { color: #f59e0b; }
 .health-icon-critical { color: #ef4444; }
 .health-icon-unknown { color: rgba(228, 228, 231, 0.3); }
@@ -190,14 +190,14 @@
   justify-content: center;
   position: relative;
   box-sizing: border-box;
-  border: 1px solid rgba(0, 204, 106, 0.25);
-  background: linear-gradient(135deg, rgba(0, 204, 106, 0.055) 0%, transparent 55%), rgba(4, 7, 16, 0.97);
-  box-shadow: 0 0 0 1px rgba(0, 204, 106, 0.06), 0 4px 20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(0, 204, 106, 0.13);
+  border: 1px solid rgba(var(--accent), 0.25);
+  background: linear-gradient(135deg, rgba(var(--accent), 0.055) 0%, transparent 55%), rgba(4, 7, 16, 0.97);
+  box-shadow: 0 0 0 1px rgba(var(--accent), 0.06), 0 4px 20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(var(--accent), 0.13);
 }
 .health-score-card--compact.health-score-card--good {
-  border-color: rgba(0, 204, 106, 0.25);
-  background: linear-gradient(135deg, rgba(0, 204, 106, 0.055) 0%, transparent 55%), rgba(4, 7, 16, 0.97);
-  box-shadow: 0 0 0 1px rgba(0, 204, 106, 0.06), 0 4px 20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(0, 204, 106, 0.13);
+  border-color: rgba(var(--accent), 0.25);
+  background: linear-gradient(135deg, rgba(var(--accent), 0.055) 0%, transparent 55%), rgba(4, 7, 16, 0.97);
+  box-shadow: 0 0 0 1px rgba(var(--accent), 0.06), 0 4px 20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(var(--accent), 0.13);
 }
 .health-score-card--compact.health-score-card--warning {
   border-color: rgba(245, 158, 11, 0.25);
@@ -224,7 +224,7 @@
 }
 .health-score-card--compact.health-score-card--good::before,
 .health-score-card--compact:not(.health-score-card--warning):not(.health-score-card--critical)::before {
-  background: linear-gradient(90deg, transparent, rgba(0, 204, 106, 0.9), transparent);
+  background: linear-gradient(90deg, transparent, rgba(var(--accent), 0.9), transparent);
 }
 .health-score-card--compact.health-score-card--warning::before {
   background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.9), transparent);
@@ -246,7 +246,7 @@
 }
 .health-score-card--compact.health-score-card--good::after,
 .health-score-card--compact:not(.health-score-card--warning):not(.health-score-card--critical)::after {
-  box-shadow: 0 0 16px rgba(0, 204, 106, 0.22), 0 0 4px rgba(0, 204, 106, 0.08);
+  box-shadow: 0 0 16px rgba(var(--accent), 0.22), 0 0 4px rgba(var(--accent), 0.08);
 }
 .health-score-card--compact.health-score-card--warning::after {
   box-shadow: 0 0 16px rgba(245, 158, 11, 0.22), 0 0 4px rgba(245, 158, 11, 0.08);

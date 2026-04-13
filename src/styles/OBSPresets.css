@@ -5,7 +5,7 @@
 
 /* ── Page ── */
 .aur {
-  --a-accent: #00F2FF;
+  --a-accent: rgb(var(--accent));
   position: relative;
   width: 100%;
   height: 100%;
@@ -130,9 +130,9 @@
 }
 
 .aur-diff--beginner {
-  color: #00F2FF;
-  border-color: rgba(0, 242, 255, 0.2);
-  background: rgba(0, 242, 255, 0.05);
+  color: rgb(var(--accent));
+  border-color: rgba(var(--accent), 0.2);
+  background: rgba(var(--accent), 0.05);
 }
 
 .aur-diff--intermediate {
@@ -170,8 +170,8 @@
   padding: 10px 12px;
   position: relative;
   background: linear-gradient(135deg,
-      rgba(0, 242, 255, 0.04) 0%,
-      rgba(0, 242, 255, 0.01) 100%);
+      rgba(var(--accent), 0.04) 0%,
+      rgba(var(--accent), 0.01) 100%);
   border: 1px solid color-mix(in srgb, var(--a-accent) 12%, transparent);
   border-radius: 18px;
   backdrop-filter: blur(8px);
@@ -390,9 +390,9 @@
 }
 
 .aur-tab--active {
-  color: var(--a-accent, #00F2FF);
-  background: color-mix(in srgb, var(--a-accent, #00F2FF) 8%, transparent);
-  border-color: color-mix(in srgb, var(--a-accent, #00F2FF) 15%, transparent);
+  color: var(--a-accent, rgb(var(--accent)));
+  background: color-mix(in srgb, var(--a-accent, rgb(var(--accent))) 8%, transparent);
+  border-color: color-mix(in srgb, var(--a-accent, rgb(var(--accent))) 15%, transparent);
 }
 
 

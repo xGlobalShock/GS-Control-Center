@@ -23,7 +23,7 @@
   background: rgba(6, 8, 16, 0.55);
   backdrop-filter: blur(20px) saturate(1.5);
   -webkit-backdrop-filter: blur(20px) saturate(1.5);
-  border: 1px solid rgba(0, 242, 255, 0.07);
+  border: 1px solid rgba(var(--accent), 0.07);
   border-radius: 16px;
   overflow: hidden;
   cursor: default;
@@ -35,9 +35,9 @@
 
   box-shadow:
     0 2px 20px rgba(0, 0, 0, 0.45),
-    0 0 1px rgba(0, 242, 255, 0.06),
-    inset 0 1px 0 rgba(0, 242, 255, 0.04),
-    inset 0 0 40px rgba(0, 242, 255, 0.008);
+    0 0 1px rgba(var(--accent), 0.06),
+    inset 0 1px 0 rgba(var(--accent), 0.04),
+    inset 0 0 40px rgba(var(--accent), 0.008);
 
   /* Only transform is GPU-compositable — no paint per hover frame */
   transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
@@ -69,9 +69,9 @@
   inset: 0;
   border-radius: inherit;
   box-shadow:
-    0 0 0 1px rgba(0, 242, 255, 0.22),
+    0 0 0 1px rgba(var(--accent), 0.22),
     0 8px 32px rgba(0, 0, 0, 0.55),
-    0 0 24px rgba(0, 242, 255, 0.05);
+    0 0 24px rgba(var(--accent), 0.05);
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
@@ -260,8 +260,8 @@
   border-radius: 50%;
   flex-shrink: 0;
   animation: dhDotBreath 2.6s ease-in-out infinite;
-  background: #00F2FF;
-  box-shadow: 0 0 5px rgba(0,242,255,0.25);
+  background: rgb(var(--accent));
+  box-shadow: 0 0 5px rgba(var(--accent),0.25);
 }
 
 @keyframes dhDotBreath {
@@ -319,8 +319,8 @@
   flex-shrink: 0;
 }
 .dh-trend--stable {
-  background: rgba(0, 242, 255, 0.08);
-  border: 1px solid rgba(0, 242, 255, 0.2);
+  background: rgba(var(--accent), 0.08);
+  border: 1px solid rgba(var(--accent), 0.2);
   letter-spacing: 0.04em;
 }
 
@@ -392,12 +392,12 @@
   font-size: 9.5px;
   font-weight: 800;
   letter-spacing: 0.12em;
-  color: rgba(0, 242, 255, 0.8);
+  color: rgba(var(--accent), 0.8);
   text-transform: none;
   padding: 3px 9px;
   border-radius: 999px;
-  background: rgba(0, 242, 255, 0.08);
-  border: 1px solid rgba(0, 242, 255, 0.2);
+  background: rgba(var(--accent), 0.08);
+  border: 1px solid rgba(var(--accent), 0.2);
   flex-shrink: 0;
 }
 
@@ -414,8 +414,8 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #00F2FF;
-  box-shadow: 0 0 6px #00F2FF;
+  background: rgb(var(--accent));
+  box-shadow: 0 0 6px rgb(var(--accent));
   will-change: opacity;
   animation: dhLivePulse 2s ease-in-out infinite;
 }
@@ -452,19 +452,19 @@
 }
 
 /* ── Front card RAM stat pills ── */
-.dh-ram-stats { display: flex; gap: 5px; flex-wrap: wrap; flex-shrink: 0; padding-top: 6px; border-top: 1px solid rgba(0, 242, 255,0.1); }
+.dh-ram-stats { display: flex; gap: 5px; flex-wrap: wrap; flex-shrink: 0; padding-top: 6px; border-top: 1px solid rgba(var(--accent),0.1); }
 .dh-ram-stat  {
   font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
   padding: 2px 7px; border-radius: 999px;
-  background: rgba(0, 242, 255,0.1);
-  border: 1px solid rgba(0, 242, 255,0.22);
-  color: rgba(0, 242, 255,0.75);
+  background: rgba(var(--accent),0.1);
+  border: 1px solid rgba(var(--accent),0.22);
+  color: rgba(var(--accent),0.75);
   white-space: nowrap;
 }
 .dh-ram-stat--brand {
-  background: rgba(0, 242, 255,0.06);
-  border-color: rgba(0, 242, 255,0.14);
-  color: rgba(0, 242, 255,0.5);
+  background: rgba(var(--accent),0.06);
+  border-color: rgba(var(--accent),0.14);
+  color: rgba(var(--accent),0.5);
 }
 
 
@@ -509,7 +509,7 @@
 /* ── Core strip ── */
 .dh-cores-wrap { display: flex; flex-direction: column; gap: 4px; }
 .dh-cores-head { display: flex; align-items: center; gap: 5px; }
-.dh-cores-dot  { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; background: #00F2FF; box-shadow: 0 0 4px rgba(0,242,255,0.2); }
+.dh-cores-dot  { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; background: rgb(var(--accent)); box-shadow: 0 0 4px rgba(var(--accent),0.2); }
 .dh-cores-label{ font-size: 10px; color: rgb(255, 255, 255); flex: 1; font-weight: 500; }
 .dh-cores-avg  { font-size: 10px; font-variant-numeric: tabular-nums; font-weight: 700; }
 .dh-cores-bar  { display: flex; gap: 2px; height: 14px; }
@@ -529,7 +529,7 @@
 /* ── Storage diagnostic ── */
 .dh-diag      { display: flex; gap: 8px; padding: 6px 8px; background: rgba(255,255,255,0.025); border-radius: 6px; border: 1px solid rgba(255,255,255,0.04); }
 .dh-diag-cell { display: flex; align-items: center; gap: 6px; flex: 1; }
-.dh-diag-dot  { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: #00F2FF; box-shadow: 0 0 5px rgba(0,242,255,0.18); }
+.dh-diag-dot  { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: rgb(var(--accent)); box-shadow: 0 0 5px rgba(var(--accent),0.18); }
 .dh-diag-info { display: flex; flex-direction: column; gap: 0; }
 .dh-diag-key  { font-size: 8.5px; color: rgba(140,170,210,0.45); font-weight: 600; letter-spacing: 0.06em; text-transform: none; }
 .dh-diag-val  { font-size: 11px; font-weight: 700; }
@@ -539,8 +539,8 @@
 .dh-speed-half  { display: flex; align-items: center; gap: 4px; flex: 1; }
 .dh-speed-div   { width: 1px; height: 14px; background: rgba(255,255,255,0.08); flex-shrink: 0; }
 .dh-speed-ic    { display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0; }
-.dh-speed-ic.read  { color: #FFFFFF; background: rgba(0, 242, 255, 0.12); }
-.dh-speed-ic.write { color: #FFFFFF; background: rgba(0, 242, 255, 0.12); }
+.dh-speed-ic.read  { color: #FFFFFF; background: rgba(var(--accent), 0.12); }
+.dh-speed-ic.write { color: #FFFFFF; background: rgba(var(--accent), 0.12); }
 .dh-speed-val   { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .dh-speed-val.read  { color: #FFFFFF; }
 .dh-speed-val.write { color: #FFFFFF; }
@@ -558,8 +558,8 @@
 .dh-net-ic.up     { color: #FFFFFF; }
 .dh-net-bar-track { flex: 1; height: 3px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; }
 .dh-net-bar-fill  { height: 100%; width: 100%; border-radius: 2px; transform-origin: left center; transition: transform 0.8s ease; will-change: transform; }
-.dh-net-bar-fill.dn { background: linear-gradient(90deg, #00F2FF00, #00F2FF); box-shadow: 0 0 6px #00F2FF55; }
-.dh-net-bar-fill.up { background: linear-gradient(90deg, #00F2FF00, #00F2FF); box-shadow: 0 0 6px #00F2FF55; }
+.dh-net-bar-fill.dn { background: linear-gradient(90deg, rgb(var(--accent))00, rgb(var(--accent))); box-shadow: 0 0 6px rgb(var(--accent))55; }
+.dh-net-bar-fill.up { background: linear-gradient(90deg, rgb(var(--accent))00, rgb(var(--accent))); box-shadow: 0 0 6px rgb(var(--accent))55; }
 .dh-net-bar-val   { font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; width: 64px; text-align: right; flex-shrink: 0; }
 .dh-net-bar-val.dn { color: #FFFFFF; }
 .dh-net-bar-val.up { color: #FFFFFF; }
@@ -578,11 +578,11 @@
 
 /* ── Combined Ping + Loss sparkline ── */
 .dh-net-dual-leg    { display: flex; align-items: center; gap: 4px; font-size: 8px; font-weight: 700; letter-spacing: 0.09em; text-transform: none; }
-.dh-net-dual-dot    { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: #00F2FF; box-shadow: 0 0 5px rgba(0,242,255,0.18); }
+.dh-net-dual-dot    { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: rgb(var(--accent)); box-shadow: 0 0 5px rgba(var(--accent),0.18); }
 .dh-net-speed-top   { display: flex; align-items: center; gap: 5px; }
 .dh-net-speed-ic    { display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0; }
-.dh-net-speed-ic.dn { color: #FFFFFF; background: rgba(0, 242, 255,0.12); }
-.dh-net-speed-ic.up { color: #FFFFFF; background: rgba(0, 242, 255,0.12); }
+.dh-net-speed-ic.dn { color: #FFFFFF; background: rgba(var(--accent),0.12); }
+.dh-net-speed-ic.up { color: #FFFFFF; background: rgba(var(--accent),0.12); }
 .dh-net-speed-lbl   { font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: none; color: #FFFFFF; }
 .dh-net-speed-num   { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -0.01em; }
 .dh-net-speed-num.dn{ color: #FFFFFF; text-shadow: 0 0 12px rgba(255,255,255,0.06); }
@@ -590,13 +590,13 @@
 /* Same scaleX GPU pattern as dh-bar-fill — no layout recalc per frame */
 .dh-net-speed-track { position: relative; height: 2px; background: rgba(255,255,255,0.06); border-radius: 1px; overflow: hidden; }
 .dh-net-speed-fill  { position: absolute; inset: 0; border-radius: 1px; transform-origin: left center; transform: scaleX(var(--bar-scale, 0)); transition: transform 0.9s cubic-bezier(0.4,0,0.2,1); will-change: transform; }
-.dh-net-speed-fill.dn { background: linear-gradient(90deg, transparent, #00F2FF); box-shadow: 0 0 8px #00F2FF99; }
-.dh-net-speed-fill.up { background: linear-gradient(90deg, transparent, #00F2FF); box-shadow: 0 0 8px #00F2FF99; }
+.dh-net-speed-fill.dn { background: linear-gradient(90deg, transparent, rgb(var(--accent))); box-shadow: 0 0 8px rgb(var(--accent))99; }
+.dh-net-speed-fill.up { background: linear-gradient(90deg, transparent, rgb(var(--accent))); box-shadow: 0 0 8px rgb(var(--accent))99; }
 
 /* ── Quality tiles (Ping / Packet Loss / WiFi) ── */
 .dh-net-quality   { display: flex; gap: 5px; }
 .dh-net-q-tile    { display: flex; align-items: center; gap: 7px; flex: 1; padding: 6px 8px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; min-width: 0; }
-.dh-net-q-dot     { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; align-self: flex-start; margin-top: 2px; background: #00F2FF; box-shadow: 0 0 6px rgba(0,242,255,0.18); }
+.dh-net-q-dot     { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; align-self: flex-start; margin-top: 2px; background: rgb(var(--accent)); box-shadow: 0 0 6px rgba(var(--accent),0.18); }
 .dh-net-q-label   { display: block; font-size: 7.5px; font-weight: 700; text-transform: none; letter-spacing: 0.09em; color: rgba(140,170,210,0.4); white-space: nowrap; }
 .dh-net-q-val     { display: block; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .dh-net-q-val small { font-size: 8px; font-weight: 500; opacity: 0.55; margin-left: 1px; }
@@ -609,14 +609,14 @@
 .dh-net-info          { display: flex; flex-direction: column; background: rgba(0,0,0,0.18); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; overflow: hidden; }
 .dh-net-info-row      { display: flex; gap: 8px; padding: 4px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); }
 .dh-net-info-row:last-child { border-bottom: none; }
-.dh-net-info-key      { font-size: 11px; font-weight: 700; color: hsl(183, 100%, 50%); flex-shrink: 0; white-space: nowrap; }
+.dh-net-info-key      { font-size: 11px; font-weight: 700; color: rgb(var(--accent)); flex-shrink: 0; white-space: nowrap; }
 .dh-net-info-val      { font-size: 9px; color: rgb(255, 255, 255); flex: 1; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 
 /* ── Generic stat tiles (CPU / GPU / System) ── */
 .dh-stat-tiles      { display: flex; gap: 5px; }
 .dh-stat-tile       { display: flex; flex-direction: column; gap: 5px; flex: 1; padding: 7px 9px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06); border-radius: 7px; min-width: 0; }
 .dh-stat-tile-top   { display: flex; align-items: center; gap: 5px; }
-.dh-stat-tile-dot   { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; background: #00F2FF; box-shadow: 0 0 5px rgba(0,242,255,0.18); }
+.dh-stat-tile-dot   { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; background: rgb(var(--accent)); box-shadow: 0 0 5px rgba(var(--accent),0.18); }
 .dh-stat-tile-label { font-size: 7.5px; font-weight: 700; text-transform: none; letter-spacing: 0.09em; color: rgba(140,170,210,0.4); white-space: nowrap; }
 .dh-stat-tile-val   { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: rgba(210,230,255,0.88); line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dh-stat-tile-val small { font-size: 8px; font-weight: 500; opacity: 0.55; margin-left: 1px; }
@@ -631,11 +631,11 @@
 
 /* ── RAM Top Processes mini-table ── */
 .dh-ram-procs        { margin: 4px 0 0; }
-.dh-ram-procs-hdr    { display: flex; justify-content: space-between; padding: 5px 10px 4px; border-top: 1px solid rgba(0, 242, 255,0.15); border-bottom: 1px solid rgba(0, 242, 255,0.1); font-size: 11px; font-weight: 700; text-transform: none; color: rgb(255, 255, 255); }
+.dh-ram-procs-hdr    { display: flex; justify-content: space-between; padding: 5px 10px 4px; border-top: 1px solid rgba(var(--accent),0.15); border-bottom: 1px solid rgba(var(--accent),0.1); font-size: 11px; font-weight: 700; text-transform: none; color: rgb(255, 255, 255); }
 .dh-ram-procs-row    { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); }
 .dh-ram-procs-row:last-child { border-bottom: none; }
 .dh-ram-procs-rank   { font-size: 8px; font-weight: 700; color: rgba(255,255,255,0.4); flex-shrink: 0; width: 16px; }
-.dh-ram-procs-name   { flex: 1; font-size: 10.5px; font-weight: 700; color: #00F2FF; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dh-ram-procs-name   { flex: 1; font-size: 10.5px; font-weight: 700; color: rgb(var(--accent)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dh-ram-procs-val    { font-size: 10.5px; font-weight: 400; color: rgb(255, 255, 255); flex-shrink: 0; font-variant-numeric: tabular-nums; }
 .dh-info-key       { font-size: 11px; font-weight: 700; text-transform: none; color: rgb(255, 255, 255); flex-shrink: 0; white-space: nowrap; }
 .dh-info-val       { font-size: 10px; font-weight: 400; color: rgb(255, 255, 255); flex: 1; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
@@ -683,12 +683,12 @@
   opacity: 0;
   transition: opacity 0s 0.275s;
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 242, 255, 0.15) transparent;
+  scrollbar-color: rgba(var(--accent), 0.15) transparent;
 }
 .dh-face-back::-webkit-scrollbar { width: 4px; }
 .dh-face-back::-webkit-scrollbar-track { background: transparent; }
-.dh-face-back::-webkit-scrollbar-thumb { background: rgba(0, 242, 255, 0.15); border-radius: 4px; }
-.dh-face-back::-webkit-scrollbar-thumb:hover { background: rgba(0, 242, 255, 0.3); }
+.dh-face-back::-webkit-scrollbar-thumb { background: rgba(var(--accent), 0.15); border-radius: 4px; }
+.dh-face-back::-webkit-scrollbar-thumb:hover { background: rgba(var(--accent), 0.3); }
 
 /* Pointer-events + opacity swap on flip */
 .dh-card.is-flipped .dh-face-front {
@@ -721,9 +721,9 @@
   position: relative;
 
   border-radius: 5px;
-  border: 1px solid rgba(0, 242, 255, 0.3);
-  border-bottom: 3px solid rgba(0, 242, 255, 0.55);
-  background: rgba(0, 242, 255, 0.07);
+  border: 1px solid rgba(var(--accent), 0.3);
+  border-bottom: 3px solid rgba(var(--accent), 0.55);
+  background: rgba(var(--accent), 0.07);
 
   font-size: 9.5px;
   font-weight: 700;
@@ -742,7 +742,7 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: rgba(0, 242, 255, 0.1);
+  background: rgba(var(--accent), 0.1);
   opacity: 0;
   will-change: opacity;
   transition: opacity 0.1s ease;
@@ -762,7 +762,7 @@
 .dh-info-btn-close {
   width: 26px;
   padding: 0;
-  border-bottom: 3px solid rgba(0, 242, 255, 0.4);
+  border-bottom: 3px solid rgba(var(--accent), 0.4);
 }
 
 /* Back face content wrapper */
@@ -847,8 +847,8 @@
 .dh-fan-ctrl {
   margin-top: 8px;
   padding: 8px 10px;
-  background: rgba(0, 242, 255, 0.04);
-  border: 1px solid rgba(0, 242, 255, 0.12);
+  background: rgba(var(--accent), 0.04);
+  border: 1px solid rgba(var(--accent), 0.12);
   border-radius: 6px;
 }
 
@@ -862,7 +862,7 @@
 .dh-fan-ctrl-title {
   font-size: 10px;
   font-weight: 700;
-  color: #00F2FF;
+  color: rgb(var(--accent));
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -885,16 +885,16 @@
 }
 
 .dh-fan-ctrl-btn:hover {
-  background: rgba(0, 242, 255, 0.08);
-  border-color: rgba(0, 242, 255, 0.2);
+  background: rgba(var(--accent), 0.08);
+  border-color: rgba(var(--accent), 0.2);
   color: rgba(255, 255, 255, 0.8);
 }
 
 .dh-fan-ctrl-btn.active {
-  background: rgba(0, 242, 255, 0.15);
-  border-color: rgba(0, 242, 255, 0.4);
-  color: #00F2FF;
-  box-shadow: 0 0 6px rgba(0, 242, 255, 0.15);
+  background: rgba(var(--accent), 0.15);
+  border-color: rgba(var(--accent), 0.4);
+  color: rgb(var(--accent));
+  box-shadow: 0 0 6px rgba(var(--accent), 0.15);
 }
 
 .dh-fan-ctrl-slider {
@@ -910,7 +910,7 @@
   flex: 1;
   height: 4px;
   border-radius: 2px;
-  background: linear-gradient(90deg, #00F2FF var(--fan-pct, 50%), rgba(255,255,255,0.08) var(--fan-pct, 50%));
+  background: linear-gradient(90deg, rgb(var(--accent)) var(--fan-pct, 50%), rgba(255,255,255,0.08) var(--fan-pct, 50%));
   outline: none;
   cursor: pointer;
 }
@@ -921,8 +921,8 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #00F2FF;
-  box-shadow: 0 0 6px rgba(0, 242, 255, 0.5);
+  background: rgb(var(--accent));
+  box-shadow: 0 0 6px rgba(var(--accent), 0.5);
   cursor: pointer;
   border: 2px solid rgba(6, 8, 18, 0.9);
 }
@@ -931,8 +931,8 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #00F2FF;
-  box-shadow: 0 0 6px rgba(0, 242, 255, 0.5);
+  background: rgb(var(--accent));
+  box-shadow: 0 0 6px rgba(var(--accent), 0.5);
   cursor: pointer;
   border: 2px solid rgba(6, 8, 18, 0.9);
 }
@@ -940,7 +940,7 @@
 .dh-fan-ctrl-val {
   font-size: 11px;
   font-weight: 700;
-  color: #00F2FF;
+  color: rgb(var(--accent));
   font-variant-numeric: tabular-nums;
   min-width: 28px;
   text-align: right;

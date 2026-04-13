@@ -1,14 +1,16 @@
 :root {
-  --color-primary: #00F2FF;
-  --color-secondary: #00F2FF;
+  /* ── Accent color channel triplet — single source of truth ── */
+  --accent: 0, 200, 255;
+  --color-primary: rgb(var(--accent));
+  --color-secondary: rgb(var(--accent));
   --color-accent: #FF2D55;
-  --color-good: #00F2FF;
+  --color-good: rgb(var(--accent));
   --color-warning: #FFD600;
   --color-critical: #FF2D55;
   --bg-dark: #020606;
   --bg-darker: #010404;
   --bg-card: rgba(6, 8, 16, 0.55);
-  --border-color: rgba(0, 242, 255, 0.07);
+  --border-color: rgba(var(--accent), 0.07);
   --text-primary: #ffffff;
   --text-secondary: rgba(255, 255, 255, 0.7);
   --text-muted: rgba(255, 255, 255, 0.35);
@@ -68,7 +70,7 @@ body,
 
 body {
   font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: var(--app-bg, radial-gradient(ellipse 70% 60% at 55% 45%, #081a1a 0%, transparent 100%), radial-gradient(ellipse 40% 35% at 30% 30%, rgba(0, 242, 255, 0.025) 0%, transparent 100%), #020606);
+  background: var(--app-bg, radial-gradient(ellipse 70% 60% at 55% 45%, #081a1a 0%, transparent 100%), radial-gradient(ellipse 40% 35% at 30% 30%, rgba(var(--accent), 0.025) 0%, transparent 100%), #020606);
   color: var(--text-primary);
   /* Promote the entire page to a GPU-composited layer */
   transform: translateZ(0);
@@ -115,7 +117,7 @@ body {
   padding: 14px 30px;
   padding-bottom: 84px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 242, 255, 0.15) transparent;
+  scrollbar-color: rgba(var(--accent), 0.15) transparent;
   contain: layout style;
   transform: translateZ(0);
 }
@@ -130,12 +132,12 @@ body {
 }
 
 .page-content::-webkit-scrollbar-thumb {
-  background: rgba(0, 242, 255, 0.15);
+  background: rgba(var(--accent), 0.15);
   border-radius: 4px;
 }
 
 .page-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 242, 255, 0.3);
+  background: rgba(var(--accent), 0.3);
 }
 
 .loading-screen {

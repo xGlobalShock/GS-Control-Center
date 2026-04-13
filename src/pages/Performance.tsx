@@ -224,10 +224,10 @@ const Performance: React.FC = () => {
   const totalCount = activeTweaks.length;
 
   const categories = [
-    { id: 'cpu'      as CategoryId, label: 'CPU & Priority', icon: <Cpu size={18} />,     count: TWEAK_CATEGORIES.cpu.length,      description: 'Boost CPU scheduling and IRQ priority.',              accent: '#00F2FF' },
+    { id: 'cpu'      as CategoryId, label: 'CPU & Priority', icon: <Cpu size={18} />,     count: TWEAK_CATEGORIES.cpu.length,      description: 'Boost CPU scheduling and IRQ priority.',              accent: 'rgb(var(--accent))' },
     { id: 'gpu'      as CategoryId, label: 'GPU',            icon: <Layers size={18} />,   count: TWEAK_CATEGORIES.gpu.length,      description: 'GPU scheduling and timeout detection.',               accent: '#9D4EDD' },
     { id: 'memory'   as CategoryId, label: 'Memory',         icon: <Server size={18} />,   count: TWEAK_CATEGORIES.memory.length,   description: 'Physical RAM usage and compression.',                 accent: '#FF851B' },
-    { id: 'network'  as CategoryId, label: 'Network',        icon: <Wifi size={18} />,     count: TWEAK_CATEGORIES.network.length,  description: 'Reduce latency and stabilize ping.',                  accent: '#00F2FF' },
+    { id: 'network'  as CategoryId, label: 'Network',        icon: <Wifi size={18} />,     count: TWEAK_CATEGORIES.network.length,  description: 'Reduce latency and stabilize ping.',                  accent: 'rgb(var(--accent))' },
     { id: 'display'  as CategoryId, label: 'Display',        icon: <Monitor size={18} />,  count: TWEAK_CATEGORIES.display.length,  description: 'Fullscreen optimization and overlay mode.',           accent: '#FFDC00' },
     { id: 'gamedvr'  as CategoryId, label: 'Game DVR',       icon: <Gamepad2 size={18} />, count: TWEAK_CATEGORIES.gamedvr.length,  description: 'Disable recording, capture and DVR features.',        accent: '#FF4455' },
     { id: 'hardware' as CategoryId, label: 'Hardware',       icon: <Usb size={18} />,      count: TWEAK_CATEGORIES.hardware.length, description: 'USB and peripheral suspend settings.',                accent: '#7ED321' },

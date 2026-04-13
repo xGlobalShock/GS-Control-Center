@@ -50,6 +50,10 @@ export function saveSettings(settings: AppSettings): void {
     } catch (e) {
       // ignore
     }
+    // Ask Electron to flush localStorage to disk so it survives abrupt termination
+    try {
+      (window as any).electron?.ipcRenderer?.invoke('settings:flush-storage');
+    } catch {}
   } catch (error) {
     console.error('Failed to save settings:', error);
   }

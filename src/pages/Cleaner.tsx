@@ -452,7 +452,7 @@ const Cleaner: React.FC = () => {
       icon: <Monitor size={18} />,
       count: utilityTabs.windows.length,
       description: 'Clear temp files, DNS cache, logs, crash dumps and system junk.',
-      accent: '#00F2FF',
+      accent: 'rgb(var(--accent))',
     },
     {
       id: 'games' as const,
@@ -460,7 +460,7 @@ const Cleaner: React.FC = () => {
       icon: <Gamepad2 size={18} />,
       count: utilityTabs.games.length,
       description: 'Remove game shader caches for smoother performance.',
-      accent: '#00F2FF',
+      accent: 'rgb(var(--accent))',
       premium: true,
     },
     {
@@ -496,7 +496,7 @@ const Cleaner: React.FC = () => {
       icon: <SlidersHorizontal size={18} />,
       count: preferenceItems.length,
       description: 'Quick preference toggles for common system settings.',
-      accent: '#00F2FF',
+      accent: 'rgb(var(--accent))',
       premium: true,
     },
   ];

@@ -34,10 +34,13 @@ const Settings: React.FC = () => {
   const [checkVersion, setCheckVersion] = useState('');
 
   // Appearance state
+  const [accentColor, setAccentColor] = useState<string>(() => loadSettings().accentColor ?? '#00C8FF');
   const [raysColor, setRaysColor] = useState<string>(() => loadSettings().raysColor ?? '#00C8FF');
   const [appBgColor, setAppBgColor] = useState<string>(() => loadSettings().appBgColor ?? 'linear-gradient(160deg, #050F1A 0%, #071828 60%, #030D18 100%)');
+  const [showAccentDropdown, setShowAccentDropdown] = useState(false);
   const [showRaysDropdown, setShowRaysDropdown] = useState(false);
   const [showBgDropdown, setShowBgDropdown] = useState(false);
+  const accentDropdownRef  = useRef<HTMLDivElement>(null);
   const raysDropdownRef    = useRef<HTMLDivElement>(null);
   const bgDropdownRef       = useRef<HTMLDivElement>(null);
   const fontDropdownRef     = useRef<HTMLDivElement>(null);
@@ -51,7 +54,7 @@ const Settings: React.FC = () => {
   // Overlay state
   const [overlayVisible, setOverlayVisible] = useState(false);
   const [overlayPosition, setOverlayPosition] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'>('top-right');
-  const [overlayColor, setOverlayColor] = useState('#00F2FF');
+  const [overlayColor, setOverlayColor] = useState('rgb(var(--accent))');
   const [overlayOpacity, setOverlayOpacity] = useState(0.85);
   const [overlayFont, setOverlayFont] = useState('Share Tech Mono');
   const [overlaySensors, setOverlaySensors] = useState({
@@ -70,7 +73,7 @@ const Settings: React.FC = () => {
   const ipc = (window as any).electron?.ipcRenderer;
 
   const OVERLAY_COLORS = [
-    { hex: '#00F2FF', label: 'Cyan'   },
+    { hex: 'rgb(var(--accent))', label: 'Cyan'   },
     { hex: '#00FF88', label: 'Green'  },
     { hex: '#4488FF', label: 'Blue'   },
     { hex: '#FF4444', label: 'Red'    },
@@ -78,6 +81,19 @@ const Settings: React.FC = () => {
     { hex: '#FF69B4', label: 'Pink'   },
     { hex: '#A855F7', label: 'Purple' },
     { hex: '#FFFFFF', label: 'White'  },
+  ];
+
+  // ─── Accent Colors (global theme) ──────────────────────────────────────────
+  const ACCENT_COLORS = [
+    { hex: '#00C8FF', label: 'Plasma Cyan'   },
+    { hex: '#00E87A', label: 'Ghost Green'   },
+    { hex: '#7C45FF', label: 'Neon Violet'   },
+    { hex: '#3B82F6', label: 'Electric Blue' },
+    { hex: '#FF7820', label: 'Ember Orange'  },
+    { hex: '#FF3EB5', label: 'Hot Magenta'   },
+    { hex: '#FF1E4A', label: 'Crimson Red'   },
+    { hex: '#FFB800', label: 'Solar Gold'    },
+    { hex: '#E4E4E7', label: 'Platinum'      },
   ];
 
   // ─── Curated Light Ray Colors ───────────────────────────────────────────────
@@ -99,7 +115,7 @@ const Settings: React.FC = () => {
   // ─── Curated App Background Gradients ────────────────────────────────────────
   // 160-degree diagonal gradients give depth without heavy GPU load.
   const BG_COLORS = [
-    { value: 'radial-gradient(ellipse 70% 60% at 55% 45%, #081a1a 0%, transparent 100%), radial-gradient(ellipse 40% 35% at 30% 30%, rgba(0, 242, 255, 0.025) 0%, transparent 100%), #020606', label: 'Default' },
+    { value: 'radial-gradient(ellipse 70% 60% at 55% 45%, #081a1a 0%, transparent 100%), radial-gradient(ellipse 40% 35% at 30% 30%, rgba(var(--accent), 0.025) 0%, transparent 100%), #020606', label: 'Default' },
     { value: 'linear-gradient(160deg, #050F1A 0%, #071828 60%, #030D18 100%)', label: 'Cyber Blue'    },
     { value: 'linear-gradient(160deg, #0D0518 0%, #130720 60%, #090315 100%)', label: 'Void Purple'   },
     { value: 'linear-gradient(160deg, #080808 0%, #101010 60%, #040404 100%)', label: 'Obsidian'      },
@@ -190,6 +206,7 @@ const Settings: React.FC = () => {
   useEffect(() => {
     const s = loadSettings();
     setSettings(prev => ({ ...prev, ...s }));
+    if (s.accentColor) setAccentColor(s.accentColor);
     if (s.raysColor)  setRaysColor(s.raysColor);
     if (s.appBgColor) setAppBgColor(s.appBgColor);
 
@@ -198,6 +215,7 @@ const Settings: React.FC = () => {
         // @ts-ignore
         const detail = (e as CustomEvent)?.detail || {};
         setSettings(prev => ({ ...prev, ...detail }));
+        if (detail.accentColor) setAccentColor(detail.accentColor);
         if (detail.raysColor)  setRaysColor(detail.raysColor);
         if (detail.appBgColor) setAppBgColor(detail.appBgColor);
       } catch {}
@@ -209,8 +227,9 @@ const Settings: React.FC = () => {
 
   // Close all dropdowns on outside click
   useEffect(() => {
-    if (!showRaysDropdown && !showBgDropdown && !showFontDropdown && !showFontSizeDropdown && !showColorDropdown) return;
+    if (!showAccentDropdown && !showRaysDropdown && !showBgDropdown && !showFontDropdown && !showFontSizeDropdown && !showColorDropdown) return;
     const handle = (e: MouseEvent) => {
+      if (accentDropdownRef.current  && !accentDropdownRef.current.contains(e.target as Node))  setShowAccentDropdown(false);
       if (raysDropdownRef.current    && !raysDropdownRef.current.contains(e.target as Node))    setShowRaysDropdown(false);
       if (bgDropdownRef.current      && !bgDropdownRef.current.contains(e.target as Node))      setShowBgDropdown(false);
       if (fontDropdownRef.current    && !fontDropdownRef.current.contains(e.target as Node))    setShowFontDropdown(false);
@@ -309,6 +328,14 @@ const Settings: React.FC = () => {
     const updated = { ...overlaySensors, [key]: !overlaySensors[key] };
     setOverlaySensors(updated);
     try { await ipc?.invoke('overlay:set-config', { [key]: updated[key] }); } catch {}
+  };
+
+  const handleAccentColor = (color: string) => {
+    setAccentColor(color);
+    try {
+      const s = loadSettings();
+      saveSettings({ ...s, accentColor: color });
+    } catch {}
   };
 
   const handleRaysColor = (color: string) => {
@@ -434,6 +461,42 @@ const Settings: React.FC = () => {
                     </div>
                   </div>
                   <div className="panel-body">
+
+                    {/* ── Accent Color ── */}
+                    <div className="setting-row">
+                      <div className="setting-row-info">
+                        <span className="setting-row-title">Accent Color</span>
+                        <span className="setting-row-desc">Global theme color for cards, charts, borders and highlights</span>
+                      </div>
+                      <div className="theme-dropdown" ref={accentDropdownRef}>
+                        <button
+                          className={`theme-dropdown__trigger${showAccentDropdown ? ' theme-dropdown__trigger--open' : ''}`}
+                          onClick={() => setShowAccentDropdown(p => !p)}
+                          style={{ minWidth: 175 }}
+                        >
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ width: 11, height: 11, borderRadius: '50%', background: accentColor, display: 'inline-block', flexShrink: 0, boxShadow: `0 0 6px ${accentColor}` }} />
+                            {ACCENT_COLORS.find(c => c.hex === accentColor)?.label ?? 'Custom'}
+                          </span>
+                          <ChevronDown size={13} className="theme-dropdown__chevron" />
+                        </button>
+                        {showAccentDropdown && (
+                          <div className="theme-dropdown__menu">
+                            {ACCENT_COLORS.map(({ hex, label }) => (
+                              <button
+                                key={hex}
+                                className={`theme-dropdown__item${accentColor === hex ? ' theme-dropdown__item--active' : ''}`}
+                                onClick={() => { handleAccentColor(hex); setShowAccentDropdown(false); }}
+                              >
+                                <span style={{ width: 10, height: 10, borderRadius: '50%', background: hex, display: 'inline-block', flexShrink: 0 }} />
+                                {accentColor === hex && <Check size={12} />}
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
                     {/* ── Light Rays Color ── */}
                     <div className="setting-row">

@@ -38,7 +38,7 @@
   gap: 12px;
   padding: 13px 14px;
   background: rgba(6, 14, 14, 0.45);
-  border: 1px solid rgba(0, 242, 255, 0.07);
+  border: 1px solid rgba(var(--accent), 0.07);
   border-radius: 10px;
   cursor: pointer;
   text-align: left;
@@ -53,7 +53,7 @@
   left: 0; top: 0;
   width: 3px;
   height: 100%;
-  background: var(--nav-accent, #00F2FF);
+  background: var(--nav-accent, rgb(var(--accent)));
   opacity: 0;
   border-radius: 10px 0 0 10px;
   transition: opacity 0.18s;
@@ -61,19 +61,19 @@
 
 .apps-navitem:hover {
   background: rgba(6, 14, 14, 0.7);
-  border-color: rgba(0, 242, 255, 0.14);
+  border-color: rgba(var(--accent), 0.14);
 }
 
 .apps-navitem--active {
-  background: rgba(0, 242, 255, 0.05);
-  border-color: var(--nav-accent, rgba(0, 242, 255, 0.25));
+  background: rgba(var(--accent), 0.05);
+  border-color: var(--nav-accent, rgba(var(--accent), 0.25));
 }
 
 .apps-navitem--active::before { opacity: 1; }
 
 .apps-navitem-icon {
   flex-shrink: 0;
-  color: var(--nav-accent, #00F2FF);
+  color: var(--nav-accent, rgb(var(--accent)));
   opacity: 0.55;
   transition: opacity 0.18s;
   display: flex;
@@ -102,7 +102,7 @@
 }
 
 .apps-navitem--active .apps-navitem-label {
-  color: var(--nav-accent, #00F2FF);
+  color: var(--nav-accent, rgb(var(--accent)));
 }
 
 .apps-navitem-right {
@@ -138,14 +138,14 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  border: 1px solid rgba(0, 242, 255, 0.15);
-  background: rgba(0, 242, 255, 0.06);
-  color: #00F2FF;
+  border: 1px solid rgba(var(--accent), 0.15);
+  background: rgba(var(--accent), 0.06);
+  color: rgb(var(--accent));
 }
 
 .apps-page-header-btn:hover:not(:disabled) {
-  background: rgba(0, 242, 255, 0.12);
-  border-color: rgba(0, 242, 255, 0.35);
+  background: rgba(var(--accent), 0.12);
+  border-color: rgba(var(--accent), 0.35);
 }
 
 .apps-page-header-btn:disabled {
@@ -218,7 +218,7 @@
 .apps-hdr-sw-btn--install .apps-hdr-sw-btn-icon   { color: #34d399; }
 .apps-hdr-sw-btn--uninstall .apps-hdr-sw-btn-icon { color: #f87171; }
 .apps-hdr-sw-btn--debloat .apps-hdr-sw-btn-icon   { color: #38bdf8; }
-.apps-hdr-sw-btn--startup .apps-hdr-sw-btn-icon   { color: #00F2FF; }
+.apps-hdr-sw-btn--startup .apps-hdr-sw-btn-icon   { color: rgb(var(--accent)); }
 
 .apps-hdr-sw-btn-body {
   display: flex;
@@ -264,12 +264,12 @@
 
 /* Active: Install — emerald */
 .apps-hdr-sw-btn--install.apps-hdr-sw-btn--on {
-  background: rgba(0, 242, 255, 0.08);
+  background: rgba(var(--accent), 0.08);
 }
 .apps-hdr-sw-btn--install.apps-hdr-sw-btn--on .apps-hdr-sw-btn-icon { opacity: 1; color: #34d399; }
 .apps-hdr-sw-btn--install.apps-hdr-sw-btn--on .apps-hdr-sw-btn-title { color: #34d399; }
 .apps-hdr-sw-btn--install.apps-hdr-sw-btn--on .apps-hdr-sw-btn-sub { color: rgba(52, 211, 153, 0.5); }
-.apps-hdr-sw-btn--install.apps-hdr-sw-btn--on::after { background: #00F2FF; }
+.apps-hdr-sw-btn--install.apps-hdr-sw-btn--on::after { background: rgb(var(--accent)); }
 
 /* Active: Uninstall — rose */
 .apps-hdr-sw-btn--uninstall.apps-hdr-sw-btn--on {
@@ -291,11 +291,11 @@
 
 /* Active: Startup — cyan */
 .apps-hdr-sw-btn--startup.apps-hdr-sw-btn--on {
-  background: rgba(0, 242, 255, 0.07);
+  background: rgba(var(--accent), 0.07);
 }
-.apps-hdr-sw-btn--startup.apps-hdr-sw-btn--on .apps-hdr-sw-btn-icon { opacity: 1; color: #00F2FF; }
-.apps-hdr-sw-btn--startup.apps-hdr-sw-btn--on .apps-hdr-sw-btn-title { color: #00F2FF; }
-.apps-hdr-sw-btn--startup.apps-hdr-sw-btn--on .apps-hdr-sw-btn-sub { color: rgba(0, 242, 255, 0.45); }
-.apps-hdr-sw-btn--startup.apps-hdr-sw-btn--on::after { background: #00F2FF; }
+.apps-hdr-sw-btn--startup.apps-hdr-sw-btn--on .apps-hdr-sw-btn-icon { opacity: 1; color: rgb(var(--accent)); }
+.apps-hdr-sw-btn--startup.apps-hdr-sw-btn--on .apps-hdr-sw-btn-title { color: rgb(var(--accent)); }
+.apps-hdr-sw-btn--startup.apps-hdr-sw-btn--on .apps-hdr-sw-btn-sub { color: rgba(var(--accent), 0.45); }
+.apps-hdr-sw-btn--startup.apps-hdr-sw-btn--on::after { background: rgb(var(--accent)); }
 
 

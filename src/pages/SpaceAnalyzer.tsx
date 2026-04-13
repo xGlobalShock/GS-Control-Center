@@ -525,7 +525,7 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
                     <div style={{ flex: '0.8', textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>{files}</div>
                     <div style={{ flex: '0.8', textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>{folders}</div>
                     <div style={{ flex: '0.8', position: 'relative', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ position: 'absolute', left: 0, top: 0, right: 0, height: '100%', background: 'rgba(0, 0, 0, 0.4)', borderRadius: '4px', border: '1px solid rgba(0, 242, 255, 0.15)' }} />
+                    <div style={{ position: 'absolute', left: 0, top: 0, right: 0, height: '100%', background: 'rgba(0, 0, 0, 0.4)', borderRadius: '4px', border: '1px solid rgba(var(--accent), 0.15)' }} />
                       <motion.div 
                         initial={{ width: 0 }}
                         animate={{ width: `${pct}%` }}
@@ -541,7 +541,7 @@ export default function SpaceAnalyzer({ isActive }: { isActive: boolean }) {
                             ? 'linear-gradient(90deg, rgb(255, 217, 0), rgb(255, 217, 0))'
                             : 'linear-gradient(90deg, #00F2FF, #00F2FF)',
                           borderRadius: '4px',
-                          boxShadow: pct > 50 ? '0 0 12px rgba(255, 45, 85, 0.5)' : pct > 25 ? '0 0 10px rgba(255, 214, 0, 0.4)' : '0 0 10px rgba(0, 242, 255, 0.4)'
+                          boxShadow: pct > 50 ? '0 0 12px rgba(255, 45, 85, 0.5)' : pct > 25 ? '0 0 10px rgba(255, 214, 0, 0.4)' : '0 0 10px rgba(var(--accent), 0.4)'
                         }} 
                       />
                       <span style={{ position: 'relative', zIndex: 1, color: '#ffffff', fontSize: '11px', fontWeight: 700, textShadow: '0 0 4px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.6)' }}>{pct.toFixed(1)}%</span>

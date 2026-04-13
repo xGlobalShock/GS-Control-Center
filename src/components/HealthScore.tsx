@@ -36,7 +36,7 @@ const statusIcon = (status: string) => {
 };
 
 const scoreColor = (score: number) => {
-  if (score >= 75) return '#00CC6A';
+  if (score >= 75) return 'rgb(var(--accent))';
   if (score >= 60) return '#FFD600';
   if (score >= 40) return '#f97316';
   return '#ef4444';
@@ -84,8 +84,8 @@ const HealthScore: React.FC<HealthScoreProps> = ({ systemStats, extendedStats, h
 
   const score = healthData?.score ?? 0;
   const color = scoreColor(score);
-  const textColor = color === '#00CC6A' ? '#FFFFFF' : color;
-  const labelColor = score >= 90 ? '#00CC6A' : textColor;
+  const textColor = color === 'rgb(var(--accent))' ? '#FFFFFF' : color;
+  const labelColor = score >= 90 ? 'rgb(var(--accent))' : textColor;
   const circumference = 2 * Math.PI * 42;
   const offset = circumference - (score / 100) * circumference;
 

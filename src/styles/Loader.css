@@ -56,16 +56,16 @@
   background: rgba(6, 8, 16, 0.55);
   backdrop-filter: blur(20px) saturate(1.5);
   -webkit-backdrop-filter: blur(20px) saturate(1.5);
-  border: 1px solid rgba(0, 242, 255, 0.07);
+  border: 1px solid rgba(var(--accent), 0.07);
   border-radius: 16px;
   padding: 16px 16px 12px;
   min-height: 236px;
   overflow: hidden;
   box-shadow:
     0 2px 20px rgba(0, 0, 0, 0.45),
-    0 0 1px rgba(0, 242, 255, 0.06),
-    inset 0 1px 0 rgba(0, 242, 255, 0.04),
-    inset 0 0 40px rgba(0, 242, 255, 0.008);
+    0 0 1px rgba(var(--accent), 0.06),
+    inset 0 1px 0 rgba(var(--accent), 0.04),
+    inset 0 0 40px rgba(var(--accent), 0.008);
 }
 
 .loader-skel-card::before {
@@ -105,7 +105,7 @@
   left: 10%;
   right: 10%;
   height: 1.5px;
-  background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.4), transparent);
+  background: linear-gradient(90deg, transparent, rgba(var(--accent), 0.4), transparent);
   border-radius: 0 0 4px 4px;
   z-index: 2;
   animation: loader-skel-shimmer 2.5s ease-in-out infinite;
@@ -149,9 +149,9 @@
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: rgba(0, 242, 255, 0.08);
-  border: 1px solid rgba(0, 242, 255, 0.15);
-  color: rgba(0, 242, 255, 0.3);
+  background: rgba(var(--accent), 0.08);
+  border: 1px solid rgba(var(--accent), 0.15);
+  color: rgba(var(--accent), 0.3);
 }
 
 .loader-skel-title-group {

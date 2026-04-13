@@ -57,7 +57,7 @@
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 2px;
-  background: var(--mode-color, #00F2FF);
+  background: var(--mode-color, rgb(var(--accent)));
   opacity: 0;
   transition: opacity 0.22s;
   border-radius: 10px 10px 0 0;
@@ -142,25 +142,25 @@
 .svc-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .svc-btn--scan {
-  background: rgba(0, 242, 255, 0.06);
-  border-color: rgba(0, 242, 255, 0.14);
-  color: #00F2FF;
+  background: rgba(var(--accent), 0.06);
+  border-color: rgba(var(--accent), 0.14);
+  color: rgb(var(--accent));
 }
 .svc-btn--scan:hover:not(:disabled) {
-  background: rgba(0, 242, 255, 0.12);
-  border-color: rgba(0, 242, 255, 0.25);
+  background: rgba(var(--accent), 0.12);
+  border-color: rgba(var(--accent), 0.25);
 }
 
 .svc-btn--apply {
-  background: rgba(0, 242, 255, 0.1);
-  border-color: rgba(0, 242, 255, 0.22);
-  color: #00F2FF;
-  box-shadow: 0 0 12px rgba(0, 242, 255, 0.07);
+  background: rgba(var(--accent), 0.1);
+  border-color: rgba(var(--accent), 0.22);
+  color: rgb(var(--accent));
+  box-shadow: 0 0 12px rgba(var(--accent), 0.07);
 }
 .svc-btn--apply:hover:not(:disabled) {
-  background: rgba(0, 242, 255, 0.16);
-  border-color: rgba(0, 242, 255, 0.35);
-  box-shadow: 0 0 18px rgba(0, 242, 255, 0.13);
+  background: rgba(var(--accent), 0.16);
+  border-color: rgba(var(--accent), 0.35);
+  box-shadow: 0 0 18px rgba(var(--accent), 0.13);
 }
 
 .svc-btn--restore {
@@ -189,21 +189,21 @@
 .svc-link-btn {
   background: none;
   border: none;
-  color: rgba(0, 242, 255, 0.5);
+  color: rgba(var(--accent), 0.5);
   font-size: 11.5px;
   cursor: pointer;
   padding: 0 2px;
   font-weight: 500;
   transition: color 0.15s;
 }
-.svc-link-btn:hover { color: #00F2FF; }
+.svc-link-btn:hover { color: rgb(var(--accent)); }
 
 .svc-sel-count {
   font-size: 10.5px;
   font-weight: 700;
-  color: #00F2FF;
+  color: rgb(var(--accent));
   padding: 2px 6px;
-  background: rgba(0, 242, 255, 0.09);
+  background: rgba(var(--accent), 0.09);
   border-radius: 5px;
   margin-left: 2px;
 }
@@ -233,7 +233,7 @@
 }
 .svc-search::placeholder { color: rgba(255, 255, 255, 0.18); }
 .svc-search:focus {
-  border-color: rgba(0, 242, 255, 0.22);
+  border-color: rgba(var(--accent), 0.22);
   background: rgba(6, 8, 16, 0.8);
 }
 
@@ -243,25 +243,25 @@
   align-items: center;
   gap: 5px;
   padding: 4px 9px;
-  background: rgba(0, 242, 255, 0.04);
-  border: 1px solid rgba(0, 242, 255, 0.1);
+  background: rgba(var(--accent), 0.04);
+  border: 1px solid rgba(var(--accent), 0.1);
   border-radius: 6px;
-  color: rgba(0, 242, 255, 0.45);
+  color: rgba(var(--accent), 0.45);
   font-size: 10.5px;
   font-weight: 500;
   white-space: nowrap;
   cursor: default;
 }
 .svc-backup-chip:hover {
-  color: rgba(0, 242, 255, 0.7);
-  border-color: rgba(0, 242, 255, 0.2);
+  color: rgba(var(--accent), 0.7);
+  border-color: rgba(var(--accent), 0.2);
 }
 
 /* Header stat */
 .svc-header-stat {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(0, 242, 255, 0.55);
+  color: rgba(var(--accent), 0.55);
   white-space: nowrap;
 }
 
@@ -292,7 +292,7 @@
   padding: 8px 10px 8px 12px;
   border-radius: 7px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  border-left: 2px solid color-mix(in srgb, var(--risk-color, #00F2FF) 35%, transparent);
+  border-left: 2px solid color-mix(in srgb, var(--risk-color, rgb(var(--accent))) 35%, transparent);
   background: rgba(6, 8, 16, 0.5);
   cursor: pointer;
   transition: background 0.13s, border-color 0.13s;
@@ -303,12 +303,12 @@
 .svc-card--flat:hover {
   background: rgba(6, 8, 16, 0.75);
   border-color: rgba(255, 255, 255, 0.09);
-  border-left-color: color-mix(in srgb, var(--risk-color, #00F2FF) 60%, transparent);
+  border-left-color: color-mix(in srgb, var(--risk-color, rgb(var(--accent))) 60%, transparent);
 }
 .svc-card--selected {
-  background: rgba(0, 242, 255, 0.05);
-  border-color: rgba(0, 242, 255, 0.18) !important;
-  border-left-color: var(--risk-color, #00F2FF) !important;
+  background: rgba(var(--accent), 0.05);
+  border-color: rgba(var(--accent), 0.18) !important;
+  border-left-color: var(--risk-color, rgb(var(--accent))) !important;
 }
 .svc-card--match {
   border-color: rgba(255, 255, 255, 0.06);
@@ -327,7 +327,7 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
-.svc-dot--good    { background: #00F2FF; box-shadow: 0 0 5px rgba(0,242,255,0.7); }
+.svc-dot--good    { background: rgb(var(--accent)); box-shadow: 0 0 5px rgba(var(--accent),0.7); }
 .svc-dot--pending { background: #FFD600; box-shadow: 0 0 5px rgba(255,214,0,0.5); }
 .svc-dot--off     { background: rgba(145, 168, 195, 0.2); }
 
@@ -371,7 +371,7 @@
   border-radius: 4px;
   border: 1px solid transparent;
 }
-.svc-card-badge--match   { background: rgba(0,242,255,0.1); border-color: rgba(0,242,255,0.2); color: #00F2FF; }
+.svc-card-badge--match   { background: rgba(var(--accent),0.1); border-color: rgba(var(--accent),0.2); color: rgb(var(--accent)); }
 .svc-card-badge--pending { background: rgba(255,214,0,0.1); border-color: rgba(255,214,0,0.2); color: #FFD600; }
 .svc-card-badge--missing { background: rgba(255,45,85,0.1); border-color: rgba(255,45,85,0.2); color: #FF2D55; }
 /* ══════════════════════════════════════════
@@ -485,14 +485,14 @@
   margin-left: auto;
 }
 .svc-modal-badge--running {
-  background: rgba(0, 242, 255, 0.07);
-  color: #00F2FF;
-  border: 1px solid rgba(0, 242, 255, 0.18);
+  background: rgba(var(--accent), 0.07);
+  color: rgb(var(--accent));
+  border: 1px solid rgba(var(--accent), 0.18);
 }
 .svc-modal-badge--done {
-  background: rgba(0, 242, 255, 0.07);
-  color: #00F2FF;
-  border: 1px solid rgba(0, 242, 255, 0.18);
+  background: rgba(var(--accent), 0.07);
+  color: rgb(var(--accent));
+  border: 1px solid rgba(var(--accent), 0.18);
 }
 
 .svc-modal-minimize {
@@ -501,18 +501,18 @@
   justify-content: center;
   width: 30px;
   height: 30px;
-  background: rgba(0, 242, 255, 0.06);
-  border: 1px solid rgba(0, 242, 255, 0.15);
+  background: rgba(var(--accent), 0.06);
+  border: 1px solid rgba(var(--accent), 0.15);
   border-radius: 8px;
-  color: rgba(0, 242, 255, 0.7);
+  color: rgba(var(--accent), 0.7);
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .svc-modal-minimize:hover {
-  background: rgba(0, 242, 255, 0.14);
-  color: #00F2FF;
-  border-color: rgba(0, 242, 255, 0.35);
+  background: rgba(var(--accent), 0.14);
+  color: rgb(var(--accent));
+  border-color: rgba(var(--accent), 0.35);
 }
 
 .svc-modal-close {
@@ -603,10 +603,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.svc-log-line--success .svc-log-glyph { color: #00F2FF; }
+.svc-log-line--success .svc-log-glyph { color: rgb(var(--accent)); }
 .svc-log-line--skipped .svc-log-glyph { color: #FFD600; }
 .svc-log-line--failed  .svc-log-glyph { color: #FF2D55; }
-.svc-log-line--success .svc-log-detail { color: rgba(0, 242, 255, 0.45); }
+.svc-log-line--success .svc-log-detail { color: rgba(var(--accent), 0.45); }
 .svc-log-line--failed  .svc-log-detail { color: rgba(255, 45, 85, 0.55); }
 
 /* Blinking cursor */
@@ -614,7 +614,7 @@
   display: inline-block;
   width: 7px;
   height: 13px;
-  background: #00F2FF;
+  background: rgb(var(--accent));
   opacity: 0.7;
   margin-top: 3px;
   animation: svc-blink 1s step-end infinite;
@@ -641,10 +641,10 @@
   justify-content: center;
   gap: 6px;
   padding: 8px 16px;
-  background: rgba(0, 242, 255, 0.06);
-  border: 1px solid rgba(0, 242, 255, 0.18);
+  background: rgba(var(--accent), 0.06);
+  border: 1px solid rgba(var(--accent), 0.18);
   border-radius: 8px;
-  color: rgba(0, 242, 255, 0.8);
+  color: rgba(var(--accent), 0.8);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -652,8 +652,8 @@
   transition: background 0.18s, color 0.18s;
 }
 .svc-modal-minimize-btn:hover {
-  background: rgba(0, 242, 255, 0.14);
-  color: #00F2FF;
+  background: rgba(var(--accent), 0.14);
+  color: rgb(var(--accent));
 }
 
 .svc-modal-summary {
@@ -663,7 +663,7 @@
   flex: 1;
 }
 .svc-mps { font-size: 11.5px; font-weight: 700; }
-.svc-mps--success { color: #00F2FF; }
+.svc-mps--success { color: rgb(var(--accent)); }
 .svc-mps--skipped { color: #FFD600; }
 .svc-mps--failed  { color: #FF2D55; }
 
@@ -730,14 +730,14 @@
   flex-shrink: 0;
 }
 .svc-mini-badge--running {
-  background: rgba(0, 242, 255, 0.07);
-  color: #00F2FF;
-  border: 1px solid rgba(0, 242, 255, 0.18);
+  background: rgba(var(--accent), 0.07);
+  color: rgb(var(--accent));
+  border: 1px solid rgba(var(--accent), 0.18);
 }
 .svc-mini-badge--done {
-  background: rgba(0, 242, 255, 0.07);
-  color: #00F2FF;
-  border: 1px solid rgba(0, 242, 255, 0.18);
+  background: rgba(var(--accent), 0.07);
+  color: rgb(var(--accent));
+  border: 1px solid rgba(var(--accent), 0.18);
 }
 
 .svc-mini-bar-row {

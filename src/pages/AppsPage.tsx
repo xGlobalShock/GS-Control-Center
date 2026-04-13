@@ -30,7 +30,7 @@ const NAV_ITEMS: { id: Tab; label: string; desc: string; icon: React.ReactNode; 
   { id: 'install',   label: 'Install Apps',    desc: 'Deploy software',     icon: <Download size={16} />,  accent: '#34d399' },
   { id: 'uninstall', label: 'Uninstall Apps',  desc: 'Remove & clean up',   icon: <Trash2 size={16} />,    accent: '#f87171' },
   { id: 'debloat',   label: 'Windows Debloat', desc: 'Remove bloatware',    icon: <PackageX size={16} />,  accent: '#38bdf8', premium: true },
-  { id: 'startup',   label: 'Startup Manager', desc: 'Manage boot entries', icon: <Zap size={16} />,       accent: '#00F2FF' },
+  { id: 'startup',   label: 'Startup Manager', desc: 'Manage boot entries', icon: <Zap size={16} />,       accent: 'rgb(var(--accent))' },
   { id: 'disk',      label: 'Disk Analyzer',   desc: 'Storage breakdown',    icon: <PieChart size={16} />,  accent: '#a78bfa', premium: true },  
 ];
 

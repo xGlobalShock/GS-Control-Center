@@ -43,7 +43,7 @@ interface ProgressSummary {
 
 /* ── Mode card definitions ── */
 const MODE_CARDS: { id: Mode; label: string; icon: React.ReactNode; desc: string; color: string }[] = [
-  { id: 'safe',       label: 'Safe',       icon: <Shield size={20} />,      desc: 'Low-risk services only',  color: '#00F2FF' },
+  { id: 'safe',       label: 'Safe',       icon: <Shield size={20} />,      desc: 'Low-risk services only',  color: 'rgb(var(--accent))' },
   { id: 'balanced',   label: 'Balanced',   icon: <ShieldCheck size={20} />, desc: 'Low + Medium risk',       color: '#FFD600' },
   { id: 'aggressive', label: 'Aggressive', icon: <ShieldAlert size={20} />, desc: 'Full optimization config', color: '#FF2D55' },
 ];
@@ -306,7 +306,7 @@ const ServiceOptimizer: React.FC = () => {
 
   const progressPct = progressTotal > 0 ? Math.round((progressCurrent / progressTotal) * 100) : 0;
   const isRunning = progressPhase === 'preparing' || progressPhase === 'start' || progressPhase === 'working';
-  const modeColor = MODE_CARDS.find(c => c.id === mode)?.color ?? '#00F2FF';
+  const modeColor = MODE_CARDS.find(c => c.id === mode)?.color ?? 'rgb(var(--accent))';
 
   /* ═══════ RENDER ═══════ */
   return (
@@ -445,7 +445,7 @@ const ServiceOptimizer: React.FC = () => {
               ? 'svc-card-badge svc-card-badge--missing'
               : matches ? 'svc-card-badge svc-card-badge--match' : 'svc-card-badge svc-card-badge--pending';
 
-            const riskColor = svc.risk === 'high' ? '#FF2D55' : svc.risk === 'medium' ? '#FFD600' : '#00F2FF';
+            const riskColor = svc.risk === 'high' ? '#FF2D55' : svc.risk === 'medium' ? '#FFD600' : 'rgb(var(--accent))';
             return (
               <div
                 key={svc.name}

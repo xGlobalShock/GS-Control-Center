@@ -26,13 +26,13 @@
 }
 
 .whatsnew-btn:hover {
-  background: rgba(0, 242, 255, 0.08);
-  color: #00F2FF;
+  background: rgba(var(--accent), 0.08);
+  color: rgb(var(--accent));
 }
 
 .whatsnew-btn--active {
-  color: #00F2FF;
-  background: rgba(0, 242, 255, 0.06);
+  color: rgb(var(--accent));
+  background: rgba(var(--accent), 0.06);
 }
 
 /* Unseen dot indicator */
@@ -43,8 +43,8 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #00F2FF;
-  box-shadow: 0 0 6px rgba(0, 242, 255, 0.7);
+  background: rgb(var(--accent));
+  box-shadow: 0 0 6px rgba(var(--accent), 0.7);
   animation: whatsnew-dot-pulse 2s ease-in-out infinite;
   will-change: transform, opacity;
 }
@@ -100,7 +100,7 @@
 }
 
 .whatsnew-panel-title svg {
-  color: #00F2FF;
+  color: rgb(var(--accent));
 }
 
 .whatsnew-panel-close {
@@ -152,8 +152,8 @@
 }
 
 .whatsnew-version-block:first-child {
-  border-left: 1px solid #00F2FF;
-  background: linear-gradient(90deg, rgba(0, 242, 255, 0.04) 0%, transparent 60%);
+  border-left: 1px solid rgb(var(--accent));
+  background: linear-gradient(90deg, rgba(var(--accent), 0.04) 0%, transparent 60%);
   border-radius: 2px 0 0 2px;
 }
 
@@ -171,8 +171,8 @@
 .whatsnew-version-tag {
   font-size: 10.5px;
   font-weight: 700;
-  color: #00F2FF;
-  background: rgba(0, 242, 255, 0.08);
+  color: rgb(var(--accent));
+  background: rgba(var(--accent), 0.08);
   padding: 1.5px 6px;
   border-radius: 3px;
   letter-spacing: 0.3px;
@@ -238,8 +238,8 @@
 }
 
 .whatsnew-badge--new {
-  background: rgba(0, 242, 255, 0.12);
-  color: #00F2FF;
+  background: rgba(var(--accent), 0.12);
+  color: rgb(var(--accent));
 }
 
 .whatsnew-badge--improved {
@@ -261,7 +261,7 @@
   height: 1px;
   width: 100%;
   margin: 10px 0;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.02), #00F2FF, rgba(255,255,255,0.02));
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.02), rgb(var(--accent)), rgba(255,255,255,0.02));
   border-radius: 1px;
   opacity: 0.9;
 }

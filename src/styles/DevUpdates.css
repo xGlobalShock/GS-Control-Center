@@ -44,8 +44,8 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #00F2FF;
-  box-shadow: 0 0 6px rgba(0, 242, 255, 0.7);
+  background: rgb(var(--accent));
+  box-shadow: 0 0 6px rgba(var(--accent), 0.7);
   animation: devupdates-dot-pulse 2s ease-in-out infinite;
   will-change: transform, opacity;
 }

@@ -23,6 +23,15 @@ import AutoCleanupRunner from './components/AutoCleanupRunner';
 import { useRealtimeHardware } from './hooks/useRealtimeHardware';
 import { loadSettings } from './utils/settings';
 
+/** Convert hex (#RRGGBB or #RGB) to "R, G, B" triplet string for CSS var(--accent). */
+function hexToRgbTriplet(hex: string): string | null {
+  const m = hex.replace('#', '').match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i)
+           || hex.replace('#', '').match(/^([0-9a-f])([0-9a-f])([0-9a-f])$/i);
+  if (!m) return null;
+  const f = m[0].length === 3 ? (s: string) => parseInt(s + s, 16) : (s: string) => parseInt(s, 16);
+  return `${f(m[1])}, ${f(m[2])}, ${f(m[3])}`;
+}
+
 export interface HardwareInfo {
   cpuName: string;
   gpuName: string;
@@ -139,7 +148,7 @@ export interface ExtendedStats {
 function AppInner() {
   const [hardwareReady, setHardwareReady] = useState(false);
   const { user, loading: authLoading, appReady } = useAuth();
-  const [raysColor, setRaysColor] = useState<string>(() => loadSettings().raysColor ?? '#00F2FF');
+  const [raysColor, setRaysColor] = useState<string>(() => loadSettings().raysColor ?? 'rgb(var(--accent))');
   const [currentPage, setCurrentPage] = useState('dashboard');
   const pageContentRef = useRef<HTMLDivElement>(null);
 
@@ -199,6 +208,10 @@ function AppInner() {
     if (s.appBgColor) {
       document.documentElement.style.setProperty('--app-bg', s.appBgColor);
     }
+    if (s.accentColor) {
+      const rgb = hexToRgbTriplet(s.accentColor);
+      if (rgb) document.documentElement.style.setProperty('--accent', rgb);
+    }
   }, []);
 
   useEffect(() => {
@@ -209,6 +222,10 @@ function AppInner() {
         if (detail.raysColor) setRaysColor(detail.raysColor);
         if (detail.appBgColor) {
           document.documentElement.style.setProperty('--app-bg', detail.appBgColor);
+        }
+        if (detail.accentColor) {
+          const rgb = hexToRgbTriplet(detail.accentColor);
+          if (rgb) document.documentElement.style.setProperty('--accent', rgb);
         }
       } catch { }
     };

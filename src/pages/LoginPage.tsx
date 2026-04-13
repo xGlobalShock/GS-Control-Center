@@ -17,7 +17,7 @@ const LogoIcon = () => (
       stroke="url(#logoGrad)"
       strokeWidth="2"
       strokeLinejoin="round"
-      fill="rgba(0,242,255,0.06)"
+      fill="rgba(var(--accent),0.06)"
     />
     <path
       d="M24 16v8M24 28v2"
@@ -27,7 +27,7 @@ const LogoIcon = () => (
     />
     <defs>
       <linearGradient id="logoGrad" x1="8" y1="4" x2="40" y2="44">
-        <stop stopColor="#00f2ff" />
+        <stop stopColor="rgb(var(--accent))" />
         <stop offset="1" stopColor="#7b61ff" />
       </linearGradient>
     </defs>
