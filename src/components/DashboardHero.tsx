@@ -55,6 +55,10 @@ const statusLabel = (pct: number, labels = ['Normal', 'Moderate', 'High']): stri
   return labels[0];
 };
 
+/** Append hex-alpha to a colour, falling back to rgba() when the colour uses CSS var(). */
+const withAlpha = (c: string, hex: string, opacity: number): string =>
+  c.includes('var(') ? `rgba(var(--accent), ${opacity})` : `${c}${hex}`;
+
 const fmt = (n: number): string => {
   if (n <= 0) return '0 B/s';
   if (n < 1024) return `${Math.round(n)} B/s`;
@@ -143,11 +147,11 @@ const Sparkline: React.FC<{ data: MetricPoint[]; color: string; gradId: string }
           activeDot={{ r: 3, fill: color, strokeWidth: 0 }} isAnimationActive={false}
         />
         <RechartsTip
-          contentStyle={{ background: 'rgba(4,6,16,0.96)', border: `1px solid ${color}33`,
+          contentStyle={{ background: 'rgba(4,6,16,0.96)', border: `1px solid ${withAlpha(color, '33', 0.2)}`,
             borderRadius: '6px', fontSize: '11px', color: '#c8d8f0', padding: '3px 8px' }}
           formatter={(v: number) => [`${v.toFixed(1)}`, '']}
           labelFormatter={() => ''} separator=""
-          cursor={{ stroke: `${color}55`, strokeWidth: 1, strokeDasharray: '3 3' }}
+          cursor={{ stroke: withAlpha(color, '55', 0.33), strokeWidth: 1, strokeDasharray: '3 3' }}
         />
       </AreaChart>
     </ResponsiveContainer>
@@ -240,8 +244,12 @@ const DetailBar: React.FC<{ pct: number; label: string; display: string; color: 
     <div className="dh-bar-track">
       <div className="dh-bar-fill" style={{
         '--bar-scale': `${Math.min(Math.max(pct, 0), 100) / 100}`,
-        background: `linear-gradient(90deg, ${color}55, ${color})`,
-        boxShadow: `0 0 8px ${color}55`,
+        background: color.includes('var(') 
+          ? `linear-gradient(90deg, rgba(var(--accent), 0.33), rgb(var(--accent)))` 
+          : `linear-gradient(90deg, ${color}55, ${color})`,
+        boxShadow: color.includes('var(') 
+          ? `0 0 8px rgba(var(--accent), 0.33)` 
+          : `0 0 8px ${color}55`,
       } as React.CSSProperties} />
     </div>
   </div>
@@ -303,7 +311,7 @@ const VolumeStrip: React.FC<{ drives: { letter: string; totalGB: number; freeGB:
                 <div className="dh-vol-cells">
                   {Array.from({ length: SEGS }, (_, i) => (
                     <div key={i} className="dh-vol-cell"
-                      style={i < lit ? { background: color, boxShadow: `0 0 3px ${color}77` } : undefined}
+                      style={i < lit ? { background: color, boxShadow: `0 0 3px ${withAlpha(color, '77', 0.47)}` } : undefined}
                     />
                   ))}
                 </div>
@@ -385,7 +393,7 @@ const HeroCard: React.FC<HeroCardProps> = React.memo(({
         >
           <div className="dh-inner">
             <div className="dh-head">
-              <div className="dh-icon" style={{ color: accentColor, background: `${accentColor}14` }}>{icon}</div>
+              <div className="dh-icon" style={{ color: accentColor, background: withAlpha(accentColor, '14', 0.08) }}>{icon}</div>
               <div className="dh-label-group">
                 <span className="dh-label">{cardLabel}</span>
                 {subtitle && <span className="dh-subtitle">{subtitle}</span>}
@@ -404,7 +412,7 @@ const HeroCard: React.FC<HeroCardProps> = React.memo(({
             </div>
 
             <div className="dh-value-row">
-              <span className="dh-value-num" style={{ color: '#FFFFFF', textShadow: `0 0 28px ${accentColor}50` }}>
+              <span className="dh-value-num" style={{ color: '#FFFFFF', textShadow: `0 0 28px ${withAlpha(accentColor, '50', 0.31)}` }}>
                 {mainValue}
               </span>
               {mainSuffix && <span className="dh-value-suffix">{mainSuffix}</span>}
@@ -446,7 +454,7 @@ const HeroCard: React.FC<HeroCardProps> = React.memo(({
           >
             <div className="dh-inner">
               <div className="dh-head">
-                <div className="dh-icon" style={{ color: accentColor, background: `${accentColor}14` }}>{icon}</div>
+                <div className="dh-icon" style={{ color: accentColor, background: withAlpha(accentColor, '14', 0.08) }}>{icon}</div>
                 <div className="dh-label-group">
                   <span className="dh-label">{cardLabel}</span>
                   <span className="dh-subtitle">Hardware Info</span>
@@ -468,12 +476,12 @@ const HeroCard: React.FC<HeroCardProps> = React.memo(({
         {/* ── SHARED DECORATIONS — always rendered on top of both faces ── */}
         <div className="dh-card-accent" style={{
           background: `linear-gradient(90deg, transparent 0%, ${accentColor} 50%, transparent 100%)`,
-          boxShadow: `0 0 12px ${accentColor}55`,
+          boxShadow: `0 0 12px ${withAlpha(accentColor, '55', 0.33)}`,
         }} />
-        <div className="dh-corner dh-tl" style={{ borderColor: `${accentColor}CC` }} />
-        <div className="dh-corner dh-tr" style={{ borderColor: `${accentColor}CC` }} />
-        <div className="dh-corner dh-bl" style={{ borderColor: `${accentColor}77` }} />
-        <div className="dh-corner dh-br" style={{ borderColor: `${accentColor}77` }} />
+        <div className="dh-corner dh-tl" style={{ borderColor: withAlpha(accentColor, 'CC', 0.8) }} />
+        <div className="dh-corner dh-tr" style={{ borderColor: withAlpha(accentColor, 'CC', 0.8) }} />
+        <div className="dh-corner dh-bl" style={{ borderColor: withAlpha(accentColor, '77', 0.47) }} />
+        <div className="dh-corner dh-br" style={{ borderColor: withAlpha(accentColor, '77', 0.47) }} />
         <div className="dh-scanline" />
     </motion.div>
   );
