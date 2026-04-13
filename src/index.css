@@ -29,6 +29,29 @@
   50%       { transform: scale(1.5); opacity: 1; }
 }
 
+/* ── HUD status dot — shared across all compact header cards ─────── */
+@keyframes hudDotBeat {
+  0%, 100% { opacity: 1;   transform: scale(1)    translateZ(0); }
+  50%       { opacity: 0.2; transform: scale(0.55) translateZ(0); }
+}
+@keyframes hudDotFast {
+  0%, 100% { opacity: 1;   transform: scale(1)    translateZ(0); }
+  50%       { opacity: 0.1; transform: scale(0.45) translateZ(0); }
+}
+.hud-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transform: translateZ(0);
+  will-change: opacity, transform;
+  animation: hudDotBeat 2.2s ease-in-out infinite;
+}
+.hud-dot--good     { background: #00CC6A; box-shadow: 0 0 5px rgba(0, 204, 106, 0.8); }
+.hud-dot--warning  { background: #f59e0b; box-shadow: 0 0 5px rgba(245, 158, 11, 0.8); animation-duration: 1.4s; }
+.hud-dot--critical { background: #ef4444; box-shadow: 0 0 5px rgba(239, 68, 68, 0.8); animation: hudDotFast 0.85s ease-in-out infinite; }
+
 * {
   margin: 0;
   padding: 0;

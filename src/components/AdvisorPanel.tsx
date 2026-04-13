@@ -124,8 +124,18 @@ const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ systemStats, extendedStats,
   const warningCount = data?.insights.filter(i => i.severity === 'warning').length ?? 0;
   const isAllGood = data?.insights.length === 1 && data.insights[0].id === 'all-good';
 
+  const advisorStatus = !data ? ''
+    : isAllGood ? 'advisor-card--good'
+    : criticalCount > 0 ? 'advisor-card--critical'
+    : 'advisor-card--warning';
+  const dotStatus = !data ? 'good' : isAllGood ? 'good' : criticalCount > 0 ? 'critical' : 'warning';
+
   return (
-    <div className={`advisor-card${compact ? ' advisor-card--compact' : ''}`}>
+    <div className={[
+      'advisor-card',
+      compact ? 'advisor-card--compact' : '',
+      compact && data ? advisorStatus : '',
+    ].filter(Boolean).join(' ')}>
       <div className="advisor-header" onClick={handleToggle}>
         <div className="advisor-icon-wrap">
           <ScanLine size={18} className={isAllGood ? 'advisor-brain-good' : 'advisor-brain-active'} />
@@ -145,6 +155,7 @@ const AdvisorPanel: React.FC<AdvisorPanelProps> = ({ systemStats, extendedStats,
           </div>
         </div>
         <div className="advisor-toggle">
+          {compact && <span className={`hud-dot hud-dot--${dotStatus}`} />}
           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </div>
       </div>

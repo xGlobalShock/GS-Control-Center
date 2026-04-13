@@ -40,7 +40,7 @@
   inset: 0;
   border-radius: inherit;
   box-shadow: 0 0 0 1px rgba(0, 242, 255, 0.2), 0 6px 24px rgba(0, 0, 0, 0.4);
-  opacity: 0;
+  opacity: 0.2;
   transition: opacity 0.25s ease;
   pointer-events: none;
   will-change: opacity;
@@ -63,7 +63,7 @@
 .advisor-icon-wrap {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -212,12 +212,18 @@
   opacity: 0.85;
 }
 
-/* ── Compact variant (inside PageHeader actions) ────────────────────── */
-/* Same pill-chip concept as health-score, purple variant */
+/* ── Compact variant — HUD chip design ─────────────────────────────── */
+/*
+  Rectangular chip (8px radius). Status-colored chrome reflects insight severity.
+  GPU: ::before top neon line + ::after glow animate opacity only.
+*/
+@keyframes adv-neon-pulse   { 0%,100%{opacity:.2} 50%{opacity:.9} }
+@keyframes adv-glow-breathe { 0%,100%{opacity:.35} 50%{opacity:1} }
+
 .advisor-card--compact {
-  padding: 0 10px 0 0;
+  padding: 0;
   margin-bottom: 0;
-  border-radius: 999px;
+  border-radius: 8px;
   width: 194px;
   height: 44px;
   display: flex;
@@ -225,56 +231,120 @@
   justify-content: center;
   position: relative;
   box-sizing: border-box;
-  border: 1px solid rgba(0, 242, 255, 0.28);
-  background: rgba(7, 9, 20, 0.92);
-  box-shadow: 0 0 16px rgba(0, 242, 255, 0.07), inset 0 1px 0 rgba(0, 242, 255, 0.09);
+  border: 1px solid rgba(0, 242, 255, 0.25);
+  background: linear-gradient(135deg, rgba(0, 242, 255, 0.055) 0%, transparent 55%), rgba(4, 7, 16, 0.97);
+  box-shadow: 0 0 0 1px rgba(0, 242, 255, 0.06), 0 4px 20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(0, 242, 255, 0.13);
+}
+.advisor-card--compact.advisor-card--warning {
+  border-color: rgba(245, 158, 11, 0.25);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.055) 0%, transparent 55%), rgba(4, 7, 16, 0.97);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.06), 0 4px 20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(245, 158, 11, 0.13);
+}
+.advisor-card--compact.advisor-card--critical {
+  border-color: rgba(239, 68, 68, 0.25);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.055) 0%, transparent 55%), rgba(4, 7, 16, 0.97);
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.06), 0 4px 20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(239, 68, 68, 0.13);
 }
 
-/* Left icon panel — pill-half, matches parent pill curve */
+/* Top neon accent line — GPU: opacity animation only */
 .advisor-card--compact::before {
-  top: 0;
-  bottom: 0;
-  width: 46px;
-  border-radius: 999px 0 0 999px;
-  background: rgba(0, 242, 255, 0.13);
-  border-right: 1px solid rgba(0, 242, 255, 0.2);
+  content: '';
+  position: absolute;
+  top: 0; bottom: auto;
+  left: 14%; right: 14%;
+  width: auto; height: 1px;
+  border-radius: 0;
+  pointer-events: none;
+  animation: adv-neon-pulse 2.8s ease-in-out infinite;
+  will-change: opacity;
+}
+.advisor-card--compact.advisor-card--good::before,
+.advisor-card--compact:not(.advisor-card--warning):not(.advisor-card--critical)::before {
+  background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.9), transparent);
+}
+.advisor-card--compact.advisor-card--warning::before {
+  background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.9), transparent);
+}
+.advisor-card--compact.advisor-card--critical::before {
+  background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.9), transparent);
 }
 
+/* Outer breathing glow — GPU: opacity animation only */
+.advisor-card--compact::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  transition: none;
+  animation: adv-glow-breathe 3.6s ease-in-out infinite;
+  will-change: opacity;
+}
+.advisor-card--compact.advisor-card--good::after,
+.advisor-card--compact:not(.advisor-card--warning):not(.advisor-card--critical)::after {
+  box-shadow: 0 0 16px rgba(0, 242, 255, 0.2), 0 0 4px rgba(0, 242, 255, 0.08);
+}
+.advisor-card--compact.advisor-card--warning::after {
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.2), 0 0 4px rgba(245, 158, 11, 0.08);
+}
+.advisor-card--compact.advisor-card--critical::after {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.25), 0 0 5px rgba(239, 68, 68, 0.1);
+}
+
+/* Header layout */
 .advisor-card--compact .advisor-header {
-  gap: 0;
+  gap: 8px;
   height: 44px;
   align-items: center;
+  padding: 0 10px 0 8px;
 }
 .advisor-card--compact .advisor-icon-wrap {
-  width: 46px;
-  height: 44px;
-  border-radius: 999px 0 0 999px;
-  background: transparent;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(0, 242, 255, 0.1);
+  border: 1px solid rgba(0, 242, 255, 0.28);
   flex-shrink: 0;
   position: relative;
-  z-index: 1; /* paints above the ::before colored panel */
+  z-index: 1;
 }
-.advisor-card--compact .advisor-icon-wrap svg {
-  width: 26px;
-  height: 26px;
+.advisor-card--compact.advisor-card--warning .advisor-icon-wrap {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.28);
 }
+.advisor-card--compact.advisor-card--critical .advisor-icon-wrap {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.28);
+}
+.advisor-card--compact .advisor-icon-wrap svg { width: 15px; height: 15px; }
 .advisor-card--compact .advisor-title-area {
-  padding-left: 9px;
   flex: 1;
   min-width: 0;
+  padding-left: 0;
 }
 .advisor-card--compact .advisor-title {
   font-size: 11px;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: 0.2px;
 }
 .advisor-card--compact .advisor-summary {
   font-size: 10px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-top: 1px;
 }
+.advisor-card--compact .advisor-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  color: rgba(228, 228, 231, 0.4);
+}
+/* Dropdown panel */
 .advisor-card--compact .advisor-body {
   position: absolute;
   top: calc(100% + 6px);
@@ -282,24 +352,17 @@
   z-index: 999;
   min-width: 300px;
   max-width: 360px;
-  background: #0f1117;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(8, 10, 20, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 8px;
   padding: 8px 10px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7), 0 0 24px rgba(0, 0, 0, 0.3);
   margin-top: 0;
   border-top: none;
 }
-.advisor-card--compact .advisor-insight {
-  padding: 6px 8px;
-}
-.advisor-card--compact .advisor-insight-title {
-  font-size: 10.5px;
-}
-.advisor-card--compact .advisor-insight-desc {
-  font-size: 9.5px;
-  margin-top: 2px;
-}
+.advisor-card--compact .advisor-insight { padding: 6px 8px; }
+.advisor-card--compact .advisor-insight-title { font-size: 10.5px; }
+.advisor-card--compact .advisor-insight-desc { font-size: 9.5px; margin-top: 2px; }
 
 /* ── View Details Button ───────────────────────────────────── */
 .advisor-view-details-btn {

@@ -102,6 +102,7 @@ const AntiCheatChecker: React.FC<AntiCheatCheckerProps> = ({ compact, isExpanded
     : riskyCount > 0 ? 'ac-card--critical'
     : cautionCount > 0 ? 'ac-card--warning'
     : '';
+  const dotStatus = allClear ? 'good' : riskyCount > 0 ? 'critical' : cautionCount > 0 ? 'warning' : 'good';
 
   const cardClass = [
     'ac-card',
@@ -123,6 +124,7 @@ const AntiCheatChecker: React.FC<AntiCheatCheckerProps> = ({ compact, isExpanded
           <div className="ac-summary">{summaryText}</div>
         </div>
         <div className="ac-toggle">
+          {compact && <span className={`hud-dot hud-dot--${dotStatus}`} />}
           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </div>
       </div>

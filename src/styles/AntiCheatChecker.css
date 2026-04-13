@@ -31,7 +31,7 @@
   inset: 0;
   border-radius: inherit;
   box-shadow: 0 0 0 1px rgba(0, 242, 255, 0.2), 0 6px 24px rgba(0, 0, 0, 0.4);
-  opacity: 0;
+  opacity: 0.2;
   transition: opacity 0.25s ease;
   pointer-events: none;
   will-change: opacity;
@@ -81,7 +81,7 @@
 .ac-icon-wrap {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -261,11 +261,18 @@
   line-height: 1.5;
 }
 
-/* ── Compact variant (inside PageHeader actions) ───────────── */
+/* ── Compact variant — HUD chip design ─────────────────────────────── */
+/*
+  Rectangular chip (8px radius). Chrome shifts cyan/amber/red per threat level.
+  GPU: ::before top neon line + ::after glow animate opacity only.
+*/
+@keyframes ac-neon-pulse   { 0%,100%{opacity:.2} 50%{opacity:.9} }
+@keyframes ac-glow-breathe { 0%,100%{opacity:.35} 50%{opacity:1} }
+
 .ac-card--compact {
-  padding: 0 10px 0 0;
+  padding: 0;
   margin-bottom: 0;
-  border-radius: 999px;
+  border-radius: 8px;
   width: 194px;
   height: 44px;
   display: flex;
@@ -273,71 +280,120 @@
   justify-content: center;
   position: relative;
   box-sizing: border-box;
-  border: 1px solid rgba(0, 242, 255, 0.28);
-  background: rgba(7, 9, 20, 0.92);
-  box-shadow: 0 0 16px rgba(0, 242, 255, 0.07), inset 0 1px 0 rgba(0, 242, 255, 0.09);
+  border: 1px solid rgba(0, 242, 255, 0.25);
+  background: linear-gradient(135deg, rgba(0, 242, 255, 0.055) 0%, transparent 55%), rgba(4, 7, 16, 0.97);
+  box-shadow: 0 0 0 1px rgba(0, 242, 255, 0.06), 0 4px 20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(0, 242, 255, 0.13);
 }
 .ac-card--compact.ac-card--warning {
-  border-color: rgba(245, 158, 11, 0.28);
-  box-shadow: 0 0 16px rgba(245, 158, 11, 0.07), inset 0 1px 0 rgba(245, 158, 11, 0.09);
+  border-color: rgba(245, 158, 11, 0.25);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.055) 0%, transparent 55%), rgba(4, 7, 16, 0.97);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.06), 0 4px 20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(245, 158, 11, 0.13);
 }
 .ac-card--compact.ac-card--critical {
-  border-color: rgba(239, 68, 68, 0.28);
-  box-shadow: 0 0 16px rgba(239, 68, 68, 0.07), inset 0 1px 0 rgba(239, 68, 68, 0.09);
+  border-color: rgba(239, 68, 68, 0.25);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.055) 0%, transparent 55%), rgba(4, 7, 16, 0.97);
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.06), 0 4px 20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(239, 68, 68, 0.13);
 }
 
+/* Top neon accent line — GPU: opacity animation only */
 .ac-card--compact::before {
-  top: 0;
-  bottom: 0;
-  width: 46px;
-  border-radius: 999px 0 0 999px;
-  background: rgba(0, 242, 255, 0.13);
-  border-right: 1px solid rgba(0, 242, 255, 0.2);
+  content: '';
+  position: absolute;
+  top: 0; bottom: auto;
+  left: 14%; right: 14%;
+  width: auto; height: 1px;
+  border-radius: 0;
+  pointer-events: none;
+  animation: ac-neon-pulse 2.8s ease-in-out infinite;
+  will-change: opacity;
+}
+.ac-card--compact.ac-card--clear::before,
+.ac-card--compact:not(.ac-card--warning):not(.ac-card--critical)::before {
+  background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.9), transparent);
 }
 .ac-card--compact.ac-card--warning::before {
-  background: rgba(245, 158, 11, 0.13);
-  border-right-color: rgba(245, 158, 11, 0.2);
+  background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.9), transparent);
 }
 .ac-card--compact.ac-card--critical::before {
-  background: rgba(239, 68, 68, 0.13);
-  border-right-color: rgba(239, 68, 68, 0.2);
+  background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.9), transparent);
 }
 
+/* Outer breathing glow — GPU: opacity animation only */
+.ac-card--compact::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  transition: none;
+  animation: ac-glow-breathe 3.6s ease-in-out infinite;
+  will-change: opacity;
+}
+.ac-card--compact.ac-card--clear::after,
+.ac-card--compact:not(.ac-card--warning):not(.ac-card--critical)::after {
+  box-shadow: 0 0 16px rgba(0, 242, 255, 0.2), 0 0 4px rgba(0, 242, 255, 0.08);
+}
+.ac-card--compact.ac-card--warning::after {
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.2), 0 0 4px rgba(245, 158, 11, 0.08);
+}
+.ac-card--compact.ac-card--critical::after {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.28), 0 0 5px rgba(239, 68, 68, 0.1);
+}
+
+/* Header layout */
 .ac-card--compact .ac-header {
-  gap: 0;
+  gap: 8px;
   height: 44px;
   align-items: center;
+  padding: 0 10px 0 8px;
 }
 .ac-card--compact .ac-icon-wrap {
-  width: 46px;
-  height: 44px;
-  border-radius: 999px 0 0 999px;
-  background: transparent;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(0, 242, 255, 0.1);
+  border: 1px solid rgba(0, 242, 255, 0.28);
   flex-shrink: 0;
   position: relative;
   z-index: 1;
 }
-.ac-card--compact .ac-icon-wrap svg {
-  width: 26px;
-  height: 26px;
+.ac-card--compact.ac-card--warning .ac-icon-wrap {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.28);
 }
+.ac-card--compact.ac-card--critical .ac-icon-wrap {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.28);
+}
+.ac-card--compact .ac-icon-wrap svg { width: 15px; height: 15px; }
 .ac-card--compact .ac-title-area {
-  padding-left: 9px;
   flex: 1;
   min-width: 0;
+  padding-left: 0;
 }
 .ac-card--compact .ac-title {
   font-size: 11px;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: 0.2px;
 }
 .ac-card--compact .ac-summary {
   font-size: 10px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-top: 1px;
 }
+.ac-card--compact .ac-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  color: rgba(228, 228, 231, 0.4);
+}
+/* Dropdown panel */
 .ac-card--compact .ac-body {
   position: absolute;
   top: calc(100% + 6px);
@@ -345,22 +401,14 @@
   z-index: 999;
   min-width: 340px;
   max-width: 420px;
-  background: #0f1117;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(8, 10, 20, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 8px;
   padding: 8px 10px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
   margin-top: 0;
   border-top: none;
 }
-.ac-card--compact .ac-row {
-  padding: 4px 6px;
-}
-.ac-card--compact .ac-row-label {
-  font-size: 10.5px;
-}
-.ac-card--compact .ac-badge {
-  font-size: 7px;
-  padding: 1px 5px;
-  min-width: 24px;
-}
+.ac-card--compact .ac-row { padding: 4px 6px; }
+.ac-card--compact .ac-row-label { font-size: 10.5px; }
+.ac-card--compact .ac-badge { font-size: 7px; padding: 1px 5px; min-width: 24px; }

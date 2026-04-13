@@ -89,8 +89,18 @@ const HealthScore: React.FC<HealthScoreProps> = ({ systemStats, extendedStats, h
   const circumference = 2 * Math.PI * 42;
   const offset = circumference - (score / 100) * circumference;
 
+  const statusModifier = !healthData ? ''
+    : score >= 75 ? 'health-score-card--good'
+    : score >= 50 ? 'health-score-card--warning'
+    : 'health-score-card--critical';
+  const dotStatus = !healthData ? 'good' : score >= 75 ? 'good' : score >= 50 ? 'warning' : 'critical';
+
   return (
-    <div className={`health-score-card${compact ? ' health-score-card--compact' : ''}`}>
+    <div className={[
+      'health-score-card',
+      compact ? 'health-score-card--compact' : '',
+      compact && healthData ? statusModifier : '',
+    ].filter(Boolean).join(' ')}>
       <div className="health-score-header" onClick={handleToggle}>
         <div className="health-score-gauge">
           <svg viewBox="0 0 100 100" className="health-score-ring">
@@ -119,6 +129,7 @@ const HealthScore: React.FC<HealthScoreProps> = ({ systemStats, extendedStats, h
           </div>
         </div>
         <div className="health-score-toggle">
+          {compact && <span className={`hud-dot hud-dot--${dotStatus}`} />}
           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </div>
       </div>
