@@ -159,6 +159,8 @@ const hexPoints = (cx: number, cy: number, r: number): string => {
   return pts.join(' ');
 };
 
+const SEG_CELLS = 32;
+
 const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
   const { toasts, removeToast, addToast } = useToast();
   const [toastId, setToastId] = useState<string | null>(null);
@@ -351,7 +353,12 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
 
   const totalMB = tasks.reduce((sum, t) => sum + (t.spaceSavedMB || 0), 0);
   const purgedCount = tasks.filter(t => t.state === 'purged').length;
+  const failedCount = tasks.filter(t => t.state === 'failed').length;
+  const finishedCount = purgedCount + failedCount;
   const queueLen = activeIds.length;
+  const activeProgress = currentIdx !== null && tasks[currentIdx]?.state === 'active' ? tasks[currentIdx].progress : 0;
+  const donePct = queueLen > 0 ? Math.min(100, Math.round(((finishedCount + activeProgress) / queueLen) * 100)) : (started ? 100 : 0);
+  const litCells = Math.floor((donePct / 100) * SEG_CELLS);
 
   const throughputSamples = useMemo(() => {
     return tasks.filter(t => t.state === 'purged' || t.state === 'failed').map(t => t.spaceSavedMB || 0);
@@ -360,6 +367,17 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
   const maxSample = Math.max(1, ...throughputSamples);
 
   const phaseLabel = running ? (paused ? 'PAUSED' : 'CLEANING') : started ? (summary?.type === 'error' ? 'ABORTED' : 'COMPLETE') : 'READY';
+
+  const displayValue = totalMB < 1024 ? totalMB.toFixed(2) : (totalMB / 1024).toFixed(2);
+  const displayUnit = totalMB < 1024 ? 'MB' : 'GB';
+  const ghostDigits = displayValue.replace(/\d/g, '8');
+
+  const currentLabel = running && currentIdx !== null
+    ? (TASK_LABELS[tasks[currentIdx]?.id] || '—')
+    : phaseLabel === 'COMPLETE' ? 'All tasks finished'
+    : phaseLabel === 'ABORTED' ? 'Stopped'
+    : phaseLabel === 'PAUSED' ? 'Paused'
+    : 'Idle — awaiting start';
 
   return ReactDOM.createPortal(
     <div className="xfl-overlay">
@@ -372,115 +390,186 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
         <div className="xfl-ruler xfl-ruler-bot"><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /></div>
         {running && <div className="xfl-scanline" />}
 
-        <div className="xfl-commandbar">
-          <span className="xfl-cb-dot" />
-          <span className="xfl-cb-title">CACHE CLEANUP</span>
-          <span className="xfl-cb-sep" />
-          <span className="xfl-cb-meta">LOCAL</span>
-          <span className="xfl-cb-sep" />
-          <span className="xfl-cb-meta">v2.2.3</span>
-          <span className="xfl-cb-sep" />
-          <span className="xfl-cb-meta xfl-cb-clock">{clock}</span>
-          <span className="xfl-cb-sep" />
-          <span className={`xfl-cb-phase xfl-cb-phase-${phaseLabel.toLowerCase()}`}>{phaseLabel}</span>
-          <div className="xfl-cb-spacer" />
-          <button className="xfl-cb-close" onClick={close} title="Dismiss" disabled={running && !paused}>
-            <X size={13} />
-          </button>
+        {/* ═══ RAIL — integrated progress header ═══ */}
+        <div className="xfl-rail">
+          <div className="xfl-rail-id">
+            <span className="xfl-rail-glyph" />
+            <span className="xfl-rail-title">CACHE.CONTROL</span>
+          </div>
+          <div className="xfl-rail-progress" role="progressbar" aria-valuenow={donePct} aria-valuemin={0} aria-valuemax={100}>
+            <div className="xfl-rail-progress-track" />
+            <div className="xfl-rail-progress-fill" style={{ width: `${donePct}%` }} />
+            <span className="xfl-rail-progress-readout">{donePct.toString().padStart(3, '0')}%</span>
+          </div>
+          <div className="xfl-rail-meta">
+            <span className="xfl-rail-clock">{clock}</span>
+            <span className="xfl-rail-sep" />
+            <span className="xfl-rail-ver">v2.2.3</span>
+            <span className={`xfl-rail-phase xfl-cb-phase-${phaseLabel.toLowerCase()}`}>{phaseLabel}</span>
+            <button className="xfl-rail-close" onClick={close} title="Dismiss" disabled={running && !paused}>
+              <X size={13} />
+            </button>
+          </div>
         </div>
 
-        <div className="xfl-hero">
-          <div className="xfl-hex-zone">
-            <svg viewBox="0 0 170 120" className="xfl-hex-svg" preserveAspectRatio="xMidYMid meet">
-              <defs>
-                <radialGradient id="xflHexActive" cx="50%" cy="50%" r="60%">
-                  <stop offset="0%" stopColor="rgb(var(--accent))" stopOpacity="0.85" />
-                  <stop offset="100%" stopColor="rgb(var(--accent))" stopOpacity="0.15" />
-                </radialGradient>
-                <radialGradient id="xflHexPurged" cx="50%" cy="50%" r="60%">
-                  <stop offset="0%" stopColor="rgb(var(--accent))" stopOpacity="0.55" />
-                  <stop offset="100%" stopColor="rgb(var(--accent))" stopOpacity="0.12" />
-                </radialGradient>
-                <filter id="xflHexGlow"><feGaussianBlur stdDeviation="1.2" /></filter>
-              </defs>
+        {/* ═══ CROWN — 4-pill status strip ═══ */}
+        <div className="xfl-crown">
+          <div className="xfl-crown-pill">
+            <span className="xfl-crown-label">CLEANED</span>
+            <span className="xfl-crown-val xfl-crown-val-accent">
+              {purgedCount.toString().padStart(2, '0')}
+              <span className="xfl-crown-val-sub">/{queueLen.toString().padStart(2, '0')}</span>
+            </span>
+          </div>
+          <span className="xfl-crown-divider" />
+          <div className="xfl-crown-pill">
+            <span className="xfl-crown-label">ELAPSED</span>
+            <span className="xfl-crown-val">{formatElapsed(elapsedMs)}</span>
+          </div>
+          <span className="xfl-crown-divider" />
+          <div className="xfl-crown-pill">
+            <span className="xfl-crown-label">RECOVERED</span>
+            <span className="xfl-crown-val xfl-crown-val-accent">{formatMB(totalMB)}</span>
+          </div>
+          <span className="xfl-crown-divider" />
+          <div className="xfl-crown-pill xfl-crown-pill-wide">
+            <span className="xfl-crown-label">CURRENT</span>
+            <span className="xfl-crown-val xfl-crown-val-text">{currentLabel}</span>
+          </div>
+        </div>
 
-              {HEX_ADJACENCIES.map(([a, b], i) => {
-                const ta = tasks[a];
-                const tb = tasks[b];
-                const liveEdge = (ta && tb && ((ta.state === 'purged' && tb.state === 'active') || (ta.state === 'active' && tb.state === 'queued')));
-                return (
-                  <line
-                    key={`edge-${i}`}
-                    x1={HEX_POSITIONS[a].x} y1={HEX_POSITIONS[a].y}
-                    x2={HEX_POSITIONS[b].x} y2={HEX_POSITIONS[b].y}
-                    className={`xfl-hex-edge ${liveEdge ? 'xfl-hex-edge-live' : ''}`}
-                  />
-                );
-              })}
+        {/* ═══ CORE — dual visualization (hex + LED readout) ═══ */}
+        <div className="xfl-core">
+          <div className="xfl-core-left">
+            <div className="xfl-core-frame">
+              <span className="xfl-core-frame-label">NODE LATTICE</span>
+              <span className="xfl-core-frame-tag">10-CELL</span>
+            </div>
+            <div className="xfl-hex-zone">
+              <svg viewBox="0 0 170 120" className="xfl-hex-svg" preserveAspectRatio="xMidYMid meet">
+                <defs>
+                  <radialGradient id="xflHexActive" cx="50%" cy="50%" r="60%">
+                    <stop offset="0%" stopColor="rgb(var(--accent))" stopOpacity="0.85" />
+                    <stop offset="100%" stopColor="rgb(var(--accent))" stopOpacity="0.15" />
+                  </radialGradient>
+                  <radialGradient id="xflHexPurged" cx="50%" cy="50%" r="60%">
+                    <stop offset="0%" stopColor="rgb(var(--accent))" stopOpacity="0.55" />
+                    <stop offset="100%" stopColor="rgb(var(--accent))" stopOpacity="0.12" />
+                  </radialGradient>
+                  <filter id="xflHexGlow"><feGaussianBlur stdDeviation="1.2" /></filter>
+                </defs>
 
-              {HEX_POSITIONS.map((pos, i) => {
-                const t = tasks[i];
-                const state = t?.state ?? 'dormant';
-                return (
-                  <g key={`hex-${i}`} className={`xfl-hex-group xfl-hex-${state}`}>
-                    <polygon points={hexPoints(pos.x, pos.y, 20)} className="xfl-hex-outer" />
-                    <polygon points={hexPoints(pos.x, pos.y, 16)} className="xfl-hex-inner" />
-                    {state === 'active' && (
-                      <circle cx={pos.x} cy={pos.y} r="22" className="xfl-hex-ring" />
-                    )}
-                    <text x={pos.x} y={pos.y + 3} textAnchor="middle" className="xfl-hex-idx">
-                      {(i + 1).toString().padStart(2, '0')}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
+                {HEX_ADJACENCIES.map(([a, b], i) => {
+                  const ta = tasks[a];
+                  const tb = tasks[b];
+                  const liveEdge = (ta && tb && ((ta.state === 'purged' && tb.state === 'active') || (ta.state === 'active' && tb.state === 'queued')));
+                  return (
+                    <line
+                      key={`edge-${i}`}
+                      x1={HEX_POSITIONS[a].x} y1={HEX_POSITIONS[a].y}
+                      x2={HEX_POSITIONS[b].x} y2={HEX_POSITIONS[b].y}
+                      className={`xfl-hex-edge ${liveEdge ? 'xfl-hex-edge-live' : ''}`}
+                    />
+                  );
+                })}
 
-            <div className="xfl-hex-caption">
-              <span className="xfl-hex-caption-dot" />
-              <span className="xfl-hex-caption-text">
-                {running && currentIdx !== null
-                  ? `CLEANING :: ${TASK_LABELS[tasks[currentIdx]?.id] || ''}`
-                  : phaseLabel === 'READY' ? `READY · ${queueLen} TASKS QUEUED`
-                  : phaseLabel === 'COMPLETE' ? `DONE · ${purgedCount}/${queueLen} CLEANED`
-                  : phaseLabel === 'PAUSED' ? 'PAUSED BY USER'
-                  : 'FINISHED WITH ERRORS'}
-              </span>
+                {HEX_POSITIONS.map((pos, i) => {
+                  const t = tasks[i];
+                  const state = t?.state ?? 'dormant';
+                  return (
+                    <g key={`hex-${i}`} className={`xfl-hex-group xfl-hex-${state}`}>
+                      <polygon points={hexPoints(pos.x, pos.y, 20)} className="xfl-hex-outer" />
+                      <polygon points={hexPoints(pos.x, pos.y, 16)} className="xfl-hex-inner" />
+                      {state === 'active' && (
+                        <circle cx={pos.x} cy={pos.y} r="22" className="xfl-hex-ring" />
+                      )}
+                      <text x={pos.x} y={pos.y + 3} textAnchor="middle" className="xfl-hex-idx">
+                        {(i + 1).toString().padStart(2, '0')}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </div>
+            <div className="xfl-core-stats">
+              <div className="xfl-core-stat"><span className="xfl-core-stat-dot xfl-core-stat-dot-armed" /><span>{queueLen - finishedCount} ARMED</span></div>
+              <div className="xfl-core-stat"><span className="xfl-core-stat-dot xfl-core-stat-dot-done" /><span>{purgedCount} DONE</span></div>
+              {failedCount > 0 && <div className="xfl-core-stat"><span className="xfl-core-stat-dot xfl-core-stat-dot-fail" /><span>{failedCount} FAIL</span></div>}
+              {disabledIds.size > 0 && <div className="xfl-core-stat"><span className="xfl-core-stat-dot xfl-core-stat-dot-skip" /><span>{disabledIds.size} SKIP</span></div>}
             </div>
           </div>
 
-          <div className="xfl-telemetry">
-            <div className="xfl-freed">
-              <div className="xfl-freed-num" data-mb={totalMB.toFixed(2)}>
-                {totalMB < 1024 ? totalMB.toFixed(2) : (totalMB / 1024).toFixed(2)}
-                <span className="xfl-freed-unit">{totalMB < 1024 ? 'MB' : 'GB'}</span>
-              </div>
-              <div className="xfl-freed-label">RECLAIMED</div>
+          <div className="xfl-core-divider" />
+
+          <div className="xfl-core-right">
+            <div className="xfl-core-frame">
+              <span className="xfl-core-frame-label">PRIMARY READOUT</span>
+              <span className="xfl-core-frame-tag">LIVE</span>
             </div>
 
-            <div className="xfl-micro-grid">
-              <div className="xfl-micro">
-                <div className="xfl-micro-val">{purgedCount.toString().padStart(2, '0')}/{queueLen.toString().padStart(2, '0')}</div>
-                <div className="xfl-micro-lbl">CLEANED</div>
+            <div className="xfl-led">
+              <span className="xfl-led-corner xfl-led-corner-tl" />
+              <span className="xfl-led-corner xfl-led-corner-tr" />
+              <span className="xfl-led-corner xfl-led-corner-bl" />
+              <span className="xfl-led-corner xfl-led-corner-br" />
+              <div className="xfl-led-digits">
+                <span className="xfl-led-ghost">{ghostDigits}</span>
+                <span className="xfl-led-value">{displayValue}</span>
               </div>
-              <div className="xfl-micro">
-                <div className="xfl-micro-val">{formatElapsed(elapsedMs)}</div>
-                <div className="xfl-micro-lbl">ELAPSED</div>
-              </div>
+              <span className="xfl-led-unit">{displayUnit}</span>
+              <div className="xfl-led-label">TOTAL RECLAIMED</div>
             </div>
 
-            <div className="xfl-waveform">
-              <div className="xfl-wave-label">USAGE · per-task breakdown</div>
+            <div className="xfl-seg">
+              <div className="xfl-seg-head">
+                <span className="xfl-seg-head-label">PROGRESS</span>
+                <span className="xfl-seg-head-val">{donePct.toString().padStart(3, '0')}%</span>
+              </div>
+              <div className="xfl-seg-bar">
+                {Array.from({ length: SEG_CELLS }, (_, i) => {
+                  const isOn = i < litCells;
+                  const isEdge = running && i === litCells && litCells < SEG_CELLS;
+                  return <span key={i} className={`xfl-seg-cell${isOn ? ' on' : ''}${isEdge ? ' edge' : ''}`} />;
+                })}
+              </div>
+              <div className="xfl-seg-foot">
+                <span>TASK {Math.min(queueLen, finishedCount + (running ? 1 : 0)).toString().padStart(2, '0')} / {queueLen.toString().padStart(2, '0')}</span>
+                <span className="xfl-seg-foot-sep" />
+                <span>{phaseLabel}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ SPECTRUM — full-width reclaim analyzer ═══ */}
+        <div className="xfl-spectrum">
+          <div className="xfl-spec-header">
+            <span className="xfl-spec-label">DATA FLOW</span>
+            <span className="xfl-spec-sub">per-task reclaim · normalized</span>
+            <span className="xfl-spec-peak">PEAK {formatMB(maxSample > 1 ? maxSample : 0)}</span>
+          </div>
+          <div className="xfl-spec-body">
+            <div className="xfl-spec-ticks">
+              <span>100</span>
+              <span>75</span>
+              <span>50</span>
+              <span>25</span>
+              <span>0</span>
+            </div>
+            <div className="xfl-spec-bars-wrap">
               <div className="xfl-wave-bars">
                 {tasks.map((t, i) => {
-                  const h = t.spaceSavedMB ? Math.max(6, (t.spaceSavedMB / maxSample) * 100) : 0;
+                  const h = t.spaceSavedMB ? Math.max(8, (t.spaceSavedMB / maxSample) * 100) : 0;
+                  const label = TASK_LABELS[t.id] || t.id;
                   return (
-                    <div
-                      key={`bar-${i}`}
-                      className={`xfl-wave-bar xfl-wave-${t.state}`}
-                      style={{ height: `${h}%` }}
-                      title={`${TASK_LABELS[t.id]} — ${t.spaceSaved || '—'}`}
-                    />
+                    <div key={`bar-${i}`} className="xfl-spec-bar-slot">
+                      <div
+                        className={`xfl-wave-bar xfl-wave-${t.state}`}
+                        style={{ height: `${h}%` }}
+                        title={`${label} — ${t.spaceSaved || '—'}`}
+                      />
+                      <span className="xfl-spec-bar-idx">{(i + 1).toString().padStart(2, '0')}</span>
+                    </div>
                   );
                 })}
               </div>
@@ -493,55 +582,55 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
             <AlertTriangle size={13} />
             <div className="xfl-banner-text">
               <span className="xfl-banner-title">ELEVATION REQUIRED</span>
-              <span className="xfl-banner-msg">One or more vectors returned permission errors. Relaunch as Administrator to complete the purge.</span>
+              <span className="xfl-banner-msg">One or more tasks returned permission errors. Relaunch as Administrator to complete the cleanup.</span>
             </div>
           </div>
         )}
 
-        <div className="xfl-ledger-head">
-          <span className="xfl-ledger-tag">CLEANUP LOG</span>
-          <span className="xfl-ledger-sep" />
-          <span className="xfl-ledger-count">{queueLen} TASKS</span>
-          {disabledIds.size > 0 && (
-            <>
-              <span className="xfl-ledger-sep" />
-              <span className="xfl-ledger-muted">{disabledIds.size} SKIPPED</span>
-            </>
-          )}
-        </div>
+        {/* ═══ LOG — execution record ═══ */}
+        <div className="xfl-log">
+          <div className="xfl-log-head">
+            <span className="xfl-log-tag">EXECUTION LOG</span>
+            <span className="xfl-log-sep" />
+            <span className="xfl-log-count">{queueLen.toString().padStart(2, '0')} TASKS</span>
+            {disabledIds.size > 0 && (
+              <span className="xfl-log-muted">{disabledIds.size.toString().padStart(2, '0')} SKIPPED</span>
+            )}
+          </div>
 
-        <div className="xfl-ledger" ref={ledgerRef}>
-          {tasks.map((t, i) => {
-            const label = TASK_LABELS[t.id] || t.id.toUpperCase();
-            const idx = (i + 1).toString().padStart(2, '0');
-            const time = t.startedAt ? formatClock(new Date(t.startedAt)) : '--:--:--';
-            const bar = Array.from({ length: 10 }, (_, k) => {
-              if (t.state === 'purged' || t.state === 'failed') return '█';
-              if (t.state === 'active') return k < Math.floor(t.progress * 10) ? '█' : '░';
-              return '░';
-            }).join('');
-            const glyph = t.state === 'purged' ? '✓' : t.state === 'failed' ? '✗' : t.state === 'active' ? '▸' : t.state === 'skipped' ? '⊘' : '·';
-            const stateLabel = t.state === 'purged' ? 'CLEANED'
-              : t.state === 'dormant' ? 'PENDING'
-              : t.state.toUpperCase();
-            const detail = t.state === 'purged' ? (t.spaceSaved || 'OK')
-              : t.state === 'failed' ? (isPermissionError(t.message) ? 'ADMIN REQUIRED' : 'BLOCKED')
-              : t.state === 'active' ? `${Math.floor(t.progress * 100)}%`
-              : t.state === 'skipped' ? 'SKIPPED'
-              : t.state === 'queued' ? 'QUEUED' : 'PENDING';
+          <div className="xfl-ledger" ref={ledgerRef}>
+            {tasks.map((t, i) => {
+              const label = TASK_LABELS[t.id] || t.id.toUpperCase();
+              const idx = (i + 1).toString().padStart(2, '0');
+              const time = t.startedAt ? formatClock(new Date(t.startedAt)) : '--:--:--';
+              const bar = Array.from({ length: 10 }, (_, k) => {
+                if (t.state === 'purged' || t.state === 'failed') return '█';
+                if (t.state === 'active') return k < Math.floor(t.progress * 10) ? '█' : '░';
+                return '░';
+              }).join('');
+              const glyph = t.state === 'purged' ? '✓' : t.state === 'failed' ? '✗' : t.state === 'active' ? '▸' : t.state === 'skipped' ? '⊘' : '·';
+              const stateLabel = t.state === 'purged' ? 'CLEANED'
+                : t.state === 'dormant' ? 'PENDING'
+                : t.state.toUpperCase();
+              const detail = t.state === 'purged' ? (t.spaceSaved || 'OK')
+                : t.state === 'failed' ? (isPermissionError(t.message) ? 'ADMIN REQUIRED' : 'BLOCKED')
+                : t.state === 'active' ? `${Math.floor(t.progress * 100)}%`
+                : t.state === 'skipped' ? 'SKIPPED'
+                : t.state === 'queued' ? 'QUEUED' : 'PENDING';
 
-            return (
-              <div key={t.id} className={`xfl-ledger-row xfl-ledger-${t.state}`}>
-                <span className="xfl-ld-idx">[{idx}]</span>
-                <span className="xfl-ld-time">{time}</span>
-                <span className="xfl-ld-glyph">{glyph}</span>
-                <span className="xfl-ld-name">{label.padEnd(22, '\u00A0')}</span>
-                <span className="xfl-ld-bar">{bar}</span>
-                <span className="xfl-ld-state">{stateLabel}</span>
-                <span className="xfl-ld-detail">· {detail}</span>
-              </div>
-            );
-          })}
+              return (
+                <div key={t.id} className={`xfl-ledger-row xfl-ledger-${t.state}`}>
+                  <span className="xfl-ld-idx">[{idx}]</span>
+                  <span className="xfl-ld-time">{time}</span>
+                  <span className="xfl-ld-glyph">{glyph}</span>
+                  <span className="xfl-ld-name">{label.padEnd(22, '\u00A0')}</span>
+                  <span className="xfl-ld-bar">{bar}</span>
+                  <span className="xfl-ld-state">{stateLabel}</span>
+                  <span className="xfl-ld-detail">· {detail}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {summary && (
@@ -550,9 +639,11 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
             <span>{summary.message}</span>
           </div>
         )}
-        <div className="xfl-deck-divider" />
 
-        <div className="xfl-deck">
+        {/* ═══ CONSOLE — action deck ═══ */}
+        <div className="xfl-console">
+          <span className="xfl-console-edge xfl-console-edge-l" />
+          <span className="xfl-console-edge xfl-console-edge-r" />
           {!started || summary ? (
             <>
               <button className="xfl-btn xfl-btn-primary" onClick={runAll} disabled={running || queueLen === 0}>
@@ -563,6 +654,10 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
                 <Sliders size={13} /><span>SELECT</span>
                 {disabledIds.size > 0 && <span className="xfl-btn-badge">{disabledIds.size}</span>}
               </button>
+              <div className="xfl-console-status">
+                <span className="xfl-console-status-dot" />
+                <span>{started ? (summary?.type === 'error' ? 'FAILED' : 'DONE') : 'STANDING BY'}</span>
+              </div>
             </>
           ) : (
             <>
@@ -573,7 +668,7 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
               <button className="xfl-btn" onClick={() => { abortRef.current = true; if (resumeResolverRef.current) resumeResolverRef.current(); }} disabled={!running}>
                 <RotateCcw size={13} /><span>CANCEL</span>
               </button>
-              <div className="xfl-deck-status">
+              <div className="xfl-console-status">
                 {running && <Loader2 size={12} className="xfl-spin" />}
                 <span>{running ? (paused ? 'PAUSED · awaiting input' : `RUNNING · task ${(currentIdx ?? 0) + 1}/${queueLen}`) : 'IDLE'}</span>
               </div>
