@@ -3,16 +3,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import '../styles/Settings.css';
 import { loadSettings, saveSettings } from '../utils/settings';
 import {
-  Zap, Palette, Layers, Monitor, AlertTriangle, Info,
+  Zap, Palette, Monitor, AlertTriangle, Info,
   RefreshCw, CheckCircle, ArrowUpCircle, ChevronRight, ChevronDown, Check,
 } from 'lucide-react';
 
-type Section = 'startup' | 'appearance' | 'overlay' | 'about';
+type Section = 'startup' | 'appearance' | 'about';
 
 const NAV_ITEMS: { id: Section; label: string; icon: React.ReactNode; desc: string }[] = [
   { id: 'startup',    label: 'Startup',    icon: <Zap size={15} />,     desc: 'Boot behavior'    },
   { id: 'appearance', label: 'Appearance', icon: <Palette size={15} />, desc: 'Colors & effects'  },
-  { id: 'overlay',    label: 'Overlay',    icon: <Layers size={15} />,  desc: 'FPS HUD'          },
   { id: 'about',      label: 'About',      icon: <Info size={15} />,    desc: 'Version & updates' },
 ];
 
@@ -43,45 +42,7 @@ const Settings: React.FC = () => {
   const accentDropdownRef  = useRef<HTMLDivElement>(null);
   const raysDropdownRef    = useRef<HTMLDivElement>(null);
   const bgDropdownRef       = useRef<HTMLDivElement>(null);
-  const fontDropdownRef     = useRef<HTMLDivElement>(null);
-  const fontSizeDropdownRef = useRef<HTMLDivElement>(null);
-  const colorDropdownRef    = useRef<HTMLDivElement>(null);
-  const [showFontDropdown,     setShowFontDropdown]     = useState(false);
-  const [showFontSizeDropdown, setShowFontSizeDropdown] = useState(false);
-  const [showColorDropdown,    setShowColorDropdown]    = useState(false);
-  const [overlayFontSize, setOverlayFontSize] = useState<'small' | 'medium' | 'large'>('medium');
-
-  // Overlay state
-  const [overlayVisible, setOverlayVisible] = useState(false);
-  const [overlayPosition, setOverlayPosition] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'>('top-right');
-  const [overlayColor, setOverlayColor] = useState('rgb(var(--accent))');
-  const [overlayOpacity, setOverlayOpacity] = useState(0.85);
-  const [overlayFont, setOverlayFont] = useState('Share Tech Mono');
-  const [overlaySensors, setOverlaySensors] = useState({
-    showHeader:       true,
-    showBackground:   true,
-    showFps:          true,
-    showCpuUsage:     true,
-    showGpuUsage:     true,
-    showCpuTemp:      true,
-    showGpuTemp:      true,
-    showRamUsage:     true,
-    showLatency:      true,
-    showPacketLoss:   true,
-    showNetworkSpeed: true,
-  });
   const ipc = (window as any).electron?.ipcRenderer;
-
-  const OVERLAY_COLORS = [
-    { hex: 'rgb(var(--accent))', label: 'Cyan'   },
-    { hex: '#00FF88', label: 'Green'  },
-    { hex: '#4488FF', label: 'Blue'   },
-    { hex: '#FF4444', label: 'Red'    },
-    { hex: '#FF8C00', label: 'Orange' },
-    { hex: '#FF69B4', label: 'Pink'   },
-    { hex: '#A855F7', label: 'Purple' },
-    { hex: '#FFFFFF', label: 'White'  },
-  ];
 
   // ─── Accent Colors (global theme) ──────────────────────────────────────────
   const ACCENT_COLORS = [
@@ -126,24 +87,6 @@ const Settings: React.FC = () => {
     { value: 'linear-gradient(160deg, #0C0800 0%, #1A1100 60%, #080600 100%)', label: 'Solar Storm'   },
   ];
 
-  const OVERLAY_FONTS = [
-    { family: 'Share Tech Mono', label: 'Share Tech'    },
-    { family: 'JetBrains Mono',  label: 'JetBrains'     },
-    { family: 'Space Mono',      label: 'Space Mono'    },
-    { family: 'Nova Mono',       label: 'Nova Mono'     },
-    { family: 'Orbitron',        label: 'Orbitron'      },
-    { family: 'Chakra Petch',    label: 'Chakra Petch'  },
-    { family: 'Exo 2',           label: 'Exo 2'         },
-    { family: 'Rajdhani',        label: 'Rajdhani'      },
-    { family: 'Courier Prime',   label: 'Courier'       },
-  ];
-
-  const FONT_SIZES = [
-    { value: 'small',  label: 'Small'  },
-    { value: 'medium', label: 'Medium' },
-    { value: 'large',  label: 'Large'  },
-  ];
-
   useEffect(() => {
     window.electron?.updater?.getVersion().then((v: string) => {
       if (v) setAppVersion(v);
@@ -168,38 +111,8 @@ const Settings: React.FC = () => {
       setMinimizeToTray(!!enabled);
     }).catch(() => {});
 
-    // Load overlay state
-    ipc?.invoke('overlay:get-state').then((state: any) => {
-      if (state) {
-        setOverlayVisible(state.visible);
-        if (state.config?.position) setOverlayPosition(state.config.position);
-        if (state.config?.color)    setOverlayColor(state.config.color);
-        if (state.config?.opacity != null) setOverlayOpacity(state.config.opacity);
-        if (state.config?.font) setOverlayFont(state.config.font);
-        setOverlaySensors(prev => ({
-          showHeader:       state.config?.showHeader       ?? prev.showHeader,
-          showBackground:   state.config?.showBackground   ?? prev.showBackground,
-          showFps:          state.config?.showFps          ?? prev.showFps,
-          showCpuUsage:     state.config?.showCpuUsage     ?? prev.showCpuUsage,
-          showGpuUsage:     state.config?.showGpuUsage     ?? prev.showGpuUsage,
-          showCpuTemp:      state.config?.showCpuTemp      ?? prev.showCpuTemp,
-          showGpuTemp:      state.config?.showGpuTemp      ?? prev.showGpuTemp,
-          showRamUsage:     state.config?.showRamUsage     ?? prev.showRamUsage,
-          showLatency:      state.config?.showLatency      ?? prev.showLatency,
-          showPacketLoss:   state.config?.showPacketLoss   ?? prev.showPacketLoss,
-          showNetworkSpeed: state.config?.showNetworkSpeed ?? prev.showNetworkSpeed,
-        }));
-      }
-    }).catch(() => {});
-
-    // Keep toggle in sync when the hotkey is used
-    const unsubOverlay = ipc?.on?.('overlay:state-changed', (visible: boolean) => {
-      setOverlayVisible(!!visible);
-    });
-
     return () => {
       unsub?.();
-      if (typeof unsubOverlay === 'function') unsubOverlay();
     };
   }, []);
 
@@ -227,18 +140,15 @@ const Settings: React.FC = () => {
 
   // Close all dropdowns on outside click
   useEffect(() => {
-    if (!showAccentDropdown && !showRaysDropdown && !showBgDropdown && !showFontDropdown && !showFontSizeDropdown && !showColorDropdown) return;
+    if (!showAccentDropdown && !showRaysDropdown && !showBgDropdown) return;
     const handle = (e: MouseEvent) => {
-      if (accentDropdownRef.current  && !accentDropdownRef.current.contains(e.target as Node))  setShowAccentDropdown(false);
-      if (raysDropdownRef.current    && !raysDropdownRef.current.contains(e.target as Node))    setShowRaysDropdown(false);
-      if (bgDropdownRef.current      && !bgDropdownRef.current.contains(e.target as Node))      setShowBgDropdown(false);
-      if (fontDropdownRef.current    && !fontDropdownRef.current.contains(e.target as Node))    setShowFontDropdown(false);
-      if (fontSizeDropdownRef.current && !fontSizeDropdownRef.current.contains(e.target as Node)) setShowFontSizeDropdown(false);
-      if (colorDropdownRef.current   && !colorDropdownRef.current.contains(e.target as Node))   setShowColorDropdown(false);
+      if (accentDropdownRef.current && !accentDropdownRef.current.contains(e.target as Node)) setShowAccentDropdown(false);
+      if (raysDropdownRef.current   && !raysDropdownRef.current.contains(e.target as Node))   setShowRaysDropdown(false);
+      if (bgDropdownRef.current     && !bgDropdownRef.current.contains(e.target as Node))     setShowBgDropdown(false);
     };
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
-  }, [showRaysDropdown, showBgDropdown, showFontDropdown, showFontSizeDropdown, showColorDropdown]);
+  }, [showAccentDropdown, showRaysDropdown, showBgDropdown]);
 
   const handleToggle = (key: keyof typeof settings) => {
     const updatedLocal = { ...settings, [key]: !settings[key] };
@@ -256,78 +166,26 @@ const Settings: React.FC = () => {
 
     setCheckState('checking');
 
-    let resolved = false;
-    let unsubFn: (() => void) | null = null;
-
-    const resolve = (state: 'up-to-date' | 'available' | 'idle', version = '') => {
-      if (resolved) return;
-      resolved = true;
+    const finish = (state: 'up-to-date' | 'available' | 'idle', version = '') => {
       setCheckState(state);
       if (version) setCheckVersion(version);
-      unsubFn?.();
-      // Reset to idle after a short display window so the button is clickable again
       if (state === 'up-to-date') {
         setTimeout(() => setCheckState('idle'), 3000);
       }
     };
 
-    unsubFn = updater.onStatus((data: any) => {
-      if (data.event === 'not-available') resolve('up-to-date');
-      else if (data.event === 'available') resolve('available', data.version || '');
-      else if (data.event === 'error') resolve('idle');
-    });
-
-    // Safety net: never stay stuck longer than 10 seconds
-    const timer = setTimeout(() => resolve('idle'), 10000);
+    const timer = setTimeout(() => finish('idle'), 15000);
 
     try {
       const result = await updater.checkForUpdates();
       clearTimeout(timer);
-      // Fallback for dev mode where status events are never fired
-      if (!resolved) {
-        if (result?.dev || result?.event === 'not-available') resolve('up-to-date');
-        else if (result?.event === 'available') resolve('available', result?.version || '');
-        else resolve('idle');
-      }
+      if (result?.event === 'available') finish('available', result?.version || '');
+      else if (result?.event === 'not-available' || result?.dev) finish('up-to-date');
+      else finish('idle');
     } catch {
       clearTimeout(timer);
-      resolve('idle');
+      finish('idle');
     }
-  };
-
-  const handleOverlayToggle = async () => {
-    try {
-      const res = await ipc?.invoke('overlay:toggle');
-      if (res) setOverlayVisible(res.visible);
-    } catch {}
-  };
-
-  const handleOverlayPosition = async (pos: typeof overlayPosition) => {
-    setOverlayPosition(pos);
-    try {
-      await ipc?.invoke('overlay:set-config', { position: pos });
-    } catch {}
-  };
-
-  const handleOverlayColor = async (color: string) => {
-    setOverlayColor(color);
-    try { await ipc?.invoke('overlay:set-config', { color }); } catch {}
-  };
-
-  const handleOverlayOpacity = async (opacity: number) => {
-    setOverlayOpacity(opacity);
-    try { await ipc?.invoke('overlay:set-config', { opacity }); } catch {}
-  };
-
-  const handleOverlayFont = async (font: string) => {
-    setOverlayFont(font);
-    try { await ipc?.invoke('overlay:set-config', { font }); } catch {}
-  };
-
-  const handleOverlaySensor = async (key: keyof typeof overlaySensors) => {
-    const updated = { ...overlaySensors, [key]: !overlaySensors[key] };
-    setOverlaySensors(updated);
-    try { await ipc?.invoke('overlay:set-config', { [key]: updated[key] }); } catch {}
   };
 
   const handleAccentColor = (color: string) => {
@@ -353,11 +211,6 @@ const Settings: React.FC = () => {
       const s = loadSettings();
       saveSettings({ ...s, appBgColor: value });
     } catch {}
-  };
-
-  const handleOverlayFontSize = async (size: 'small' | 'medium' | 'large') => {
-    setOverlayFontSize(size);
-    try { await ipc?.invoke('overlay:set-config', { fontSize: size }); } catch {}
   };
 
   return (
@@ -585,252 +438,6 @@ const Settings: React.FC = () => {
                       </div>
                     </div>
 
-                  </div>
-                </>
-              )}
-
-              {/* OVERLAY */}
-              {activeSection === 'overlay' && (
-                <>
-                  <div className="panel-header">
-                    <span className="panel-header-icon"><Layers size={18} /></span>
-                    <div style={{ flex: 1 }}>
-                      <h2 className="panel-title">Overlay</h2>
-                      <p className="panel-subtitle">Real-time in-game FPS HUD</p>
-                    </div>
-                    <div className="panel-header-toggle">
-                      <div className="panel-header-toggle-info">
-                        <span className={`overlay-enable-dot${overlayVisible ? ' overlay-enable-dot--on' : ''}`} style={{ display: 'inline-block' }} />
-                        <span className="panel-header-toggle-label">FPS Overlay</span>
-                        <kbd className="overlay-hotkey">Ctrl+Shift+F</kbd>
-                      </div>
-                      <label className="toggle-switch">
-                        <input type="checkbox" checked={overlayVisible} onChange={handleOverlayToggle} />
-                        <span className="slider"></span>
-                      </label>
-                    </div>
-                  </div>
-                  <div className="panel-body ovl-panel-body">
-
-                    {/* ── Top Grid: Metrics (left) + Controls (right) ── */}
-                    <div className="ovl-top-grid">
-
-                      {/* Visible Metrics */}
-                      <div className="ovl-metrics-card" style={{ '--ovl-color': overlayColor } as React.CSSProperties}>
-                        <span className="ovl-section-label">Visible Metrics</span>
-                        <div className="ovl-ml-grid">
-
-                          {/* Column 1: HUD + CPU */}
-                          <div className="ovl-ml-col">
-                            <span className="ovl-ml-group-hdr">HUD</span>
-                            {([
-                              ['showHeader',     'Header'    ],
-                              ['showBackground', 'Background'],
-                              ['showFps',        'FPS'       ],
-                            ] as const).map(([key, label]) => (
-                              <div key={key} className={`ovl-ml-row${overlaySensors[key] ? ' ovl-ml-row--on' : ''}`} onClick={() => handleOverlaySensor(key)}>
-                                <span className="ovl-ml-label">{label}</span>
-                                <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`} style={{ '--sensor-color': overlayColor } as React.CSSProperties}><div className="overlay-toggle-thumb" /></div>
-                              </div>
-                            ))}
-
-                            <span className="ovl-ml-group-hdr">CPU</span>
-                            {([
-                              ['showCpuUsage', 'Usage'],
-                              ['showCpuTemp',  'Temp' ],
-                            ] as const).map(([key, label]) => (
-                              <div key={key} className={`ovl-ml-row${overlaySensors[key] ? ' ovl-ml-row--on' : ''}`} onClick={() => handleOverlaySensor(key)}>
-                                <span className="ovl-ml-label">{label}</span>
-                                <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`} style={{ '--sensor-color': overlayColor } as React.CSSProperties}><div className="overlay-toggle-thumb" /></div>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Column 2: GPU + Memory + Network */}
-                          <div className="ovl-ml-col">
-                            <span className="ovl-ml-group-hdr">GPU</span>
-                            {([
-                              ['showGpuUsage', 'Usage'],
-                              ['showGpuTemp',  'Temp' ],
-                            ] as const).map(([key, label]) => (
-                              <div key={key} className={`ovl-ml-row${overlaySensors[key] ? ' ovl-ml-row--on' : ''}`} onClick={() => handleOverlaySensor(key)}>
-                                <span className="ovl-ml-label">{label}</span>
-                                <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`} style={{ '--sensor-color': overlayColor } as React.CSSProperties}><div className="overlay-toggle-thumb" /></div>
-                              </div>
-                            ))}
-
-                            <span className="ovl-ml-group-hdr">Memory</span>
-                            <div className={`ovl-ml-row${overlaySensors.showRamUsage ? ' ovl-ml-row--on' : ''}`} onClick={() => handleOverlaySensor('showRamUsage')}>
-                              <span className="ovl-ml-label">RAM</span>
-                              <div className={`overlay-toggle-switch${overlaySensors.showRamUsage ? ' overlay-toggle-switch--on' : ''}`} style={{ '--sensor-color': overlayColor } as React.CSSProperties}><div className="overlay-toggle-thumb" /></div>
-                            </div>
-
-                            <span className="ovl-ml-group-hdr">Network</span>
-                            {([
-                              ['showLatency',      'Ping'       ],
-                              ['showPacketLoss',   'Packet Loss'],
-                              ['showNetworkSpeed', 'Net Speed'  ],
-                            ] as const).map(([key, label]) => (
-                              <div key={key} className={`ovl-ml-row${overlaySensors[key] ? ' ovl-ml-row--on' : ''}`} onClick={() => handleOverlaySensor(key)}>
-                                <span className="ovl-ml-label">{label}</span>
-                                <div className={`overlay-toggle-switch${overlaySensors[key] ? ' overlay-toggle-switch--on' : ''}`} style={{ '--sensor-color': overlayColor } as React.CSSProperties}><div className="overlay-toggle-thumb" /></div>
-                              </div>
-                            ))}
-                          </div>
-
-                        </div>
-                      </div>
-
-                      {/* Right column: Display + Position */}
-                      <div className="ovl-controls-col">
-
-                        {/* Display Settings */}
-                        <div className="ovl-control-group">
-                          <span className="ovl-section-label">Display</span>
-
-                          {/* Accent Color */}
-                          <div className="ovl-control-row">
-                            <span className="ovl-control-label">Accent Color</span>
-                            <div className="theme-dropdown" ref={colorDropdownRef}>
-                              <button
-                                className={`theme-dropdown__trigger${showColorDropdown ? ' theme-dropdown__trigger--open' : ''}`}
-                                onClick={() => setShowColorDropdown(p => !p)}
-                                style={{ minWidth: 160 }}
-                              >
-                                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <span style={{ width: 11, height: 11, borderRadius: '50%', background: overlayColor, display: 'inline-block', flexShrink: 0, boxShadow: `0 0 6px ${overlayColor}` }} />
-                                  {OVERLAY_COLORS.find(c => c.hex === overlayColor)?.label ?? 'Custom'}
-                                </span>
-                                <ChevronDown size={13} className="theme-dropdown__chevron" />
-                              </button>
-                              {showColorDropdown && (
-                                <div className="theme-dropdown__menu">
-                                  {OVERLAY_COLORS.map(({ hex, label }) => (
-                                    <button
-                                      key={hex}
-                                      className={`theme-dropdown__item${overlayColor === hex ? ' theme-dropdown__item--active' : ''}`}
-                                      onClick={() => { handleOverlayColor(hex); setShowColorDropdown(false); }}
-                                    >
-                                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: hex, display: 'inline-block', flexShrink: 0, boxShadow: `0 0 5px ${hex}` }} />
-                                      {overlayColor === hex && <Check size={12} />}
-                                      {label}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Font Dropdown */}
-                          <div className="ovl-control-row">
-                            <span className="ovl-control-label">Font</span>
-                            <div className="theme-dropdown" ref={fontDropdownRef}>
-                              <button
-                                className={`theme-dropdown__trigger${showFontDropdown ? ' theme-dropdown__trigger--open' : ''}`}
-                                onClick={() => setShowFontDropdown(p => !p)}
-                                style={{ minWidth: 148, fontFamily: overlayFont }}
-                              >
-                                <span>{OVERLAY_FONTS.find(f => f.family === overlayFont)?.label ?? overlayFont}</span>
-                                <ChevronDown size={13} className="theme-dropdown__chevron" />
-                              </button>
-                              {showFontDropdown && (
-                                <div className="theme-dropdown__menu">
-                                  {OVERLAY_FONTS.map(({ family, label }) => (
-                                    <button
-                                      key={family}
-                                      className={`theme-dropdown__item${overlayFont === family ? ' theme-dropdown__item--active' : ''}`}
-                                      style={{ fontFamily: family }}
-                                      onClick={() => { handleOverlayFont(family); setShowFontDropdown(false); }}
-                                    >
-                                      {overlayFont === family && <Check size={12} />}
-                                      {label}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Font Size Dropdown */}
-                          <div className="ovl-control-row">
-                            <span className="ovl-control-label">Font Size</span>
-                            <div className="theme-dropdown" ref={fontSizeDropdownRef}>
-                              <button
-                                className={`theme-dropdown__trigger${showFontSizeDropdown ? ' theme-dropdown__trigger--open' : ''}`}
-                                onClick={() => setShowFontSizeDropdown(p => !p)}
-                                style={{ minWidth: 148 }}
-                              >
-                                <span>{FONT_SIZES.find(s => s.value === overlayFontSize)?.label ?? 'Medium'}</span>
-                                <ChevronDown size={13} className="theme-dropdown__chevron" />
-                              </button>
-                              {showFontSizeDropdown && (
-                                <div className="theme-dropdown__menu">
-                                  {FONT_SIZES.map(({ value, label }) => (
-                                    <button
-                                      key={value}
-                                      className={`theme-dropdown__item${overlayFontSize === value ? ' theme-dropdown__item--active' : ''}`}
-                                      onClick={() => { handleOverlayFontSize(value as 'small' | 'medium' | 'large'); setShowFontSizeDropdown(false); }}
-                                    >
-                                      {overlayFontSize === value && <Check size={12} />}
-                                      {label}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Opacity */}
-                          <div className="ovl-control-row ovl-control-row--col">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                              <span className="ovl-control-label">Opacity</span>
-                              <span className="overlay-opacity-val">{Math.round(overlayOpacity * 100)}%</span>
-                            </div>
-                            <div className="overlay-slider-track" style={{ width: '100%' }}>
-                              <div className="overlay-slider-fill" style={{ width: `${overlayOpacity * 100}%`, background: overlayColor }} />
-                              <input
-                                type="range"
-                                className="overlay-opacity-slider"
-                                min={0} max={1} step={0.05}
-                                value={overlayOpacity}
-                                onChange={e => handleOverlayOpacity(parseFloat(e.target.value))}
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Position Picker */}
-                        <div className="ovl-control-group">
-                          <span className="ovl-section-label">Position</span>
-                          <div className="overlay-screen-picker" style={{ marginTop: 4 }}>
-                            <div className="overlay-screen-frame">
-                              {([
-                                ['top-left',     'top-left'    ],
-                                ['top-right',    'top-right'   ],
-                                ['bottom-left',  'bottom-left' ],
-                                ['bottom-right', 'bottom-right'],
-                              ] as const).map(([pos, corner]) => (
-                                <button
-                                  key={pos}
-                                  className={`overlay-screen-dot overlay-screen-dot--${corner}${overlayPosition === pos ? ' overlay-screen-dot--active' : ''}`}
-                                  onClick={() => handleOverlayPosition(pos)}
-                                  title={pos.replace('-', ' ')}
-                                />
-                              ))}
-                              <div className="overlay-screen-scanline" />
-                            </div>
-                            <span className="overlay-screen-label">
-                              {overlayPosition.replace('-', ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                            </span>
-                          </div>
-                        </div>
-
-                      </div>
-                    </div>
-
-                    <div className="overlay-note">
-                      Works in <strong>Borderless Windowed</strong> mode. Exclusive fullscreen bypasses the compositor.
-                    </div>
                   </div>
                 </>
               )}

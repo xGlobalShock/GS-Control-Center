@@ -481,12 +481,6 @@ async function _startRealtimePush() {
     try {
       mainWindow.webContents.send('realtime-hw-update', payload);
     } catch (_) { }
-
-    // Push to overlay
-    try {
-      const overlay = require('./overlay');
-      if (overlay.isVisible()) overlay.pushStatsToOverlay(payload);
-    } catch (_) { }
   };
 
   _realtimeTimer = setInterval(
@@ -563,10 +557,6 @@ function registerIPC() {
   });
 
   ipcMain.handle('system:stop-realtime', () => {
-    try {
-      const overlay = require('./overlay');
-      if (overlay.isVisible()) return { success: true, skipped: 'overlay-active' };
-    } catch (_) { }
     _stopRealtimePush();
     return { success: true };
   });
