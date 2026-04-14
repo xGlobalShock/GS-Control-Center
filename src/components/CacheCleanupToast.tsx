@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
-import { CheckCircle2, AlertCircle, Loader2, Trash2, X, Shield, Zap } from 'lucide-react';
+import { Loader2, Play, Pause, RotateCcw, Sliders, Download, X, Power, ScanLine, AlertTriangle } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import '../styles/CacheCleanupToast.css';
 
@@ -31,167 +31,260 @@ const TASK_LABELS: Record<string, string> = {
   'error-reports': 'Error Reports',
   'delivery-optimization': 'Delivery Optimizer',
   'recent-files': 'Recent Files',
-  'nvidia-cache': 'NVIDIA Cache',
-  'apex-shaders': 'Apex Shaders',
+  'nvidia-cache': 'NVIDIA Shader Cache',
+  'apex-shaders': 'Apex Legends Shaders',
   'forza-shaders': 'Forza Shaders',
-  'cod-shaders': 'CoD Shaders',
+  'cod-shaders': 'Call of Duty Shaders',
   'cs2-shaders': 'CS2 Shaders',
   'fortnite-shaders': 'Fortnite Shaders',
-  'lol-shaders': 'LoL Shaders',
+  'lol-shaders': 'League of Legends Shaders',
   'overwatch-shaders': 'Overwatch Shaders',
-  'r6-shaders': 'R6 Shaders',
+  'r6-shaders': 'Rainbow Six Shaders',
   'rocket-league-shaders': 'Rocket League Shaders',
   'valorant-shaders': 'Valorant Shaders',
+};
+
+const CLEANER_MAP: Record<string, string> = {
+  'nvidia-cache': 'cleaner:clear-nvidia-cache',
+  'apex-shaders': 'cleaner:clear-apex-shaders',
+  'forza-shaders': 'cleaner:clear-forza-shaders',
+  'cod-shaders': 'cleaner:clear-cod-shaders',
+  'cs2-shaders': 'cleaner:clear-cs2-shaders',
+  'fortnite-shaders': 'cleaner:clear-fortnite-shaders',
+  'lol-shaders': 'cleaner:clear-lol-shaders',
+  'overwatch-shaders': 'cleaner:clear-overwatch-shaders',
+  'r6-shaders': 'cleaner:clear-r6-shaders',
+  'rocket-league-shaders': 'cleaner:clear-rocket-league-shaders',
+  'valorant-shaders': 'cleaner:clear-valorant-shaders',
+  'temp-files': 'cleaner:clear-temp-files',
+  'update-cache': 'cleaner:clear-update-cache',
+  'dns-cache': 'cleaner:clear-dns-cache',
+  'ram-cache': 'cleaner:clear-ram-cache',
+  'recycle-bin': 'cleaner:empty-recycle-bin',
+  'thumbnail-cache': 'cleaner:clear-thumbnail-cache',
+  'windows-logs': 'cleaner:clear-windows-logs',
+  'crash-dumps': 'cleaner:clear-crash-dumps',
+  'windows-temp': 'cleaner:clear-windows-temp',
+  'delivery-optimization': 'cleaner:clear-delivery-optimization',
+  'font-cache': 'cleaner:clear-font-cache',
+  'prefetch': 'cleaner:clear-prefetch',
+  'memory-dumps': 'cleaner:clear-memory-dumps',
+};
+
+type TaskState = 'dormant' | 'queued' | 'active' | 'purged' | 'failed' | 'skipped';
+
+interface TaskRecord {
+  id: string;
+  state: TaskState;
+  startedAt?: number;
+  finishedAt?: number;
+  spaceSaved?: string;
+  spaceSavedMB?: number;
+  message?: string;
+  progress: number;
+}
+
+const parseSizeToMB = (s?: string): number | null => {
+  if (!s) return null;
+  const regex = /([\d,]+(?:\.\d+)?)\s*(tb|gb|mb|kb|b)\b/gi;
+  let m: RegExpExecArray | null;
+  let total = 0;
+  let found = false;
+  while ((m = regex.exec(s)) !== null) {
+    const raw = (m[1] || '').replace(/,/g, '');
+    const num = parseFloat(raw);
+    if (Number.isNaN(num)) continue;
+    found = true;
+    const unit = (m[2] || '').toLowerCase();
+    switch (unit) {
+      case 'tb': total += num * 1024 * 1024; break;
+      case 'gb': total += num * 1024; break;
+      case 'kb': total += num / 1024; break;
+      case 'b': total += num / (1024 * 1024); break;
+      default: total += num;
+    }
+  }
+  if (!found) {
+    const freed = s.match(/freedmb\s*[:=]?\s*([-\d,]+(?:\.\d+)?)/i);
+    if (freed) {
+      const num = parseFloat(freed[1].replace(/,/g, ''));
+      if (!Number.isNaN(num)) return num;
+    }
+    return null;
+  }
+  return total;
+};
+
+const formatMB = (mb: number): string => {
+  if (mb >= 1024 * 1024) return `${(mb / (1024 * 1024)).toFixed(2)} TB`;
+  if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`;
+  return `${mb.toFixed(2)} MB`;
+};
+
+const formatElapsed = (ms: number): string => {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+};
+
+const formatClock = (d: Date): string =>
+  `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`;
+
+const isPermissionError = (msg?: string): boolean => {
+  if (!msg) return false;
+  const t = msg.toLowerCase();
+  return ['access is denied', 'administrator', 'requires elevation', 'elevat', 'eperm', 'eacces', 'permission denied', 'not enough privileges', 'privileges']
+    .some(p => t.includes(p));
+};
+
+const HEX_POSITIONS = [
+  { x: 45, y: 24 }, { x: 85, y: 24 }, { x: 125, y: 24 },
+  { x: 25, y: 60 }, { x: 65, y: 60 }, { x: 105, y: 60 }, { x: 145, y: 60 },
+  { x: 45, y: 96 }, { x: 85, y: 96 }, { x: 125, y: 96 },
+];
+
+const HEX_ADJACENCIES: Array<[number, number]> = [
+  [0, 1], [1, 2],
+  [0, 3], [0, 4], [1, 4], [1, 5], [2, 5], [2, 6],
+  [3, 4], [4, 5], [5, 6],
+  [3, 7], [4, 7], [4, 8], [5, 8], [5, 9], [6, 9],
+  [7, 8], [8, 9],
+];
+
+const hexPoints = (cx: number, cy: number, r: number): string => {
+  const pts: string[] = [];
+  for (let i = 0; i < 6; i++) {
+    const angle = -Math.PI / 2 + (i * Math.PI) / 3;
+    pts.push(`${(cx + r * Math.cos(angle)).toFixed(2)},${(cy + r * Math.sin(angle)).toFixed(2)}`);
+  }
+  return pts.join(' ');
 };
 
 const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
   const { toasts, removeToast, addToast } = useToast();
   const [toastId, setToastId] = useState<string | null>(null);
-  const [running, setRunning] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [currentTask, setCurrentTask] = useState<string | null>(null);
-  const [results, setResults] = useState<Array<{ id: string; success: boolean; message?: string; spaceSaved?: string }>>([]);
-  const [started, setStarted] = useState(false);
-  const [adminError, setAdminError] = useState<string | null>(null);
-  const [summary, setSummary] = useState<{ type: 'success' | 'info' | 'error'; message: string } | null>(null);
-  const [elapsed, setElapsed] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    if (running) {
-      setElapsed(0);
-      timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [running]);
-
-  const formatElapsed = (s: number) =>
-    `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
-
-  // mapping of utility id -> ipc channel (kept in sync with Cleaner)
-  const cleanerMap: { [key: string]: string } = {
-    'nvidia-cache': 'cleaner:clear-nvidia-cache',
-    'apex-shaders': 'cleaner:clear-apex-shaders',
-    'forza-shaders': 'cleaner:clear-forza-shaders',
-    'cod-shaders': 'cleaner:clear-cod-shaders',
-    'cs2-shaders': 'cleaner:clear-cs2-shaders',
-    'fortnite-shaders': 'cleaner:clear-fortnite-shaders',
-    'lol-shaders': 'cleaner:clear-lol-shaders',
-    'overwatch-shaders': 'cleaner:clear-overwatch-shaders',
-    'r6-shaders': 'cleaner:clear-r6-shaders',
-    'rocket-league-shaders': 'cleaner:clear-rocket-league-shaders',
-    'valorant-shaders': 'cleaner:clear-valorant-shaders',
-    'temp-files': 'cleaner:clear-temp-files',
-    'update-cache': 'cleaner:clear-update-cache',
-    'dns-cache': 'cleaner:clear-dns-cache',
-    'ram-cache': 'cleaner:clear-ram-cache',
-    'recycle-bin': 'cleaner:empty-recycle-bin',
-    'thumbnail-cache': 'cleaner:clear-thumbnail-cache',
-    'windows-logs': 'cleaner:clear-windows-logs',
-    'crash-dumps': 'cleaner:clear-crash-dumps',
-    'windows-temp': 'cleaner:clear-windows-temp',
-    'delivery-optimization': 'cleaner:clear-delivery-optimization',
-    'font-cache': 'cleaner:clear-font-cache',
-    'prefetch': 'cleaner:clear-prefetch',
-    'memory-dumps': 'cleaner:clear-memory-dumps',
-  };
-
-  const windowsUtilityIds = useMemo(() => {
-    if (windowsIds && Array.isArray(windowsIds) && windowsIds.length) return windowsIds;
+  const defaultIds = useMemo(() => {
+    if (windowsIds && windowsIds.length) return windowsIds.slice(0, 10);
     return [
-      'thumbnail-cache',
-      'windows-logs',
-      'crash-dumps',
-      'temp-files',
-      'update-cache',
-      'dns-cache',
-      'ram-cache',
-      'recycle-bin',
-      'windows-temp',
-      'delivery-optimization',
+      'thumbnail-cache', 'windows-logs', 'crash-dumps', 'temp-files', 'update-cache',
+      'dns-cache', 'ram-cache', 'recycle-bin', 'windows-temp', 'delivery-optimization',
     ];
   }, [windowsIds]);
 
-  // parse human-readable size strings (e.g. "93.38 MB", "1.2 GB") to MB
-  // This will scan the provided string for all occurrences like "12 MB", "1.2 GB" etc
-  // and sum them. Returns null if no explicit unit-based sizes are found.
-  const parseSizeToMB = (s?: string): number | null => {
-    if (!s) return null;
-    const text = String(s);
-    const regex = /([\d,]+(?:\.\d+)?)\s*(tb|gb|mb|kb|b)\b/gi;
-    let m: RegExpExecArray | null;
-    let total = 0;
-    let found = false;
+  const [disabledIds, setDisabledIds] = useState<Set<string>>(new Set());
+  const activeIds = useMemo(() => defaultIds.filter(id => !disabledIds.has(id)), [defaultIds, disabledIds]);
 
-    while ((m = regex.exec(text)) !== null) {
-      const raw = (m[1] || '').replace(/,/g, '');
-      const num = parseFloat(raw);
-      if (Number.isNaN(num)) continue;
-      found = true;
-      const unit = (m[2] || '').toLowerCase();
-      switch (unit) {
-        case 'tb':
-          total += num * 1024 * 1024; // TB -> MB
-          break;
-        case 'gb':
-          total += num * 1024; // GB -> MB
-          break;
-        case 'kb':
-          total += num / 1024; // KB -> MB
-          break;
-        case 'b':
-          total += num / (1024 * 1024); // bytes -> MB
-          break;
-        case 'mb':
-        default:
-          total += num; // MB
-          break;
-      }
-    }
+  const [tasks, setTasks] = useState<TaskRecord[]>(() =>
+    defaultIds.map(id => ({ id, state: 'dormant', progress: 0 }))
+  );
 
-    if (!found) {
-      // fallback: look for patterns like "FreedMB=123" or "FreedMB:123"
-      const freedMatch = text.match(/freedmb\s*[:=]?\s*([-\d,]+(?:\.\d+)?)/i);
-      if (freedMatch) {
-        const raw = freedMatch[1].replace(/,/g, '');
-        const num = parseFloat(raw);
-        if (!Number.isNaN(num)) return num; // assume MB when returned as plain number
-      }
-      return null;
-    }
-
-    return total;
-  };
-
-  const formatMB = (mb: number): string => {
-    if (mb >= 1024 * 1024) return `${(mb / (1024 * 1024)).toFixed(2)} TB`;
-    if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`;
-    return `${mb.toFixed(2)} MB`;
-  };
+  const [running, setRunning] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [started, setStarted] = useState(false);
+  const [currentIdx, setCurrentIdx] = useState<number | null>(null);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [clock, setClock] = useState(() => formatClock(new Date()));
+  const [adminError, setAdminError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<{ type: 'success' | 'info' | 'error'; message: string } | null>(null);
+  const [scopeOpen, setScopeOpen] = useState(false);
+  const [exportNote, setExportNote] = useState<string | null>(null);
+  const ledgerRef = useRef<HTMLDivElement | null>(null);
+  const pausedRef = useRef(false);
+  const resumeResolverRef = useRef<(() => void) | null>(null);
+  const abortRef = useRef(false);
+  const startTimeRef = useRef<number>(0);
+  const totalMBRef = useRef<number>(0);
 
   useEffect(() => {
-    // find the toast id that contains this component (by matching the toastKey prop)
-    const matched = toasts.find((t) => {
-      try {
-        // toast.message may be a React element with props
-        // @ts-ignore
-        return React.isValidElement(t.message) && (t.message.props?.toastKey === toastKey);
-      } catch (e) {
-        return false;
-      }
-    });
+    setTasks(defaultIds.map(id => ({ id, state: 'dormant', progress: 0 })));
+  }, [defaultIds]);
 
+  useEffect(() => {
+    const tick = setInterval(() => {
+      setClock(formatClock(new Date()));
+      if (running && !pausedRef.current) {
+        setElapsedMs(Date.now() - startTimeRef.current);
+      }
+    }, 500);
+    return () => clearInterval(tick);
+  }, [running]);
+
+  useEffect(() => {
+    const matched = toasts.find(t => {
+      try {
+        return React.isValidElement(t.message) && (t.message as any).props?.toastKey === toastKey;
+      } catch { return false; }
+    });
     if (matched) setToastId(matched.id);
   }, [toasts, toastKey]);
 
+  useEffect(() => {
+    if (ledgerRef.current && currentIdx !== null) {
+      const rows = ledgerRef.current.querySelectorAll('.xfl-ledger-row');
+      const el = rows[currentIdx] as HTMLElement | undefined;
+      if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [currentIdx]);
+
   const close = () => {
+    abortRef.current = true;
+    if (resumeResolverRef.current) { resumeResolverRef.current(); resumeResolverRef.current = null; }
     if (toastId) removeToast(toastId);
-    // reset transient overlay state when closed
-    setSummary(null);
+  };
+
+  const toggleScope = (id: string) => {
+    if (running) return;
+    setDisabledIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const togglePause = () => {
+    if (!running) return;
+    if (pausedRef.current) {
+      pausedRef.current = false;
+      setPaused(false);
+      resumeResolverRef.current?.();
+      resumeResolverRef.current = null;
+    } else {
+      pausedRef.current = true;
+      setPaused(true);
+    }
+  };
+
+  const exportReport = async () => {
+    const lines: string[] = [];
+    lines.push(`SYS://CACHE.FLUSH — REPORT`);
+    lines.push(`Generated: ${new Date().toISOString()}`);
+    lines.push(`Elapsed: ${formatElapsed(elapsedMs)}`);
+    lines.push('');
+    tasks.forEach((t, i) => {
+      const n = (i + 1).toString().padStart(2, '0');
+      const label = (TASK_LABELS[t.id] || t.id).padEnd(22, ' ');
+      const state = t.state.toUpperCase().padEnd(8, ' ');
+      const detail = t.spaceSaved ? `· ${t.spaceSaved}` : t.message ? `· ${t.message}` : '';
+      lines.push(`[${n}] ${label} ${state} ${detail}`);
+    });
+    const text = lines.join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      setExportNote('Report copied to clipboard');
+      setTimeout(() => setExportNote(null), 2200);
+    } catch {
+      setExportNote('Copy failed');
+      setTimeout(() => setExportNote(null), 2200);
+    }
+  };
+
+  const resetForRerun = () => {
+    setTasks(defaultIds.map(id => ({ id, state: 'dormant', progress: 0 })));
     setStarted(false);
-    setResults([]);
+    setSummary(null);
+    setAdminError(null);
+    setElapsedMs(0);
+    setCurrentIdx(null);
   };
 
   const runAll = async () => {
@@ -201,328 +294,366 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
       return;
     }
 
-    // mark that the user started the clear-all flow so size boxes become visible
+    resetForRerun();
     setStarted(true);
     setRunning(true);
-    setResults([]);
-    setProgress(0);
+    abortRef.current = false;
+    startTimeRef.current = Date.now();
+    totalMBRef.current = 0;
 
-    const total = windowsUtilityIds.length;
+    const queue = activeIds;
+    setTasks(prev => prev.map(t => (queue.includes(t.id) ? { ...t, state: 'queued' as TaskState } : { ...t, state: 'skipped' as TaskState })));
+
     let succeeded = 0;
-    let totalSavedMB = 0; // accumulate numeric MB values from handlers
-    let permissionErrorDetected = false;
+    let permissionSeen = false;
 
-    for (let i = 0; i < windowsUtilityIds.length; i++) {
-      const id = windowsUtilityIds[i];
-      const channel = cleanerMap[id];
-      setCurrentTask(id);
+    for (let i = 0; i < queue.length; i++) {
+      if (abortRef.current) break;
+
+      if (pausedRef.current) {
+        await new Promise<void>(resolve => { resumeResolverRef.current = resolve; });
+      }
+
+      const id = queue[i];
+      const taskIdx = defaultIds.indexOf(id);
+      setCurrentIdx(taskIdx);
+
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, state: 'active', startedAt: Date.now(), progress: 0 } : t));
+
+      const progressTick = setInterval(() => {
+        setTasks(prev => prev.map(t => t.id === id && t.state === 'active'
+          ? { ...t, progress: Math.min(0.92, t.progress + 0.08 + Math.random() * 0.06) }
+          : t));
+      }, 180);
+
+      const channel = CLEANER_MAP[id];
+      let result: CleanResult | null = null;
+      let errMsg: string | null = null;
 
       if (!channel) {
-        setResults((r) => [...r, { id, success: false, message: 'No handler registered', spaceSaved: undefined }]);
-        setProgress(Math.round(((i + 1) / total) * 100));
-        // slight pause for UI flow
-        // eslint-disable-next-line no-await-in-loop
-        // @ts-ignore
-        await new Promise((res) => setTimeout(res, 200));
-        continue;
-      }
-
-      try {
-        // call main process
-        // @ts-ignore
-        const res: CleanResult = await window.electron.ipcRenderer.invoke(channel);
-
-        if (res && res.success) {
-          succeeded += 1;
-          if (res.spaceSaved) {
-            const mb = parseSizeToMB(res.spaceSaved);
-            if (mb !== null) totalSavedMB += mb;
-          }
-          setResults((r) => [...r, { id, success: true, message: res.message, spaceSaved: res.spaceSaved }]);
-        } else {
-          const msg = res?.message || 'Failed';
-          setResults((r) => [...r, { id, success: false, message: msg, spaceSaved: res?.spaceSaved }]);
-          if (isPermissionError(msg)) {
-            permissionErrorDetected = true;
-            setAdminError(msg);
-          }
-        }
-      } catch (err: any) {
-        const errMsg = err?.message || String(err) || 'Error';
-        setResults((r) => [...r, { id, success: false, message: errMsg, spaceSaved: undefined }]);
-        if (isPermissionError(errMsg)) {
-          permissionErrorDetected = true;
-          setAdminError(errMsg);
+        errMsg = 'No handler registered';
+      } else {
+        try {
+          result = await (window as any).electron.ipcRenderer.invoke(channel);
+        } catch (err: any) {
+          errMsg = err?.message || String(err) || 'Error';
         }
       }
 
-      // update progress
-      setProgress(Math.round(((i + 1) / total) * 100));
-      // slight pause for UI flow
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((res) => setTimeout(res, 300));
+      clearInterval(progressTick);
+
+      if (result && result.success) {
+        succeeded += 1;
+        const mb = result.spaceSaved ? parseSizeToMB(result.spaceSaved) : null;
+        if (mb != null) totalMBRef.current += mb;
+        setTasks(prev => prev.map(t => t.id === id
+          ? { ...t, state: 'purged', finishedAt: Date.now(), spaceSaved: result!.spaceSaved, spaceSavedMB: mb ?? undefined, progress: 1 }
+          : t));
+      } else {
+        const msg = result?.message || errMsg || 'Failed';
+        if (isPermissionError(msg)) { permissionSeen = true; setAdminError(msg); }
+        setTasks(prev => prev.map(t => t.id === id
+          ? { ...t, state: 'failed', finishedAt: Date.now(), message: msg, progress: 1 }
+          : t));
+      }
+
+      await new Promise(res => setTimeout(res, 260));
     }
 
-    setCurrentTask(null);
+    setCurrentIdx(null);
     setRunning(false);
+    setPaused(false);
+    pausedRef.current = false;
 
-    // show concise summary inside the overlay (instead of an external toast)
-    const displayCount = total >= 8 ? 8 : total;
-    const totalFreed = formatMB(totalSavedMB);
-
-    if (succeeded === total) {
-      setSummary({ type: 'success', message: `Cleared ${displayCount} Windows cache items, freed ${totalFreed}` });
-    } else if (succeeded > 0) {
-      setSummary({ type: 'info', message: `${succeeded}/${total} items cleared, freed ${totalFreed}` });
-    } else {
-      setSummary({ type: 'error', message: 'Cache cleanup failed for all items' });
-    }
-
-    // If a permission error was detected, keep the overlay open and show the banner
-    // (do not show a duplicate toast since the inline banner already informs the user).
-    if (!permissionErrorDetected) {
-      // auto-close overlay after giving user a moment
-      setTimeout(() => {
-        close();
-      }, 1400);
-    }
+    if (abortRef.current) return;
+    const total = queue.length;
+    const freed = formatMB(totalMBRef.current);
+    if (succeeded === total) setSummary({ type: 'success', message: `Purged ${total} vectors · Reclaimed ${freed}` });
+    else if (succeeded > 0) setSummary({ type: 'info', message: `${succeeded}/${total} vectors purged · Reclaimed ${freed}` });
+    else setSummary({ type: 'error', message: 'Purge protocol aborted — all vectors failed' });
+    void permissionSeen;
   };
 
-  // basic permission error heuristic
-  function isPermissionError(msg?: string) {
-    if (!msg) return false;
-    const text = String(msg).toLowerCase();
-    const patterns = ['access is denied', 'administrator', 'requires elevation', 'elevat', 'eperm', 'eacces', 'permission denied', 'not enough privileges', 'privileges'];
-    return patterns.some((p) => text.includes(p));
-  }
+  const totalMB = tasks.reduce((sum, t) => sum + (t.spaceSavedMB || 0), 0);
+  const purgedCount = tasks.filter(t => t.state === 'purged').length;
+  const failedCount = tasks.filter(t => t.state === 'failed').length;
+  const queueLen = activeIds.length;
+  const overallProgress = queueLen > 0
+    ? tasks.filter(t => activeIds.includes(t.id)).reduce((sum, t) => sum + (t.state === 'purged' || t.state === 'failed' ? 1 : t.state === 'active' ? t.progress : 0), 0) / queueLen
+    : 0;
 
-  // Compute live totals for stats display
-  const completedCount = results.filter(r => r.success).length;
-  const failedCount = results.filter(r => !r.success).length;
-  const totalSavedMBDisplay = useMemo(() => {
-    let mb = 0;
-    results.forEach(r => {
-      if (r.success && r.spaceSaved) {
-        const parsed = parseSizeToMB(r.spaceSaved);
-        if (parsed !== null) mb += parsed;
-      }
-    });
-    return mb > 0 ? formatMB(mb) : '0.00 MB';
-  }, [results]);
+  const rateMBs = elapsedMs > 500 ? (totalMB / (elapsedMs / 1000)) : 0;
+  const etaSec = rateMBs > 0 && queueLen > 0
+    ? Math.max(0, Math.round(((1 - overallProgress) * queueLen * (totalMB / Math.max(1, purgedCount))) / Math.max(0.1, rateMBs)))
+    : 0;
 
-  // SVG ring dimensions
-  const RING_R = 44;
-  const RING_CIRC = 2 * Math.PI * RING_R;
-  const ringOffset = RING_CIRC - (progress / 100) * RING_CIRC;
+  const throughputSamples = useMemo(() => {
+    return tasks.filter(t => t.state === 'purged' || t.state === 'failed').map(t => t.spaceSavedMB || 0);
+  }, [tasks]);
 
-  const phaseLabel = running ? 'PROCESSING' : started ? (summary?.type === 'error' ? 'ERROR' : 'COMPLETE') : 'IDLE';
+  const maxSample = Math.max(1, ...throughputSamples);
+
+  const phaseLabel = running ? (paused ? 'HELD' : 'PURGING') : started ? (summary?.type === 'error' ? 'ABORTED' : 'COMPLETE') : 'STANDBY';
 
   return ReactDOM.createPortal(
-    <div className="purge-overlay">
-      <div className="purge-panel">
-        {/* Animated corner brackets */}
-        <span className="purge-corner purge-corner-tl" />
-        <span className="purge-corner purge-corner-tr" />
-        <span className="purge-corner purge-corner-bl" />
-        <span className="purge-corner purge-corner-br" />
+    <div className="xfl-overlay">
+      <div className={`xfl-panel xfl-phase-${phaseLabel.toLowerCase()}`}>
+        <span className="xfl-corner xfl-corner-tl" />
+        <span className="xfl-corner xfl-corner-tr" />
+        <span className="xfl-corner xfl-corner-bl" />
+        <span className="xfl-corner xfl-corner-br" />
+        <div className="xfl-ruler xfl-ruler-top"><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /></div>
+        <div className="xfl-ruler xfl-ruler-bot"><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /></div>
+        {running && <div className="xfl-scanline" />}
 
-        {/* Horizontal scan line while running */}
-        {running && <div className="purge-scanline" />}
-
-        {/* ── HEADER ── */}
-        <div className="purge-header">
-          <div className="purge-header-icon">
-            <Trash2 size={18} />
-            {running && <span className="purge-icon-ping" />}
-          </div>
-          <div className="purge-header-text">
-            <div className="purge-title">SYSTEM CACHE FLUSH</div>
-          </div>
-          <button className="purge-close-btn" onClick={close} title="Close" disabled={running}>
-            <X size={15} />
+        <div className="xfl-commandbar">
+          <span className="xfl-cb-dot" />
+          <span className="xfl-cb-title">SYS://CACHE.FLUSH</span>
+          <span className="xfl-cb-sep" />
+          <span className="xfl-cb-meta">NODE-0x7F</span>
+          <span className="xfl-cb-sep" />
+          <span className="xfl-cb-meta">v2.2.2</span>
+          <span className="xfl-cb-sep" />
+          <span className="xfl-cb-meta xfl-cb-clock">{clock}</span>
+          <span className="xfl-cb-sep" />
+          <span className={`xfl-cb-phase xfl-cb-phase-${phaseLabel.toLowerCase()}`}>{phaseLabel}</span>
+          <div className="xfl-cb-spacer" />
+          <button className="xfl-cb-close" onClick={close} title="Dismiss" disabled={running && !paused}>
+            <X size={13} />
           </button>
         </div>
 
-        <div className="purge-header-divider" />
+        <div className="xfl-hero">
+          <div className="xfl-hex-zone">
+            <svg viewBox="0 0 170 120" className="xfl-hex-svg" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <radialGradient id="xflHexActive" cx="50%" cy="50%" r="60%">
+                  <stop offset="0%" stopColor="rgb(var(--accent))" stopOpacity="0.85" />
+                  <stop offset="100%" stopColor="rgb(var(--accent))" stopOpacity="0.15" />
+                </radialGradient>
+                <radialGradient id="xflHexPurged" cx="50%" cy="50%" r="60%">
+                  <stop offset="0%" stopColor="rgb(var(--accent))" stopOpacity="0.55" />
+                  <stop offset="100%" stopColor="rgb(var(--accent))" stopOpacity="0.12" />
+                </radialGradient>
+                <filter id="xflHexGlow"><feGaussianBlur stdDeviation="1.2" /></filter>
+              </defs>
 
-        {/* ── MAIN CONTENT: ring + stats ── */}
-        <div className="purge-main">
-          {/* Circular progress ring */}
-          <div className="purge-ring-section">
-            <div className="purge-ring-wrap">
-              <svg width="120" height="120" viewBox="0 0 120 120" className="purge-ring-svg">
-                <defs>
-                  <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="rgb(var(--accent))" />
-                    <stop offset="100%" stopColor="rgb(var(--accent))" />
-                  </linearGradient>
-                  <filter id="ringGlow">
-                    <feGaussianBlur stdDeviation="2.5" result="blur" />
-                    <feMerge>
-                      <feMergeNode in="blur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
-                {/* Outer background track */}
-                <circle cx="60" cy="60" r={RING_R} fill="none" stroke="rgba(var(--accent),0.07)" strokeWidth="6" />
-                {/* Outer decorative dashed ring */}
-                <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(0,212,170,0.1)" strokeWidth="1" strokeDasharray="3 8" />
-                {/* Inner decorative ring */}
-                <circle cx="60" cy="60" r="33" fill="none" stroke="rgba(var(--accent),0.06)" strokeWidth="1" strokeDasharray="2 6" />
-                {/* Progress arc */}
-                <circle
-                  cx="60" cy="60" r={RING_R}
-                  fill="none"
-                  stroke="url(#ringGrad)"
-                  strokeWidth="6"
-                  strokeLinecap="round"
-                  strokeDasharray={RING_CIRC}
-                  strokeDashoffset={ringOffset}
-                  transform="rotate(-90 60 60)"
-                  filter="url(#ringGlow)"
-                  style={{ transition: 'stroke-dashoffset 420ms cubic-bezier(0.4,0,0.2,1)' }}
-                />
-                {/* Spinning orbit arc while running */}
-                {running && (
-                  <circle
-                    cx="60" cy="60" r="52"
-                    fill="none"
-                    stroke="rgba(var(--accent),0.22)"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeDasharray="20 307"
-                    className="purge-orbit-spin"
+              {HEX_ADJACENCIES.map(([a, b], i) => {
+                const ta = tasks[a];
+                const tb = tasks[b];
+                const liveEdge = (ta && tb && ((ta.state === 'purged' && tb.state === 'active') || (ta.state === 'active' && tb.state === 'queued')));
+                return (
+                  <line
+                    key={`edge-${i}`}
+                    x1={HEX_POSITIONS[a].x} y1={HEX_POSITIONS[a].y}
+                    x2={HEX_POSITIONS[b].x} y2={HEX_POSITIONS[b].y}
+                    className={`xfl-hex-edge ${liveEdge ? 'xfl-hex-edge-live' : ''}`}
                   />
-                )}
-              </svg>
-              {/* Ring center text */}
-              <div className="purge-ring-center">
-                <div className="purge-ring-pct">
-                  {progress}<span className="purge-ring-pct-sign">%</span>
-                </div>
-                <div className={`purge-ring-phase purge-phase-${phaseLabel.toLowerCase()}`}>{phaseLabel}</div>
-              </div>
-            </div>
+                );
+              })}
 
-            {/* Active task indicator below the ring */}
-            <div className="purge-active-task">
-              {running && currentTask ? (
-                <>
-                  <span className="purge-task-pulse" />
-                  <span className="purge-active-task-label">
-                    {TASK_LABELS[currentTask] ?? currentTask.replace(/-/g, ' ').toUpperCase()}
-                  </span>
-                </>
-              ) : (
-                <span className="purge-active-task-idle">
-                  {started ? (summary?.type === 'error' ? 'Process Aborted' : 'Cleanup Complete') : 'Ready'}
-                </span>
-              )}
+              {HEX_POSITIONS.map((pos, i) => {
+                const t = tasks[i];
+                const state = t?.state ?? 'dormant';
+                return (
+                  <g key={`hex-${i}`} className={`xfl-hex-group xfl-hex-${state}`}>
+                    <polygon points={hexPoints(pos.x, pos.y, 20)} className="xfl-hex-outer" />
+                    <polygon points={hexPoints(pos.x, pos.y, 16)} className="xfl-hex-inner" />
+                    {state === 'active' && (
+                      <circle cx={pos.x} cy={pos.y} r="22" className="xfl-hex-ring" />
+                    )}
+                    <text x={pos.x} y={pos.y + 3} textAnchor="middle" className="xfl-hex-idx">
+                      {(i + 1).toString().padStart(2, '0')}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+
+            <div className="xfl-hex-caption">
+              <span className="xfl-hex-caption-dot" />
+              <span className="xfl-hex-caption-text">
+                {running && currentIdx !== null
+                  ? `PROC :: ${TASK_LABELS[tasks[currentIdx]?.id] || ''}`
+                  : phaseLabel === 'STANDBY' ? `LATTICE IDLE · ${queueLen} VECTORS ARMED`
+                  : phaseLabel === 'COMPLETE' ? `LATTICE STABLE · ${purgedCount}/${queueLen} PURGED`
+                  : phaseLabel === 'HELD' ? 'FLOW SUSPENDED'
+                  : 'LATTICE DEGRADED'}
+              </span>
             </div>
           </div>
 
-          {/* Stats panel */}
-          <div className="purge-stats-panel">
-            <div className="purge-stat-row">
-              <div className="purge-stat-box">
-                <div className="purge-stat-num">
-                  {completedCount}<span className="purge-stat-denom">/{windowsUtilityIds.length}</span>
-                </div>
-                <div className="purge-stat-label">CLEARED</div>
+          <div className="xfl-telemetry">
+            <div className="xfl-freed">
+              <div className="xfl-freed-num" data-mb={totalMB.toFixed(2)}>
+                {totalMB < 1024 ? totalMB.toFixed(2) : (totalMB / 1024).toFixed(2)}
+                <span className="xfl-freed-unit">{totalMB < 1024 ? 'MB' : 'GB'}</span>
               </div>
-              <div className="purge-stat-box purge-stat-freed">
-                <div className="purge-stat-num">{totalSavedMBDisplay}</div>
-                <div className="purge-stat-label">FREED</div>
-              </div>
-              <div className="purge-stat-box purge-stat-time">
-                <div className="purge-stat-num">{formatElapsed(elapsed)}</div>
-                <div className="purge-stat-label">ELAPSED</div>
-              </div>
-              {failedCount > 0 && (
-                <div className="purge-stat-box purge-stat-fail-box">
-                  <div className="purge-stat-num">{failedCount}</div>
-                  <div className="purge-stat-label">FAILED</div>
-                </div>
-              )}
+              <div className="xfl-freed-label">RECLAIMED</div>
             </div>
 
-            {/* Linear progress bar inside stats area */}
-            <div className="purge-linebar-wrap">
-              <div className="purge-linebar-track">
-                <div className="purge-linebar-fill" style={{ transform: `scaleX(${progress / 100})` }} />
-                <div className="purge-linebar-shimmer" style={{ transform: `scaleX(${progress / 100})` }} />
+            <div className="xfl-micro-grid">
+              <div className="xfl-micro">
+                <div className="xfl-micro-val">{purgedCount.toString().padStart(2, '0')}/{queueLen.toString().padStart(2, '0')}</div>
+                <div className="xfl-micro-lbl">PURGED</div>
+              </div>
+              <div className="xfl-micro">
+                <div className="xfl-micro-val">{formatElapsed(elapsedMs)}</div>
+                <div className="xfl-micro-lbl">ELAPSED</div>
+              </div>
+              <div className="xfl-micro">
+                <div className="xfl-micro-val">{rateMBs > 0 ? rateMBs.toFixed(1) : '0.0'}<span className="xfl-micro-unit">MB/s</span></div>
+                <div className="xfl-micro-lbl">RATE</div>
+              </div>
+              <div className="xfl-micro">
+                <div className="xfl-micro-val">{running && etaSec > 0 ? formatElapsed(etaSec * 1000) : '--:--'}</div>
+                <div className="xfl-micro-lbl">ETA</div>
+              </div>
+            </div>
+
+            <div className="xfl-waveform">
+              <div className="xfl-wave-label">FLOW · per-vector reclaim</div>
+              <div className="xfl-wave-bars">
+                {tasks.map((t, i) => {
+                  const h = t.spaceSavedMB ? Math.max(6, (t.spaceSavedMB / maxSample) * 100) : 0;
+                  return (
+                    <div
+                      key={`bar-${i}`}
+                      className={`xfl-wave-bar xfl-wave-${t.state}`}
+                      style={{ height: `${h}%` }}
+                      title={`${TASK_LABELS[t.id]} — ${t.spaceSaved || '—'}`}
+                    />
+                  );
+                })}
               </div>
             </div>
           </div>
         </div>
 
-        {/* ── QUEUE HEADER ── */}
-        <div className="purge-queue-header">
-          <Zap size={11} className="purge-queue-icon" />
-          <span className="purge-queue-label">CLEANUP QUEUE</span>
-          <div className="purge-queue-line" />
-          <span className="purge-queue-count">{windowsUtilityIds.length} ITEMS</span>
+        {adminError && (
+          <div className="xfl-banner xfl-banner-error">
+            <AlertTriangle size={13} />
+            <div className="xfl-banner-text">
+              <span className="xfl-banner-title">ELEVATION REQUIRED</span>
+              <span className="xfl-banner-msg">One or more vectors returned permission errors. Relaunch as Administrator to complete the purge.</span>
+            </div>
+          </div>
+        )}
+
+        <div className="xfl-ledger-head">
+          <span className="xfl-ledger-tag">EXEC.LEDGER</span>
+          <span className="xfl-ledger-sep" />
+          <span className="xfl-ledger-count">{queueLen} VECTORS</span>
+          {disabledIds.size > 0 && (
+            <>
+              <span className="xfl-ledger-sep" />
+              <span className="xfl-ledger-muted">{disabledIds.size} MASKED</span>
+            </>
+          )}
         </div>
 
-        {/* ── TASK LIST ── */}
-        <div className="purge-task-list">
-          {windowsUtilityIds.map((id, idx) => {
-            const r = results.find(x => x.id === id);
-            const isActive = started && currentTask === id && running;
-            const label = TASK_LABELS[id] ?? id.replace(/-/g, ' ');
-            const stateClass = r ? (r.success ? 'ok' : 'fail') : isActive ? 'active' : 'idle';
+        <div className="xfl-ledger" ref={ledgerRef}>
+          {tasks.map((t, i) => {
+            const label = TASK_LABELS[t.id] || t.id.toUpperCase();
+            const idx = (i + 1).toString().padStart(2, '0');
+            const time = t.startedAt ? formatClock(new Date(t.startedAt)) : '--:--:--';
+            const bar = Array.from({ length: 10 }, (_, k) => {
+              if (t.state === 'purged' || t.state === 'failed') return '█';
+              if (t.state === 'active') return k < Math.floor(t.progress * 10) ? '█' : '░';
+              return '░';
+            }).join('');
+            const glyph = t.state === 'purged' ? '✓' : t.state === 'failed' ? '✗' : t.state === 'active' ? '▸' : t.state === 'skipped' ? '⊘' : '·';
+            const detail = t.state === 'purged' ? (t.spaceSaved || 'OK')
+              : t.state === 'failed' ? (isPermissionError(t.message) ? 'ADMIN REQ' : 'BLOCKED')
+              : t.state === 'active' ? `${Math.floor(t.progress * 100)}%`
+              : t.state === 'skipped' ? 'MASKED'
+              : t.state === 'queued' ? 'QUEUED' : 'DORMANT';
 
             return (
-              <div key={id} className={`purge-task purge-task-${stateClass}`}>
-                <span className="purge-task-index">{String(idx + 1).padStart(2, '0')}</span>
-                <span className={`purge-task-dot purge-dot-${stateClass}`} />
-                <span className="purge-task-name">{label}</span>
-                <div className="purge-task-right">
-                  {r?.success && r.spaceSaved && (
-                    <span className="purge-task-size">{r.spaceSaved}</span>
-                  )}
-                  {r?.success && !r.spaceSaved && (
-                    <span className="purge-task-badge purge-badge-ok">Success</span>
-                  )}
-                  {r && !r.success && (
-                    <span className="purge-task-badge purge-badge-fail">
-                      {isPermissionError(r.message) ? 'Run app as Admin' : 'Failed'}
-                    </span>
-                  )}
-                  {isActive && (
-                    <span className="purge-task-badge purge-badge-active">
-                      <Loader2 size={10} className="purge-micro-spin" />
-                    </span>
-                  )}
-                  {!r && !isActive && (
-                    <span className="purge-task-badge purge-badge-idle">Waiting</span>
-                  )}
-                </div>
+              <div key={t.id} className={`xfl-ledger-row xfl-ledger-${t.state}`}>
+                <span className="xfl-ld-idx">[{idx}]</span>
+                <span className="xfl-ld-time">{time}</span>
+                <span className="xfl-ld-glyph">{glyph}</span>
+                <span className="xfl-ld-name">{label.padEnd(22, '\u00A0')}</span>
+                <span className="xfl-ld-bar">{bar}</span>
+                <span className="xfl-ld-state">{t.state.toUpperCase()}</span>
+                <span className="xfl-ld-detail">· {detail}</span>
               </div>
             );
           })}
         </div>
 
-        {/* ── ACTION BUTTONS ── */}
-        <div className="purge-actions-divider" />
-        <div className="purge-actions">
-          <button
-            className={`purge-btn-start ${running ? 'purge-btn-running' : ''}`}
-            onClick={runAll}
-            disabled={running}
-          >
-            {running ? (
-              <><Loader2 size={14} className="purge-spin" /> In Progress...</>
-            ) : (
-              <><Shield size={14} /> Proceed</>
-            )}
-          </button>
+        {summary && (
+          <div className={`xfl-summary xfl-summary-${summary.type}`}>
+            <span className="xfl-summary-glyph">{summary.type === 'success' ? '◉' : summary.type === 'info' ? '◐' : '◌'}</span>
+            <span>{summary.message}</span>
+          </div>
+        )}
+        {exportNote && <div className="xfl-summary xfl-summary-info"><span className="xfl-summary-glyph">◉</span><span>{exportNote}</span></div>}
+
+        <div className="xfl-deck-divider" />
+
+        <div className="xfl-deck">
+          {!started || summary ? (
+            <>
+              <button className="xfl-btn xfl-btn-primary" onClick={runAll} disabled={running || queueLen === 0}>
+                <Power size={13} />
+                <span>{started ? 'RE-INITIATE' : 'INITIATE'}</span>
+              </button>
+              <button className="xfl-btn" disabled title="Dry-run scan — coming in next release">
+                <ScanLine size={13} /><span>DRY-RUN</span>
+              </button>
+              <button className={`xfl-btn ${scopeOpen ? 'xfl-btn-on' : ''}`} onClick={() => setScopeOpen(v => !v)} disabled={running}>
+                <Sliders size={13} /><span>SCOPE</span>
+                {disabledIds.size > 0 && <span className="xfl-btn-badge">{disabledIds.size}</span>}
+              </button>
+              {started && (
+                <button className="xfl-btn" onClick={exportReport}>
+                  <Download size={13} /><span>EXPORT</span>
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <button className={`xfl-btn xfl-btn-primary ${running && !paused ? 'xfl-btn-live' : ''}`} onClick={togglePause} disabled={!running}>
+                {paused ? <Play size={13} /> : <Pause size={13} />}
+                <span>{paused ? 'RESUME' : 'HOLD'}</span>
+              </button>
+              <button className="xfl-btn" onClick={() => { abortRef.current = true; if (resumeResolverRef.current) resumeResolverRef.current(); }} disabled={!running}>
+                <RotateCcw size={13} /><span>ABORT</span>
+              </button>
+              <div className="xfl-deck-status">
+                {running && <Loader2 size={12} className="xfl-spin" />}
+                <span>{running ? (paused ? 'SUSPENDED · await operator' : `EXECUTING · vector ${(currentIdx ?? 0) + 1}/${queueLen}`) : 'IDLE'}</span>
+              </div>
+            </>
+          )}
         </div>
+
+        {scopeOpen && !running && (
+          <div className="xfl-scope">
+            <div className="xfl-scope-head">
+              <span>VECTOR.SCOPE — toggle to include in next purge</span>
+              <button className="xfl-scope-close" onClick={() => setScopeOpen(false)}><X size={12} /></button>
+            </div>
+            <div className="xfl-scope-grid">
+              {defaultIds.map((id, i) => {
+                const on = !disabledIds.has(id);
+                return (
+                  <button key={id} className={`xfl-scope-item ${on ? 'on' : 'off'}`} onClick={() => toggleScope(id)}>
+                    <span className="xfl-scope-idx">{(i + 1).toString().padStart(2, '0')}</span>
+                    <span className="xfl-scope-name">{TASK_LABELS[id] || id}</span>
+                    <span className={`xfl-scope-pill ${on ? 'on' : 'off'}`}>{on ? 'ARMED' : 'MASKED'}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
-    </div>
-  , document.body);
+    </div>,
+    document.body
+  );
 };
 
 export default CacheCleanupToast;
-
