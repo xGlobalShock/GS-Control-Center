@@ -17,8 +17,8 @@
 
 .xfl-panel {
   position: relative;
-  width: 680px;
-  max-height: 94vh;
+  width: 590px;
+  max-height: 96vh;
   display: flex;
   flex-direction: column;
   background:
@@ -32,7 +32,7 @@
     0 0 60px rgba(var(--accent), 0.08),
     0 40px 80px rgba(0, 0, 0, 0.8);
   overflow: hidden;
-  padding: 14px 18px 14px;
+  padding: 38px 18px 12px;
   clip-path: polygon(
     0 8px, 8px 0,
     calc(100% - 8px) 0, 100% 8px,
@@ -256,6 +256,14 @@
 @keyframes xflPulseSoft {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.55; }
+}
+
+.xfl-panel-close {
+  position: absolute;
+  top: 17px;
+  right: 15px;
+  z-index: 4;
+  transform: translateY(-6px);
 }
 
 .xfl-rail-close {
@@ -1204,11 +1212,10 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 6px;
   padding: 0 10px;
-  font-size: 9.5px;
+  font-size: 8px;
   font-weight: 800;
-  letter-spacing: 0.16em;
   color: rgba(var(--accent), 0.75);
 }
 .xfl-console-status-dot {

@@ -374,10 +374,10 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
 
   const currentLabel = running && currentIdx !== null
     ? (TASK_LABELS[tasks[currentIdx]?.id] || '—')
-    : phaseLabel === 'COMPLETE' ? 'All tasks finished'
+    : phaseLabel === 'COMPLETE' ? 'Cleanup complete'
     : phaseLabel === 'ABORTED' ? 'Stopped'
     : phaseLabel === 'PAUSED' ? 'Paused'
-    : 'Idle — awaiting start';
+    : 'Ready to start';
 
   return ReactDOM.createPortal(
     <div className="xfl-overlay">
@@ -389,61 +389,16 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
         <div className="xfl-ruler xfl-ruler-top"><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /></div>
         <div className="xfl-ruler xfl-ruler-bot"><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /><span /></div>
         {running && <div className="xfl-scanline" />}
-
-        {/* ═══ RAIL — integrated progress header ═══ */}
-        <div className="xfl-rail">
-          <div className="xfl-rail-id">
-            <span className="xfl-rail-glyph" />
-            <span className="xfl-rail-title">CACHE.CONTROL</span>
-          </div>
-          <div className="xfl-rail-progress" role="progressbar" aria-valuenow={donePct} aria-valuemin={0} aria-valuemax={100}>
-            <div className="xfl-rail-progress-track" />
-            <div className="xfl-rail-progress-fill" style={{ width: `${donePct}%` }} />
-            <span className="xfl-rail-progress-readout">{donePct.toString().padStart(3, '0')}%</span>
-          </div>
-          <div className="xfl-rail-meta">
-            <span className="xfl-rail-clock">{clock}</span>
-            <span className="xfl-rail-sep" />
-            <span className="xfl-rail-ver">v2.2.3</span>
-            <span className={`xfl-rail-phase xfl-cb-phase-${phaseLabel.toLowerCase()}`}>{phaseLabel}</span>
-            <button className="xfl-rail-close" onClick={close} title="Dismiss" disabled={running && !paused}>
-              <X size={13} />
-            </button>
-          </div>
-        </div>
-
-        {/* ═══ CROWN — 4-pill status strip ═══ */}
-        <div className="xfl-crown">
-          <div className="xfl-crown-pill">
-            <span className="xfl-crown-label">CLEANED</span>
-            <span className="xfl-crown-val xfl-crown-val-accent">
-              {purgedCount.toString().padStart(2, '0')}
-              <span className="xfl-crown-val-sub">/{queueLen.toString().padStart(2, '0')}</span>
-            </span>
-          </div>
-          <span className="xfl-crown-divider" />
-          <div className="xfl-crown-pill">
-            <span className="xfl-crown-label">ELAPSED</span>
-            <span className="xfl-crown-val">{formatElapsed(elapsedMs)}</span>
-          </div>
-          <span className="xfl-crown-divider" />
-          <div className="xfl-crown-pill">
-            <span className="xfl-crown-label">RECOVERED</span>
-            <span className="xfl-crown-val xfl-crown-val-accent">{formatMB(totalMB)}</span>
-          </div>
-          <span className="xfl-crown-divider" />
-          <div className="xfl-crown-pill xfl-crown-pill-wide">
-            <span className="xfl-crown-label">CURRENT</span>
-            <span className="xfl-crown-val xfl-crown-val-text">{currentLabel}</span>
-          </div>
-        </div>
+        <button className="xfl-rail-close xfl-panel-close" onClick={close} title="Dismiss" disabled={running && !paused}>
+          <X size={13} />
+        </button>
 
         {/* ═══ CORE — dual visualization (hex + LED readout) ═══ */}
         <div className="xfl-core">
           <div className="xfl-core-left">
             <div className="xfl-core-frame">
-              <span className="xfl-core-frame-label">NODE LATTICE</span>
-              <span className="xfl-core-frame-tag">10-CELL</span>
+              <span className="xfl-core-frame-label">Task overview</span>
+              <span className="xfl-core-frame-tag">10 tasks</span>
             </div>
             <div className="xfl-hex-zone">
               <svg viewBox="0 0 170 120" className="xfl-hex-svg" preserveAspectRatio="xMidYMid meet">
@@ -492,10 +447,10 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
               </svg>
             </div>
             <div className="xfl-core-stats">
-              <div className="xfl-core-stat"><span className="xfl-core-stat-dot xfl-core-stat-dot-armed" /><span>{queueLen - finishedCount} ARMED</span></div>
-              <div className="xfl-core-stat"><span className="xfl-core-stat-dot xfl-core-stat-dot-done" /><span>{purgedCount} DONE</span></div>
-              {failedCount > 0 && <div className="xfl-core-stat"><span className="xfl-core-stat-dot xfl-core-stat-dot-fail" /><span>{failedCount} FAIL</span></div>}
-              {disabledIds.size > 0 && <div className="xfl-core-stat"><span className="xfl-core-stat-dot xfl-core-stat-dot-skip" /><span>{disabledIds.size} SKIP</span></div>}
+              <div className="xfl-core-stat"><span className="xfl-core-stat-dot xfl-core-stat-dot-armed" /><span>{queueLen - finishedCount} pending</span></div>
+              <div className="xfl-core-stat"><span className="xfl-core-stat-dot xfl-core-stat-dot-done" /><span>{purgedCount} completed</span></div>
+              {failedCount > 0 && <div className="xfl-core-stat"><span className="xfl-core-stat-dot xfl-core-stat-dot-fail" /><span>{failedCount} failed</span></div>}
+              {disabledIds.size > 0 && <div className="xfl-core-stat"><span className="xfl-core-stat-dot xfl-core-stat-dot-skip" /><span>{disabledIds.size} skipped</span></div>}
             </div>
           </div>
 
@@ -503,8 +458,8 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
 
           <div className="xfl-core-right">
             <div className="xfl-core-frame">
-              <span className="xfl-core-frame-label">PRIMARY READOUT</span>
-              <span className="xfl-core-frame-tag">LIVE</span>
+              <span className="xfl-core-frame-label">Summary</span>
+              <span className="xfl-core-frame-tag">Active</span>
             </div>
 
             <div className="xfl-led">
@@ -522,7 +477,7 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
 
             <div className="xfl-seg">
               <div className="xfl-seg-head">
-                <span className="xfl-seg-head-label">PROGRESS</span>
+                <span className="xfl-seg-head-label">Progress</span>
                 <span className="xfl-seg-head-val">{donePct.toString().padStart(3, '0')}%</span>
               </div>
               <div className="xfl-seg-bar">
@@ -541,48 +496,12 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
           </div>
         </div>
 
-        {/* ═══ SPECTRUM — full-width reclaim analyzer ═══ */}
-        <div className="xfl-spectrum">
-          <div className="xfl-spec-header">
-            <span className="xfl-spec-label">DATA FLOW</span>
-            <span className="xfl-spec-sub">per-task reclaim · normalized</span>
-            <span className="xfl-spec-peak">PEAK {formatMB(maxSample > 1 ? maxSample : 0)}</span>
-          </div>
-          <div className="xfl-spec-body">
-            <div className="xfl-spec-ticks">
-              <span>100</span>
-              <span>75</span>
-              <span>50</span>
-              <span>25</span>
-              <span>0</span>
-            </div>
-            <div className="xfl-spec-bars-wrap">
-              <div className="xfl-wave-bars">
-                {tasks.map((t, i) => {
-                  const h = t.spaceSavedMB ? Math.max(8, (t.spaceSavedMB / maxSample) * 100) : 0;
-                  const label = TASK_LABELS[t.id] || t.id;
-                  return (
-                    <div key={`bar-${i}`} className="xfl-spec-bar-slot">
-                      <div
-                        className={`xfl-wave-bar xfl-wave-${t.state}`}
-                        style={{ height: `${h}%` }}
-                        title={`${label} — ${t.spaceSaved || '—'}`}
-                      />
-                      <span className="xfl-spec-bar-idx">{(i + 1).toString().padStart(2, '0')}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-
         {adminError && (
           <div className="xfl-banner xfl-banner-error">
             <AlertTriangle size={13} />
             <div className="xfl-banner-text">
-              <span className="xfl-banner-title">ELEVATION REQUIRED</span>
-              <span className="xfl-banner-msg">One or more tasks returned permission errors. Relaunch as Administrator to complete the cleanup.</span>
+              <span className="xfl-banner-title">Administrator required</span>
+              <span className="xfl-banner-msg">One or more cleanup tasks need elevated permissions. Restart the app as Administrator to continue.</span>
             </div>
           </div>
         )}
@@ -590,7 +509,7 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
         {/* ═══ LOG — execution record ═══ */}
         <div className="xfl-log">
           <div className="xfl-log-head">
-            <span className="xfl-log-tag">EXECUTION LOG</span>
+            <span className="xfl-log-tag">TASK LOG</span>
             <span className="xfl-log-sep" />
             <span className="xfl-log-count">{queueLen.toString().padStart(2, '0')} TASKS</span>
             {disabledIds.size > 0 && (
@@ -651,12 +570,12 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
                 <span>{started ? 'RESTART' : 'START'}</span>
               </button>
               <button className={`xfl-btn ${scopeOpen ? 'xfl-btn-on' : ''}`} onClick={() => setScopeOpen(v => !v)} disabled={running}>
-                <Sliders size={13} /><span>SELECT</span>
+                <Sliders size={13} /><span>Choose</span>
                 {disabledIds.size > 0 && <span className="xfl-btn-badge">{disabledIds.size}</span>}
               </button>
               <div className="xfl-console-status">
                 <span className="xfl-console-status-dot" />
-                <span>{started ? (summary?.type === 'error' ? 'FAILED' : 'DONE') : 'STANDING BY'}</span>
+                <span>{started ? (summary?.type === 'error' ? 'FAILED' : 'COMPLETED') : 'Ready'}</span>
               </div>
             </>
           ) : (
@@ -670,7 +589,7 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
               </button>
               <div className="xfl-console-status">
                 {running && <Loader2 size={12} className="xfl-spin" />}
-                <span>{running ? (paused ? 'PAUSED · awaiting input' : `RUNNING · task ${(currentIdx ?? 0) + 1}/${queueLen}`) : 'IDLE'}</span>
+                <span>{running ? (paused ? 'Paused' : `Running · task ${(currentIdx ?? 0) + 1} of ${queueLen}`) : 'Idle'}</span>
               </div>
             </>
           )}
@@ -679,7 +598,7 @@ const CacheCleanupToast: React.FC<Props> = ({ toastKey, windowsIds }) => {
         {scopeOpen && !running && (
           <div className="xfl-scope">
             <div className="xfl-scope-head">
-              <span>SELECT — toggle to include in next cleanup</span>
+              <span>Select tasks to include in the next cleanup</span>
               <button className="xfl-scope-close" onClick={() => setScopeOpen(false)}><X size={12} /></button>
             </div>
             <div className="xfl-scope-grid">
