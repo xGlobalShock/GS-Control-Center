@@ -1,4 +1,4 @@
-<img width="1508" height="888" alt="image" src="https://github.com/user-attachments/assets/23277c50-f483-4b72-87f6-cb95f6920af0" /># GS Center
+# GS Center
 
 **Set up your gaming or streaming PC in minutes — not hours.**
 
