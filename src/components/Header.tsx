@@ -9,7 +9,7 @@ import '../styles/WhatsNew.css';
 import '../styles/DevUpdates.css';
 
 // ─── Feature flags ───────────────────────────────────────────────────────────
-const SHOW_WHATS_NEW = false; // Toggle What's New icon in header
+const SHOW_WHATS_NEW = true; // Toggle What's New icon in header
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Minimal markdown renderer for Dev Updates (supports GitHub-style formatting)

@@ -190,7 +190,7 @@ const _processNameMap = {
  */
 async function getInstallerInfo(cleanId) {
   const { stdout } = await execAsync(
-    `chcp 65001 >nul && winget show --id ${cleanId} --accept-source-agreements 2>nul`,
+    `chcp 65001 >nul && winget show --id ${cleanId} --architecture x64 --accept-source-agreements 2>nul`,
     { timeout: 15000, windowsHide: true, encoding: 'utf8', shell: 'cmd.exe' }
   );
 
