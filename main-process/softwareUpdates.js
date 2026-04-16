@@ -360,76 +360,153 @@ function runInstallerDirect(cmd, args, signal) {
 }
 
 /**
- * Launches installer de-elevated via Shell.Application COM.
- * This runs the installer under the logged-in user (not admin), which is
- * required for per-user installers (Squirrel/NSIS apps that write to AppData).
+ * Launches a batch file de-elevated using the Explorer process token.
+ * Three fallback methods (same proven approach as appInstaller):
+ *   1. CreateProcessWithTokenW using Explorer.exe's medium-integrity token
+ *   2. schtasks with /rl LIMITED
+ *   3. runas /trustlevel:0x20000
+ */
+function launchBatDeElevated(batPath) {
+  const tmpVbs = batPath + '.vbs';
+  fs.writeFileSync(tmpVbs,
+    `CreateObject("WScript.Shell").Run "cmd.exe /c """"` + batPath + `""""", 0, True\r\n`, 'utf8');
+
+  // Method 1: Explorer-token via CreateProcessWithTokenW
+  try {
+    const cs = `
+Add-Type @'
+using System; using System.Runtime.InteropServices; using System.Diagnostics;
+public class DeElev {
+  [DllImport("advapi32.dll", SetLastError=true)]
+  static extern bool OpenProcessToken(IntPtr h, uint a, out IntPtr t);
+  [DllImport("advapi32.dll", SetLastError=true)]
+  static extern bool DuplicateTokenEx(IntPtr t, uint a, IntPtr l, int il, int tt, out IntPtr n);
+  [DllImport("advapi32.dll", SetLastError=true, CharSet=CharSet.Unicode)]
+  static extern bool CreateProcessWithTokenW(IntPtr t, int f, string a, string c, uint cf, IntPtr e, string d, ref STARTUPINFO si, out PROCESS_INFORMATION pi);
+  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)] public struct STARTUPINFO {
+    public int cb; public string lpReserved; public string lpDesktop; public string lpTitle;
+    public int dwX, dwY, dwXSize, dwYSize, dwXCountChars, dwYCountChars, dwFillAttribute, dwFlags;
+    public short wShowWindow, cbReserved2; public IntPtr lpReserved2, hStdInput, hStdOutput, hStdError; }
+  [StructLayout(LayoutKind.Sequential)] public struct PROCESS_INFORMATION {
+    public IntPtr hProcess, hThread; public int dwProcessId, dwThreadId; }
+  public static bool Run(string cmd) {
+    var exp = Process.GetProcessesByName("explorer");
+    if(exp.Length==0) return false;
+    IntPtr tok, dup;
+    if(!OpenProcessToken(exp[0].Handle, 0x0002, out tok)) return false;
+    if(!DuplicateTokenEx(tok, 0x02000000, IntPtr.Zero, 2, 1, out dup)) return false;
+    var si = new STARTUPINFO { cb = Marshal.SizeOf(typeof(STARTUPINFO)), dwFlags = 1, wShowWindow = 0 };
+    PROCESS_INFORMATION pi;
+    return CreateProcessWithTokenW(dup, 0, null, "wscript.exe \\"" + cmd + "\\"", 0x08000000, IntPtr.Zero, null, ref si, out pi);
+  }
+}
+'@ -ErrorAction Stop
+[DeElev]::Run('${tmpVbs.replace(/\\/g, '\\\\').replace(/'/g, "''")}')`;
+    const res = execSync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${cs.replace(/"/g, '\\"')}"`,
+      { encoding: 'utf8', windowsHide: true, timeout: 15000 }).trim();
+    if (res === 'True') { console.log('[Software Update] De-elevated via Explorer token'); return true; }
+  } catch (e) { console.error('[Software Update] Explorer-token failed:', (e.message || '').substring(0, 200)); }
+
+  // Method 2: schtasks (RunLevel Limited)
+  const taskName = `GSSoftwareUpdate_${process.pid}`;
+  try {
+    execSync(`schtasks /create /tn "${taskName}" /tr "wscript.exe \\"${tmpVbs}\\"" /sc once /st 00:00 /rl LIMITED /f`,
+      { stdio: 'ignore', windowsHide: true, timeout: 10000 });
+    execSync(`schtasks /run /tn "${taskName}"`,
+      { stdio: 'ignore', windowsHide: true, timeout: 10000 });
+    console.log('[Software Update] De-elevated via schtasks');
+    setTimeout(() => { try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true, timeout: 10000 }); } catch {} }, 5000);
+    return true;
+  } catch (e) {
+    console.error('[Software Update] schtasks failed:', (e.message || '').substring(0, 200));
+    try { execSync(`schtasks /delete /tn "${taskName}" /f`, { stdio: 'ignore', windowsHide: true }); } catch {}
+  }
+
+  // Method 3: runas /trustlevel:0x20000
+  try {
+    const r = require('child_process').spawnSync('runas.exe', ['/trustlevel:0x20000', 'wscript.exe', tmpVbs],
+      { windowsHide: true, timeout: 10000 });
+    if (!r.error) { console.log('[Software Update] De-elevated via runas /trustlevel'); return true; }
+    throw r.error;
+  } catch (e) { console.error('[Software Update] runas /trustlevel failed:', (e.message || '').substring(0, 200)); }
+
+  try { fs.unlinkSync(tmpVbs); } catch {}
+  return false;
+}
+
+/**
+ * Launches installer de-elevated using Explorer's medium-integrity token.
+ * Uses a wrapper batch script + sentinel file to reliably detect completion.
  */
 function runInstallerDeElevated(cmd, args, signal) {
   return new Promise((resolve, reject) => {
-    const argsStr = args.map(a => a.replace(/'/g, "''")).join(' ');
-    const cmdEscaped = cmd.replace(/'/g, "''");
+    const sentinelPath = cmd + '.done';
+    const wrapperPath = cmd + '.cmd';
+    const argsStr = args.join(' ');
+    const batchContent = `@echo off\r\n"${cmd}" ${argsStr}\r\necho %ERRORLEVEL% > "${sentinelPath}"\r\n`;
 
-    console.log(`[Software Update] De-elevating installer: cmd=${cmd}, args=${argsStr}`);
+    try { fs.writeFileSync(wrapperPath, batchContent, 'utf8'); } catch (e) {
+      reject(new Error(`Failed to create wrapper script: ${e.message}`));
+      return;
+    }
 
-    // Shell.Application.ShellExecute launches through Explorer as the standard user
-    const psCmd = `$s = New-Object -ComObject Shell.Application; $s.ShellExecute('${cmdEscaped}', '${argsStr}', '', 'open', 0)`;
-
-    const ps = spawn('powershell', ['-NoProfile', '-Command', psCmd], {
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    let psStderr = '';
-    ps.stderr.on('data', (c) => { psStderr += c.toString(); });
-    ps.stdout.on('data', () => {});
-
-    // Shell.Application returns immediately (fire-and-forget), so we poll
-    // for the installer process to finish by checking if cmd is still running.
-    // For EXE installers, poll for the process. For msiexec, poll for msiexec.
-    const exeName = path.basename(cmd);
-
-    ps.on('close', (code) => {
-      if (code !== 0 && psStderr.trim()) {
-        reject(new Error(`De-elevated launch failed: ${psStderr.trim().substring(0, 200)}`));
-        return;
-      }
-
-      // Wait for the installer to start, then poll until it finishes
-      setTimeout(() => pollInstallerExit(exeName, signal, resolve, reject), 2000);
-    });
+    if (!launchBatDeElevated(wrapperPath)) {
+      try { fs.unlinkSync(wrapperPath); } catch {}
+      reject(new Error('Could not de-elevate the installer process.'));
+      return;
+    }
 
     signal.abort = () => {
-      try { ps.kill(); } catch {}
       try { spawn('taskkill', ['/F', '/IM', path.basename(cmd)], { windowsHide: true }); } catch {}
+      try { fs.unlinkSync(wrapperPath); } catch {}
+      try { fs.unlinkSync(sentinelPath); } catch {}
     };
+
+    // Poll for the sentinel file — created only after installer fully exits
+    pollSentinelFile(sentinelPath, wrapperPath, signal, resolve, reject);
   });
 }
 
 /**
- * Polls for an installer process to exit (used after de-elevated launch).
+ * Polls for a sentinel file created by the wrapper batch script.
+ * The sentinel contains the installer's exit code.
  */
-function pollInstallerExit(exeName, signal, resolve, reject) {
+function pollSentinelFile(sentinelPath, wrapperPath, signal, resolve, reject) {
   const startTime = Date.now();
   const maxWait = 600000; // 10 min
 
   const check = () => {
-    if (signal.cancelled) { resolve({ exitCode: -1 }); return; }
-    if (Date.now() - startTime > maxWait) { reject(new Error('Installer timed out (10 min)')); return; }
+    if (signal.cancelled) {
+      cleanup();
+      resolve({ exitCode: -1 });
+      return;
+    }
+    if (Date.now() - startTime > maxWait) {
+      cleanup();
+      reject(new Error('Installer timed out (10 min)'));
+      return;
+    }
 
-    try {
-      // tasklist returns exit code 0 if process found, 1 if not
-      execSync(`tasklist /FI "IMAGENAME eq ${exeName}" /NH 2>nul | findstr /I "${exeName}" >nul 2>nul`, {
-        windowsHide: true, stdio: 'ignore', shell: 'cmd.exe',
-      });
-      // Process still running — check again in 2s
+    if (fs.existsSync(sentinelPath)) {
+      let exitCode = 0;
+      try {
+        const content = fs.readFileSync(sentinelPath, 'utf8').trim();
+        exitCode = parseInt(content, 10) || 0;
+      } catch {}
+      cleanup();
+      resolve({ exitCode });
+    } else {
       setTimeout(check, 2000);
-    } catch {
-      // Process not found — installer finished
-      resolve({ exitCode: 0 });
     }
   };
 
-  check();
+  const cleanup = () => {
+    try { fs.unlinkSync(wrapperPath); } catch {}
+    try { fs.unlinkSync(sentinelPath); } catch {}
+  };
+
+  // Give the wrapper script a moment to start before polling
+  setTimeout(check, 3000);
 }
 
 /* ═══════════════════ IPC Registration ═══════════════════ */
