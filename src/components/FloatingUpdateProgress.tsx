@@ -68,7 +68,7 @@ const FloatingUpdateProgress: React.FC = () => {
   )));
   const Icon = phase === 'done' ? CheckCircle : phase === 'error' ? AlertTriangle : phase === 'installing' ? Package : Download;
   const title = phase === 'done' ? 'Update complete'
-    : phase === 'error' ? 'Update failed'
+    : phase === 'error' ? (progress?.status || 'Update failed')
     : progress?.packageName
       ? `Updating ${progress.packageName}`
       : 'Updating software';

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Minus, X, ArrowDownCircle, Download, RefreshCw, CheckCircle, AlertTriangle, XCircle, Sparkles, Radio } from 'lucide-react';
 import ProfileDropdown from './ProfileDropdown';
+import WhatsNewModal from './WhatsNewModal';
 import changelog from '../data/changelog';
 import devUpdatesDefault from '../data/devUpdates';
 import type { DevUpdate } from '../data/devUpdates';
@@ -136,7 +137,6 @@ const Header: React.FC = React.memo(() => {
   const [hasGitHubUpdates, setHasGitHubUpdates] = useState(false);
   const [appVersion, setAppVersion] = useState<string>('');
   const popupRef = useRef<HTMLDivElement>(null);
-  const whatsNewRef = useRef<HTMLDivElement>(null);
   const devUpdatesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -320,18 +320,7 @@ const description = release.body?.trim() || undefined;
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showDevUpdates]);
 
-  // Close What's New panel on outside click
-  useEffect(() => {
-    if (!showWhatsNew) return;
-    const handleClick = (e: MouseEvent) => {
-      if (whatsNewRef.current && !whatsNewRef.current.contains(e.target as Node)) {
-        setShowWhatsNew(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [showWhatsNew]);
-
+  // Close What's New panel — handled by modal backdrop
   const handleOpenWhatsNew = useCallback(() => {
     setShowWhatsNew(prev => !prev);
     setShowDevUpdates(false);
@@ -387,7 +376,7 @@ const description = release.body?.trim() || undefined;
       <div className="window-controls">
         {/* What's New button */}
         {SHOW_WHATS_NEW && (
-        <div className="whatsnew-wrapper" ref={whatsNewRef}>
+        <div className="whatsnew-wrapper">
           <button
             className={`whatsnew-btn${showWhatsNew ? ' whatsnew-btn--active' : ''}`}
             onClick={handleOpenWhatsNew}
@@ -398,46 +387,7 @@ const description = release.body?.trim() || undefined;
             {hasUnseenChanges && <span className="whatsnew-dot" />}
           </button>
 
-          {showWhatsNew && (
-            <div className="whatsnew-panel">
-              <div className="whatsnew-panel-header">
-                <span className="whatsnew-panel-title">
-                  <Sparkles size={15} />
-                  What's New
-                </span>
-                <button className="whatsnew-panel-close" onClick={() => setShowWhatsNew(false)} aria-label="Close">
-                  <X size={14} />
-                </button>
-              </div>
-              <div className="whatsnew-panel-body">
-                {changelog.map((entry, i) => (
-                  <div className="whatsnew-version-block" key={entry.version}>
-                    <div className="whatsnew-version-header">
-                      <span className="whatsnew-version-tag">v{entry.version}</span>
-                      <span className="whatsnew-version-date">{entry.date}</span>
-                      {i === 0 && <span className="whatsnew-version-latest">Latest</span>}
-                    </div>
-                    {entry.highlights && (
-                      <p className="whatsnew-highlights">{entry.highlights}</p>
-                    )}
-                    <div className="whatsnew-changes">
-                      {entry.changes.map((c, j) => (
-                        <React.Fragment key={j}>
-                          {j > 0 && c.type !== entry.changes[j - 1].type && (
-                            <div className="whatsnew-separator" aria-hidden="true" />
-                          )}
-                          <div className="whatsnew-change">
-                            <span className={`whatsnew-change-badge whatsnew-badge--${c.type}`}>{c.type}</span>
-                            <span>{c.text}</span>
-                          </div>
-                        </React.Fragment>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          <WhatsNewModal open={showWhatsNew} onClose={() => setShowWhatsNew(false)} />
         </div>
         )}
 

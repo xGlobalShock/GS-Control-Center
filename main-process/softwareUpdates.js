@@ -8,7 +8,7 @@
  */
 
 const { ipcMain, BrowserWindow, app } = require('electron');
-const { spawn, execSync } = require('child_process');
+const { spawn, execSync, exec } = require('child_process');
 const { execAsync } = require('./utils');
 const windowManager = require('./windowManager');
 const path = require('path');
@@ -188,11 +188,23 @@ const _processNameMap = {
 /**
  * Queries winget for installer metadata (URL, type, silent switches).
  */
-async function getInstallerInfo(cleanId) {
-  const { stdout } = await execAsync(
-    `chcp 65001 >nul && winget show --id ${cleanId} --architecture x64 --accept-source-agreements 2>nul`,
-    { timeout: 15000, windowsHide: true, encoding: 'utf8', shell: 'cmd.exe' }
-  );
+async function getInstallerInfo(cleanId, signal) {
+  const { stdout } = await new Promise((resolve, reject) => {
+    const child = exec(
+      `chcp 65001 >nul && winget show --id ${cleanId} --architecture x64 --accept-source-agreements 2>nul`,
+      { timeout: 15000, windowsHide: true, encoding: 'utf8', shell: 'cmd.exe' },
+      (err, stdout) => {
+        if (signal && signal.cancelled) return reject(new CancelError());
+        if (err) return reject(err);
+        resolve({ stdout });
+      }
+    );
+    if (signal) {
+      signal.abort = () => {
+        try { child.kill(); } catch {}
+      };
+    }
+  });
 
   const urlMatch = stdout.match(/Installer\s+Url:\s*(https?:\/\/\S+)/i);
   if (!urlMatch) throw new Error('Installer URL not found in winget manifest');
@@ -241,6 +253,7 @@ function downloadFile(url, destPath, onProgress, signal, redirects = 0) {
 
       const file = fs.createWriteStream(destPath);
 
+      // Update abort to also destroy the file stream
       signal.abort = () => {
         req.destroy();
         file.destroy();
@@ -268,11 +281,17 @@ function downloadFile(url, destPath, onProgress, signal, redirects = 0) {
       res.pipe(file);
 
       file.on('finish', () => file.close(() => resolve()));
-      file.on('error', (err) => { try { fs.unlinkSync(destPath); } catch {} reject(err); });
-      res.on('error', (err) => { file.destroy(); try { fs.unlinkSync(destPath); } catch {} reject(err); });
+      file.on('error', (err) => { try { fs.unlinkSync(destPath); } catch {} reject(signal.cancelled ? new CancelError() : err); });
+      res.on('error', (err) => { file.destroy(); try { fs.unlinkSync(destPath); } catch {} reject(signal.cancelled ? new CancelError() : err); });
     });
 
-    req.on('error', reject);
+    // Set abort immediately so cancel works during connection/redirect phase
+    signal.abort = () => {
+      req.destroy();
+      try { fs.unlinkSync(destPath); } catch {}
+    };
+
+    req.on('error', (err) => reject(signal.cancelled ? new CancelError() : err));
     req.on('timeout', () => { req.destroy(); reject(new Error('Download timed out')); });
   });
 }
@@ -544,16 +563,9 @@ function registerIPC() {
   });
 
   ipcMain.handle('software:cancel-update', async () => {
-    const win = windowManager.getMainWindow() || BrowserWindow.getAllWindows()[0];
     if (activeUpdateProc) {
       activeUpdateProc.kill();
       activeUpdateProc = null;
-      if (win && !win.isDestroyed()) {
-        win.webContents.send('software:update-progress', {
-          packageId: '__cancelled__', packageName: '', phase: 'error',
-          status: 'Update cancelled', percent: 0,
-        });
-      }
       return { success: true };
     }
     return { success: false, message: 'No active update' };
@@ -595,7 +607,7 @@ function registerIPC() {
 
       // 2. Get installer info from winget
       sendProgress({ phase: 'preparing', status: 'Getting installer info...', percent: 0 });
-      const info = await getInstallerInfo(cleanId);
+      const info = await getInstallerInfo(cleanId, signal);
       console.log(`[Software Update] ${cleanId}: type=${info.type}, url=${info.url.substring(0, 100)}`);
       if (signal.cancelled) throw new CancelError();
 
@@ -645,8 +657,8 @@ function registerIPC() {
 
     } catch (err) {
       if (signal.cancelled || err instanceof CancelError) {
-        sendProgress({ phase: 'error', status: 'Update cancelled', percent: 0 });
-        return { success: false, cancelled: true, message: 'Update cancelled' };
+        sendProgress({ phase: 'error', status: 'Update Canceled', percent: 0 });
+        return { success: false, cancelled: true, message: 'Update Canceled' };
       }
 
       const msg = (err.message || 'Update failed').substring(0, 200);
